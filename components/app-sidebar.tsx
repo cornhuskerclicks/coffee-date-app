@@ -22,13 +22,15 @@ export function AppSidebar() {
   return (
     <aside className="w-64 border-r border-border bg-card h-screen sticky top-0 flex flex-col">
       <div className="p-6 border-b border-border">
-        <h1 className="text-xl font-bold">Aether AI Lab</h1>
+        <h1 className="text-xl font-bold">
+          RE:VIVE <span className="text-primary">by Aether</span>
+        </h1>
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
         {menuItems.map((item) => {
           const Icon = item.icon
-          const isActive = pathname === item.href
+          const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
 
           return (
             <Link

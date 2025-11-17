@@ -1,171 +1,111 @@
-"use client"
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { createClient } from "@/lib/supabase/server"
+import { redirect } from 'next/navigation'
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useState } from "react"
-import { useToast } from "@/hooks/use-toast"
-import { Copy, ExternalLink } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Coffee, Sparkles } from 'lucide-react'
+import DemoStartButton from "@/components/demo-start-button"
 
-export default function CoffeeDateDemoPage() {
-  const [businessName, setBusinessName] = useState("")
-  const [audience, setAudience] = useState("")
-  const [offer, setOffer] = useState("")
-  const [tone, setTone] = useState("confident")
-  const [generated, setGenerated] = useState(false)
-  const { toast } = useToast()
+export default async function DemoPage() {
+  const supabase = await createClient()
 
-  const handleGenerate = () => {
-    if (!businessName || !audience || !offer) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all fields",
-        variant: "destructive",
-      })
-      return
-    }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-    setGenerated(true)
-    toast({
-      title: "Demo Generated",
-      description: "Your Coffee Date Demo has been created",
-    })
+  if (!user) {
+    redirect("/login")
   }
 
-  const handleCopy = () => {
-    toast({
-      title: "Copied",
-      description: "Demo content copied to clipboard",
-    })
+  const { data: androids, error } = await supabase
+    .from("androids")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    console.error("Error fetching androids:", error)
   }
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Coffee Date Demo 2.0</h1>
-        <p className="text-muted-foreground">Generate personalized demo content for your business</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Coffee Date Demo</h1>
+          <p className="text-muted-foreground">
+            Start an interactive AI demo session with your prospect
+          </p>
+        </div>
+        <DemoStartButton androids={androids || []} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle>Input Details</CardTitle>
+            <Coffee className="h-8 w-8 text-primary mb-2" />
+            <CardTitle>Interactive Demos</CardTitle>
+            <CardDescription>
+              Simulate real conversations with prospects using AI-powered androids
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="business">Business Name</Label>
-              <Input
-                id="business"
-                placeholder="Enter business name"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="audience">Target Audience</Label>
-              <Input
-                id="audience"
-                placeholder="Who do you help?"
-                value={audience}
-                onChange={(e) => setAudience(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="offer">Main Offer</Label>
-              <Textarea
-                id="offer"
-                placeholder="What's your main offer?"
-                value={offer}
-                onChange={(e) => setOffer(e.target.value)}
-                rows={4}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="tone">Tone</Label>
-              <Select value={tone} onValueChange={setTone}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="simple">Simple</SelectItem>
-                  <SelectItem value="confident">Confident</SelectItem>
-                  <SelectItem value="warm">Warm</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button onClick={handleGenerate} className="w-full">
-              Generate Demo
-            </Button>
-          </CardContent>
         </Card>
 
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Before AI</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {generated ? (
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Manual outreach, generic messages, low response rates. Hours spent on follow-ups with minimal results.
-                  </p>
-                  <div className="bg-muted p-4 rounded-lg">
-                    <p className="text-sm">
-                      "Hi [Name], I wanted to reach out about our services. We help businesses like yours. Let me know if you're interested."
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-muted-foreground text-center py-8">
-                  Generate a demo to see the comparison
-                </p>
-              )}
-            </CardContent>
-          </Card>
+        <Card>
+          <CardHeader>
+            <Sparkles className="h-8 w-8 text-primary mb-2" />
+            <CardTitle>SPIN Selling</CardTitle>
+            <CardDescription>
+              Powered by proven sales methodologies like SPIN Selling and The Challenger Sale
+            </CardDescription>
+          </CardHeader>
+        </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>After AI</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {generated ? (
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Personalized AI-powered conversations that engage leads, qualify interest, and book calls automatically.
-                  </p>
-                  <div className="bg-primary/10 p-4 rounded-lg border-2 border-primary">
-                    <p className="text-sm">
-                      "Hey [Name], I noticed {businessName} works with {audience}. We've helped similar businesses {offer}. Would you be open to a quick 15-minute call to explore how we could help you achieve similar results?"
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button onClick={handleCopy} variant="outline" className="flex-1">
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy Demo
-                    </Button>
-                    <Button className="flex-1">
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      Generate Link
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-muted-foreground text-center py-8">
-                  Fill in the details and generate
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        <Card>
+          <CardHeader>
+            <Coffee className="h-8 w-8 text-primary mb-2" />
+            <CardTitle>Save & Share</CardTitle>
+            <CardDescription>
+              Save demo sessions and share them with your team or prospects
+            </CardDescription>
+          </CardHeader>
+        </Card>
       </div>
+
+      {androids && androids.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Androids</CardTitle>
+            <CardDescription>Select an android to start a demo session</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {androids.map((android) => {
+                const companyName =
+                  android.business_context?.company_name || android.business_context?.businessName || "My Business"
+                const niche = android.business_context?.niche || android.business_context?.industry || "General"
+
+                return (
+                  <Card key={android.id} className="hover:border-primary transition-colors">
+                    <CardHeader>
+                      <CardTitle className="text-lg">{android.name}</CardTitle>
+                      <CardDescription>
+                        {companyName} • {niche}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Button asChild className="w-full">
+                        <a href={`/demo/${android.id}`}>
+                          <Coffee className="h-4 w-4 mr-2" />
+                          Start Demo
+                        </a>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
