@@ -88,18 +88,22 @@ export default function DeadLeadRevivalPage() {
 
     setConnecting(true)
     try {
+      console.log('[v0] Testing connection with location ID:', locationId.trim())
+      
       const testResponse = await fetch('/api/revival/test-connection', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          privateIntegrationToken: privateIntegrationToken, 
+          privateIntegrationToken: privateIntegrationToken.trim(), 
           locationId: locationId.trim() 
         })
       })
 
+      const responseData = await testResponse.json()
+      console.log('[v0] Test response:', responseData)
+
       if (!testResponse.ok) {
-        const error = await testResponse.json()
-        throw new Error(error.message || 'Invalid credentials')
+        throw new Error(responseData.details || responseData.message || 'Invalid credentials')
       }
 
       // Save connection
@@ -108,7 +112,7 @@ export default function DeadLeadRevivalPage() {
 
       const { error } = await supabase.from('ghl_connections').insert({
         user_id: user.id,
-        api_key: privateIntegrationToken,
+        api_key: privateIntegrationToken.trim(),
         location_id: locationId.trim(),
         account_name: accountName.trim()
       })
@@ -128,6 +132,7 @@ export default function DeadLeadRevivalPage() {
       await loadAccounts()
 
     } catch (error: any) {
+      console.error('[v0] Connection error:', error)
       toast({
         title: "Connection Failed",
         description: error.message,
