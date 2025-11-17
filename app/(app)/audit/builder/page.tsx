@@ -1,6 +1,6 @@
 "use client"
 
-// Version: 2.0.0 - Updated for Aether branding
+// Version: 2.1.0 - Enhanced visual design and UX
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -150,63 +150,63 @@ function AuditBuilderContent() {
   }
 
   return (
-    <div className="p-6 space-y-8 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between">
+    <div className="p-8 space-y-8 max-w-6xl mx-auto">
+      <div className="flex items-center justify-between pb-6 border-b border-white/10">
         <div className="flex items-center gap-4">
           <Link href="/audit">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="hover:bg-[#3a8bff]/10 hover:text-[#3a8bff]">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-white">
+            <h1 className="text-4xl font-bold text-white">
               {auditId ? 'Edit Audit' : 'New Audit'}
             </h1>
-            <p className="text-secondary mt-1">
+            <p className="text-white/60 mt-2 text-base">
               Complete the AI readiness assessment
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleDownload} disabled={!auditName} className="border-border hover:border-primary">
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={handleDownload} disabled={!auditName} className="border-white/20 hover:border-[#3a8bff]/60 hover:bg-[#3a8bff]/10">
             <Download className="h-4 w-4 mr-2" />
             Download
           </Button>
-          <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
+          <Button onClick={handleSave} disabled={saving} className="bg-[#3a8bff] hover:bg-[#2d6ed4] shadow-lg shadow-[#3a8bff]/30">
             <Save className="h-4 w-4 mr-2" />
             {saving ? 'Saving...' : 'Save Audit'}
           </Button>
         </div>
       </div>
 
-      <Card className="bg-card border-border shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+      <Card className="bg-black/40 border-white/10 backdrop-blur-sm shadow-lg">
         <CardHeader className="pb-6">
-          <CardTitle className="text-white text-xl">Business Information</CardTitle>
-          <CardDescription className="text-secondary mt-2">Enter the business name for this audit</CardDescription>
+          <CardTitle className="text-white text-2xl">Business Information</CardTitle>
+          <CardDescription className="text-white/60 mt-2 text-base">Enter the business name for this audit</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <Label htmlFor="business-name" className="text-white text-sm font-medium">Business Name *</Label>
+            <Label htmlFor="business-name" className="text-white text-base font-medium">Business Name *</Label>
             <Input
               id="business-name"
               placeholder="Enter business name"
               value={auditName}
               onChange={(e) => setAuditName(e.target.value)}
-              className="bg-muted border-border focus:border-primary"
+              className="bg-muted border-border focus:border-[#3a8bff] h-12 text-base"
             />
           </div>
         </CardContent>
       </Card>
 
       {categorizedQuestions.map(([category, questions]) => (
-        <Card key={category} className="bg-card border-border shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
-          <CardHeader className="pb-6">
-            <CardTitle className="text-white text-xl">{category}</CardTitle>
+        <Card key={category} className="bg-black/40 border-white/10 backdrop-blur-sm shadow-lg">
+          <CardHeader className="pb-6 border-b border-white/10">
+            <CardTitle className="text-white text-2xl">{category}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-8">
+          <CardContent className="space-y-8 pt-8">
             {questions.map((question) => (
               <div key={question.id} className="space-y-3">
-                <Label htmlFor={question.id} className="text-white text-sm font-medium">{question.question}</Label>
+                <Label htmlFor={question.id} className="text-white text-base font-medium">{question.question}</Label>
                 {question.type === 'text' ? (
                   <Input
                     id={question.id}
@@ -215,7 +215,7 @@ function AuditBuilderContent() {
                     onChange={(e) =>
                       setResponses({ ...responses, [question.id]: e.target.value })
                     }
-                    className="bg-muted border-border focus:border-primary"
+                    className="bg-muted border-border focus:border-[#3a8bff] h-12 text-base"
                   />
                 ) : (
                   <Textarea
@@ -226,7 +226,7 @@ function AuditBuilderContent() {
                     onChange={(e) =>
                       setResponses({ ...responses, [question.id]: e.target.value })
                     }
-                    className="bg-muted border-border focus:border-primary"
+                    className="bg-muted border-border focus:border-[#3a8bff] text-base resize-none"
                   />
                 )}
               </div>
@@ -235,11 +235,11 @@ function AuditBuilderContent() {
         </Card>
       ))}
 
-      <div className="flex justify-end gap-2 pt-4">
+      <div className="flex justify-end gap-3 pt-6 border-t border-white/10">
         <Link href="/audit">
-          <Button variant="outline" className="border-border hover:border-primary">Cancel</Button>
+          <Button variant="outline" className="border-white/20 hover:border-white/40 px-8">Cancel</Button>
         </Link>
-        <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
+        <Button onClick={handleSave} disabled={saving} className="bg-[#3a8bff] hover:bg-[#2d6ed4] shadow-lg shadow-[#3a8bff]/30 px-8">
           <Save className="h-4 w-4 mr-2" />
           {saving ? 'Saving...' : 'Save Audit'}
         </Button>

@@ -124,9 +124,10 @@
     color: hsl(var(--primary)) !important;
   }
   
-  /* Input and form element improvements */
+  /* Added flashing cursor to all input fields for better visibility */
   input, textarea, select {
     @apply bg-muted border-border text-foreground;
+    caret-color: hsl(218 100% 62%); /* Electric blue cursor */
   }
   
   input::placeholder, textarea::placeholder {
@@ -135,6 +136,7 @@
   
   input:focus, textarea:focus, select:focus {
     @apply border-primary ring-2 ring-primary/20;
+    caret-color: hsl(218 100% 62%); /* Maintain blue cursor on focus */
   }
 }
 
