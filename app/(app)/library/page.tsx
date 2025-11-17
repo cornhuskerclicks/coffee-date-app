@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Copy, Trash2, Edit } from 'lucide-react'
+import { Plus, Copy, Trash2, Edit, BookOpen } from 'lucide-react'
 import { useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -205,7 +205,7 @@ export default function PromptLibraryPage() {
           ) : (
             <Card className="h-full flex items-center justify-center min-h-[500px]">
               <CardContent className="text-center space-y-4">
-                <Library className="h-16 w-16 mx-auto text-muted-foreground" />
+                <BookOpen className="h-16 w-16 mx-auto text-muted-foreground" />
                 <h3 className="text-xl font-semibold">No Prompt Selected</h3>
                 <p className="text-muted-foreground max-w-md">
                   Select a prompt from the library or create a new one to get started
