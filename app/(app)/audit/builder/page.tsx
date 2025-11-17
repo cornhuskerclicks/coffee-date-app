@@ -150,7 +150,7 @@ function AuditBuilderContent() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+    <div className="p-6 space-y-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/audit">
@@ -159,53 +159,54 @@ function AuditBuilderContent() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold">
+            <h1 className="text-3xl font-bold text-white">
               {auditId ? 'Edit Audit' : 'New Audit'}
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-secondary mt-1">
               Complete the AI readiness assessment
             </p>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleDownload} disabled={!auditName}>
+          <Button variant="outline" onClick={handleDownload} disabled={!auditName} className="border-border hover:border-primary">
             <Download className="h-4 w-4 mr-2" />
             Download
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
             <Save className="h-4 w-4 mr-2" />
             {saving ? 'Saving...' : 'Save Audit'}
           </Button>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Business Information</CardTitle>
-          <CardDescription>Enter the business name for this audit</CardDescription>
+      <Card className="bg-card border-border shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+        <CardHeader className="pb-6">
+          <CardTitle className="text-white text-xl">Business Information</CardTitle>
+          <CardDescription className="text-secondary mt-2">Enter the business name for this audit</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            <Label htmlFor="business-name">Business Name *</Label>
+          <div className="space-y-3">
+            <Label htmlFor="business-name" className="text-white text-sm font-medium">Business Name *</Label>
             <Input
               id="business-name"
               placeholder="Enter business name"
               value={auditName}
               onChange={(e) => setAuditName(e.target.value)}
+              className="bg-muted border-border focus:border-primary"
             />
           </div>
         </CardContent>
       </Card>
 
       {categorizedQuestions.map(([category, questions]) => (
-        <Card key={category}>
-          <CardHeader>
-            <CardTitle>{category}</CardTitle>
+        <Card key={category} className="bg-card border-border shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+          <CardHeader className="pb-6">
+            <CardTitle className="text-white text-xl">{category}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-8">
             {questions.map((question) => (
-              <div key={question.id} className="space-y-2">
-                <Label htmlFor={question.id}>{question.question}</Label>
+              <div key={question.id} className="space-y-3">
+                <Label htmlFor={question.id} className="text-white text-sm font-medium">{question.question}</Label>
                 {question.type === 'text' ? (
                   <Input
                     id={question.id}
@@ -214,6 +215,7 @@ function AuditBuilderContent() {
                     onChange={(e) =>
                       setResponses({ ...responses, [question.id]: e.target.value })
                     }
+                    className="bg-muted border-border focus:border-primary"
                   />
                 ) : (
                   <Textarea
@@ -224,6 +226,7 @@ function AuditBuilderContent() {
                     onChange={(e) =>
                       setResponses({ ...responses, [question.id]: e.target.value })
                     }
+                    className="bg-muted border-border focus:border-primary"
                   />
                 )}
               </div>
@@ -232,11 +235,11 @@ function AuditBuilderContent() {
         </Card>
       ))}
 
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-2 pt-4">
         <Link href="/audit">
-          <Button variant="outline">Cancel</Button>
+          <Button variant="outline" className="border-border hover:border-primary">Cancel</Button>
         </Link>
-        <Button onClick={handleSave} disabled={saving}>
+        <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
           <Save className="h-4 w-4 mr-2" />
           {saving ? 'Saving...' : 'Save Audit'}
         </Button>

@@ -3,66 +3,72 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Aether AI Lab brand colors - pure black and bright blue */
+  /* Updated to Aether AI Lab design system with improved contrast and hierarchy */
+  /* Aether AI Lab brand colors - pure black with soft greys and electric blue accent */
   --background: 0 0% 0%; /* Pure Black #000000 */
-  --foreground: 0 0% 100%; /* Pure White */
+  --foreground: 0 0% 90%; /* Off-white #e6e6e6 for primary text */
   
-  --card: 0 0% 7%; /* Dark cards for black background */
-  --card-foreground: 0 0% 100%; /* White text on dark cards */
+  --card: 0 0% 7%; /* Soft grey #111 for raised cards */
+  --card-foreground: 0 0% 90%;
   
-  --popover: 0 0% 7%;
-  --popover-foreground: 0 0% 100%;
+  --popover: 0 0% 6%; /* #0f0f0f */
+  --popover-foreground: 0 0% 90%;
   
-  --primary: 199 100% 50%; /* Bright Blue #00A8FF */
-  --primary-foreground: 0 0% 100%; /* White text on blue */
+  --primary: 218 100% 62%; /* Electric Blue #3a8bff */
+  --primary-foreground: 0 0% 100%;
   
-  --secondary: 0 0% 15%; /* Dark gray */
-  --secondary-foreground: 0 0% 100%;
+  --secondary: 0 0% 10%; /* #1a1a1a */
+  --secondary-foreground: 0 0% 90%;
   
-  --muted: 0 0% 20%;
-  --muted-foreground: 0 0% 60%;
+  --muted: 0 0% 11%; /* #1b1b1b for input backgrounds */
+  --muted-foreground: 0 0% 60%; /* Mid grey #9a9a9a for secondary labels */
   
-  --accent: 199 100% 50%;
+  --accent: 218 100% 62%;
   --accent-foreground: 0 0% 100%;
   
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
   
-  --border: 0 0% 15%;
-  --input: 0 0% 15%;
-  --ring: 199 100% 50%;
+  --border: 0 0% 20%; /* #333 for borders */
+  --input: 0 0% 11%; /* #1b1b1b for input backgrounds */
+  --ring: 218 100% 62%;
   
-  --radius: 0.5rem; /* 8px rounded corners */
+  --radius: 0.625rem; /* 10px rounded corners */
+  
+  /* Added typography color tokens for hierarchy */
+  --text-primary: 0 0% 90%; /* Off-white #e6e6e6 */
+  --text-secondary: 0 0% 60%; /* Mid grey #9a9a9a */
+  --text-helper: 0 0% 48%; /* Light grey #7a7a7a */
 }
 
 .dark {
   --background: 0 0% 0%;
-  --foreground: 0 0% 100%;
+  --foreground: 0 0% 90%;
   
   --card: 0 0% 7%;
-  --card-foreground: 0 0% 100%;
+  --card-foreground: 0 0% 90%;
   
-  --popover: 0 0% 7%;
-  --popover-foreground: 0 0% 100%;
+  --popover: 0 0% 6%;
+  --popover-foreground: 0 0% 90%;
   
-  --primary: 199 100% 50%;
+  --primary: 218 100% 62%;
   --primary-foreground: 0 0% 100%;
   
-  --secondary: 0 0% 15%;
-  --secondary-foreground: 0 0% 100%;
+  --secondary: 0 0% 10%;
+  --secondary-foreground: 0 0% 90%;
   
-  --muted: 0 0% 20%;
+  --muted: 0 0% 11%;
   --muted-foreground: 0 0% 60%;
   
-  --accent: 199 100% 50%;
+  --accent: 218 100% 62%;
   --accent-foreground: 0 0% 100%;
   
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
   
-  --border: 0 0% 15%;
-  --input: 0 0% 15%;
-  --ring: 199 100% 50%;
+  --border: 0 0% 20%;
+  --input: 0 0% 11%;
+  --ring: 218 100% 62%;
 }
 
 @theme inline {
@@ -89,10 +95,11 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   
-  --radius-sm: calc(var(--radius) - 2px);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 2px);
-  --radius-xl: calc(var(--radius) + 6px);
+  /* Updated radius values for premium feel */
+  --radius-sm: calc(var(--radius) - 4px); /* 6px */
+  --radius-md: var(--radius); /* 10px */
+  --radius-lg: calc(var(--radius) + 2px); /* 12px */
+  --radius-xl: calc(var(--radius) + 6px); /* 16px */
 }
 
 @layer base {
@@ -101,13 +108,33 @@
   }
   
   body {
-    @apply bg-black text-white;
+    @apply bg-black text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    /* Set medium font weight as default for premium feel */
+    font-weight: 500;
   }
   
-  /* Fix hover states - ensure proper contrast on black backgrounds */
+  /* Improved heading styles - bold white headings */
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-white font-bold;
+  }
+  
+  /* Fixed hover states with proper contrast */
   a:hover, button:hover {
-    color: hsl(var(--foreground)) !important;
+    color: hsl(var(--primary)) !important;
+  }
+  
+  /* Input and form element improvements */
+  input, textarea, select {
+    @apply bg-muted border-border text-foreground;
+  }
+  
+  input::placeholder, textarea::placeholder {
+    color: hsl(0 0% 40%) !important; /* #666 for placeholder text */
+  }
+  
+  input:focus, textarea:focus, select:focus {
+    @apply border-primary ring-2 ring-primary/20;
   }
 }
 
@@ -118,6 +145,35 @@
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+  
+  /* Premium card styling with soft shadows */
+  .card-raised {
+    background: hsl(0 0% 7%);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    padding: 24px;
+  }
+  
+  .card-preview {
+    background: hsl(0 0% 6%);
+    border: 1px solid hsl(0 0% 13%);
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    padding: 24px;
+  }
+  
+  /* Typography utilities for hierarchy */
+  .text-primary {
+    color: hsl(0 0% 90%);
+  }
+  
+  .text-secondary {
+    color: hsl(0 0% 60%);
+  }
+  
+  .text-helper {
+    color: hsl(0 0% 48%);
   }
   
   /* Aether glass effects for modern UI */
@@ -165,39 +221,6 @@
     pointer-events: none;
     z-index: 0;
     filter: blur(60px);
-  }
-  
-  /* Adding cyan glow effects matching REVIVE MVP */
-  .glow-cyan {
-    box-shadow: 0 0 20px rgba(14, 231, 255, 0.3),
-                0 0 40px rgba(14, 231, 255, 0.2),
-                0 0 60px rgba(14, 231, 255, 0.1);
-  }
-  
-  .glow-cyan-strong {
-    box-shadow: 0 0 30px rgba(14, 231, 255, 0.5),
-                0 0 60px rgba(14, 231, 255, 0.3),
-                0 0 90px rgba(14, 231, 255, 0.2);
-  }
-  
-  .glow-cyan-subtle {
-    box-shadow: 0 0 15px rgba(14, 231, 255, 0.2),
-                0 0 30px rgba(14, 231, 255, 0.1);
-  }
-  
-  .text-glow-cyan {
-    text-shadow: 0 0 20px rgba(14, 231, 255, 0.5),
-                 0 0 40px rgba(14, 231, 255, 0.3);
-  }
-  
-  .hover-glow-cyan {
-    transition: box-shadow 0.3s ease;
-  }
-  
-  .hover-glow-cyan:hover {
-    box-shadow: 0 0 25px rgba(14, 231, 255, 0.4),
-                0 0 50px rgba(14, 231, 255, 0.2),
-                0 0 75px rgba(14, 231, 255, 0.1);
   }
 }
 

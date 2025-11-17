@@ -329,30 +329,30 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.push('/quiz')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">
+            <h1 className="text-3xl font-bold text-white">
               {quizId ? 'Edit Quiz' : 'Create New Quiz'}
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-secondary mt-1">
               {quizId ? 'Update your quiz settings and questions' : 'Start with AI Readiness questions'}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={copyQuizQuestions}>
+          <Button variant="outline" onClick={copyQuizQuestions} className="border-border hover:border-primary">
             <Copy className="h-4 w-4 mr-2" />
             Copy Questions
           </Button>
-          <Button variant="outline" onClick={generateAIPrompt}>
+          <Button variant="outline" onClick={generateAIPrompt} className="border-border hover:border-primary">
             <FileCode className="h-4 w-4 mr-2" />
             Generate AI Prompt
           </Button>
-          <Button onClick={saveQuiz} disabled={isSaving}>
+          <Button onClick={saveQuiz} disabled={isSaving} className="bg-primary hover:bg-primary/90">
             <Save className="h-4 w-4 mr-2" />
             {isSaving ? "Saving..." : "Save Quiz"}
           </Button>
@@ -360,77 +360,81 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Quiz Settings</CardTitle>
+        <div className="lg:col-span-2 space-y-6">
+          <Card className="bg-card border-border shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+            <CardHeader className="pb-6">
+              <CardTitle className="text-white text-xl">Quiz Settings</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Quiz Name (Internal)</Label>
+            <CardContent className="space-y-6">
+              <div className="space-y-3">
+                <Label htmlFor="name" className="text-white text-sm font-medium">Quiz Name (Internal)</Label>
                 <Input
                   id="name"
                   placeholder="e.g., Q1 2025 AI Audit"
                   value={quizName}
                   onChange={(e) => setQuizName(e.target.value)}
+                  className="bg-muted border-border focus:border-primary"
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-helper text-xs mt-2">
                   Internal name for organizing your quizzes
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="title">Website Title</Label>
+              <div className="space-y-3">
+                <Label htmlFor="title" className="text-white text-sm font-medium">Website Title</Label>
                 <Input
                   id="title"
                   placeholder="AI Readiness Audit"
                   value={quizTitle}
                   onChange={(e) => setQuizTitle(e.target.value)}
+                  className="bg-muted border-border focus:border-primary"
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-helper text-xs mt-2">
                   This heading will appear on your website
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+              <div className="space-y-3">
+                <Label htmlFor="description" className="text-white text-sm font-medium">Description</Label>
                 <Textarea
                   id="description"
                   placeholder="Discover your AI readiness score in under 3 minutes"
                   value={quizDescription}
                   onChange={(e) => setQuizDescription(e.target.value)}
                   rows={3}
+                  className="bg-muted border-border focus:border-primary"
                 />
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Questions</CardTitle>
-              <Button onClick={addQuestion} size="sm">
+          <Card className="bg-card border-border shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+            <CardHeader className="flex flex-row items-center justify-between pb-6">
+              <CardTitle className="text-white text-xl">Questions</CardTitle>
+              <Button onClick={addQuestion} size="sm" className="bg-primary hover:bg-primary/90">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Question
               </Button>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               {questions.map((question, qIndex) => (
-                <div key={question.id} className="p-4 border rounded-lg space-y-3">
+                <div key={question.id} className="p-6 border border-border rounded-lg bg-muted/30 space-y-4">
                   <div className="flex items-start gap-3">
-                    <GripVertical className="h-5 w-5 text-muted-foreground cursor-move mt-2" />
-                    <div className="flex-1 space-y-3">
-                      <div className="flex items-start gap-2">
-                        <span className="text-sm font-medium mt-2">Q{qIndex + 1}</span>
+                    <GripVertical className="h-5 w-5 text-secondary cursor-move mt-2" />
+                    <div className="flex-1 space-y-4">
+                      <div className="flex items-start gap-3">
+                        <span className="text-sm font-medium text-white mt-2">Q{qIndex + 1}</span>
                         <Input
                           placeholder="Enter question"
                           value={question.text}
                           onChange={(e) => updateQuestion(qIndex, 'text', e.target.value)}
+                          className="bg-muted border-border focus:border-primary"
                         />
                       </div>
 
                       {question.type === 'multiple-choice' && (
-                        <div className="space-y-2 ml-8">
-                          <Label className="text-xs text-muted-foreground">Answer Options</Label>
+                        <div className="space-y-3 ml-8">
+                          <Label className="text-secondary text-xs">Answer Options</Label>
                           {question.options?.map((option, oIndex) => (
                             <div key={oIndex} className="flex items-center gap-2">
                               <Input
@@ -439,7 +443,7 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
                                 onChange={(e) =>
                                   updateOption(qIndex, oIndex, 'text', e.target.value)
                                 }
-                                className="flex-1"
+                                className="flex-1 bg-muted border-border focus:border-primary"
                               />
                               <Input
                                 type="number"
@@ -448,12 +452,13 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
                                 onChange={(e) =>
                                   updateOption(qIndex, oIndex, 'value', parseInt(e.target.value))
                                 }
-                                className="w-20"
+                                className="w-20 bg-muted border-border focus:border-primary"
                               />
                               <Button
                                 size="icon"
                                 variant="ghost"
                                 onClick={() => deleteOption(qIndex, oIndex)}
+                                className="hover:bg-destructive/10"
                               >
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
@@ -463,6 +468,7 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
                             size="sm"
                             variant="outline"
                             onClick={() => addOption(qIndex)}
+                            className="border-border hover:border-primary"
                           >
                             <Plus className="h-3 w-3 mr-1" />
                             Add Option
@@ -474,6 +480,7 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
                       variant="ghost"
                       size="icon"
                       onClick={() => deleteQuestion(question.id)}
+                      className="hover:bg-destructive/10"
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
@@ -484,28 +491,28 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
           </Card>
         </div>
 
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Preview</CardTitle>
+        <div className="space-y-6">
+          <Card className="bg-[hsl(0_0%_6%)] border-[hsl(0_0%_13%)] shadow-[0_2px_6px_rgba(0,0,0,0.4)]">
+            <CardHeader className="pb-6">
+              <CardTitle className="text-white text-xl">Preview</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
-                  <h3 className="font-semibold text-lg text-balance">
+                  <h3 className="font-semibold text-lg text-white text-balance">
                     {quizTitle || "AI Readiness Audit"}
                   </h3>
-                  <p className="text-sm text-muted-foreground text-pretty">
+                  <p className="text-secondary text-sm text-pretty mt-2">
                     {quizDescription || "Discover your AI readiness score"}
                   </p>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
                     <div className="h-full w-1/10 bg-primary" />
                   </div>
-                  <div className="text-sm font-medium">Question 1 of {questions.length}</div>
-                  <div className="p-4 border rounded-lg bg-muted/50">
-                    <p className="text-sm font-medium mb-3">
+                  <div className="text-sm font-medium text-white">Question 1 of {questions.length}</div>
+                  <div className="p-5 border border-border rounded-lg bg-muted/50">
+                    <p className="text-sm font-medium text-white mb-4">
                       {questions[0]?.text || "Your question"}
                     </p>
                     {questions[0]?.type === 'multiple-choice' && questions[0]?.options && (
@@ -513,13 +520,13 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
                         {questions[0].options.slice(0, 2).map((option, i) => (
                           <div
                             key={i}
-                            className="p-2 border rounded bg-background text-xs"
+                            className="p-3 border border-border rounded bg-muted text-xs text-primary"
                           >
                             {option.text}
                           </div>
                         ))}
                         {questions[0].options.length > 2 && (
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-xs text-helper">
                             +{questions[0].options.length - 2} more options
                           </div>
                         )}
@@ -531,17 +538,17 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Scoring</CardTitle>
+          <Card className="bg-card border-border shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+            <CardHeader className="pb-6">
+              <CardTitle className="text-white text-xl">Scoring</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               <div className="text-sm">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="font-medium">Max Score:</span>
-                  <span className="text-muted-foreground">100 points</span>
+                <div className="flex justify-between items-center mb-3">
+                  <span className="font-medium text-white">Max Score:</span>
+                  <span className="text-secondary">100 points</span>
                 </div>
-                <div className="space-y-1 text-xs text-muted-foreground">
+                <div className="space-y-2 text-xs text-helper">
                   <div>80-100: High AI Readiness</div>
                   <div>40-79: Medium AI Readiness</div>
                   <div>0-39: Low AI Readiness</div>
