@@ -11,8 +11,8 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "Aether AI Lab - AI Agency SaaS Platform",
-  description: "Clean, modern SaaS platform for AI agency workflows including demos, quizzes, lead revival, and audits",
+  title: "Aether AI Consulting - Agency Platform",
+  description: "AI agency platform for Coffee Date demos, lead revival, and client tools",
   generator: 'v0.app'
 }
 

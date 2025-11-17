@@ -185,39 +185,40 @@ export default function DeadLeadRevivalPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-8 space-y-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">GHL Dead Lead Accounts</h1>
-          <p className="text-muted-foreground">
-            Manage your GoHighLevel sub-account connections
+          <h1 className="text-[26px] font-semibold text-[#0A0F2C]">GHL Dead Lead Accounts</h1>
+          <p className="text-[15px] text-muted-foreground mt-1">
+            Connect multiple client sub-accounts to track revivals and AI conversations
           </p>
         </div>
         
         <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Plus className="h-4 w-4 mr-2" />
               Add GHL Dead Lead Account
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Add GHL Dead Lead Account</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-[18px] font-semibold text-[#0A0F2C]">Add GHL Dead Lead Account</DialogTitle>
+              <DialogDescription className="text-[15px]">
                 Connect a GoHighLevel sub-account using a Private Integration token
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="accountName">Account Name (Friendly Business Name) *</Label>
+                <Label htmlFor="accountName" className="text-sm font-medium text-[#0A0F2C]">Account Name (Friendly Business Name) *</Label>
                 <Input
                   id="accountName"
                   placeholder="Friendly Business Name"
                   value={accountName}
                   onChange={(e) => setAccountName(e.target.value)}
                   autoComplete="off"
+                  className="h-11"
                 />
                 <p className="text-xs text-muted-foreground">
                   This is the label you'll see inside your dashboard.
@@ -225,13 +226,14 @@ export default function DeadLeadRevivalPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="locationId">Location ID *</Label>
+                <Label htmlFor="locationId" className="text-sm font-medium text-[#0A0F2C]">Location ID *</Label>
                 <Input
                   id="locationId"
                   placeholder="Paste your GoHighLevel Location ID"
                   value={locationId}
                   onChange={(e) => setLocationId(e.target.value)}
                   autoComplete="off"
+                  className="h-11"
                 />
                 <p className="text-xs text-muted-foreground">
                   In the client sub-account, go to Settings → Business Profile and copy the Location ID.
@@ -239,7 +241,7 @@ export default function DeadLeadRevivalPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="privateIntegrationToken">Private Integration Token *</Label>
+                <Label htmlFor="privateIntegrationToken" className="text-sm font-medium text-[#0A0F2C]">Private Integration Token *</Label>
                 <Input
                   id="privateIntegrationToken"
                   type="password"
@@ -248,14 +250,15 @@ export default function DeadLeadRevivalPage() {
                   onChange={(e) => setPrivateIntegrationToken(e.target.value)}
                   autoComplete="new-password"
                   name="ghl-private-integration-token"
+                  className="h-11"
                 />
                 <p className="text-xs text-muted-foreground">
                   In the client sub-account, go to Settings → Private Integrations. Create a new integration and select the required scopes below.
                 </p>
               </div>
 
-              <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg space-y-2">
-                <p className="text-sm font-semibold">Required Scopes for Private Integration:</p>
+              <div className="p-4 bg-muted/50 border rounded-md space-y-2">
+                <p className="text-sm font-semibold text-[#0A0F2C]">Required Scopes for Private Integration:</p>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
                     <p className="font-medium text-muted-foreground">Conversations:</p>
@@ -287,7 +290,7 @@ export default function DeadLeadRevivalPage() {
                 </div>
               </div>
 
-              <div className="flex gap-2 items-center p-3 bg-muted rounded-lg">
+              <div className="flex gap-2 items-center p-3 bg-muted/50 rounded-md">
                 <ExternalLink className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <p className="text-xs text-muted-foreground">
                   Need help? Visit{" "}
@@ -295,7 +298,7 @@ export default function DeadLeadRevivalPage() {
                     href="https://help.leadconnectorhq.com/support/solutions/articles/155000002774" 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="underline"
+                    className="underline text-primary"
                   >
                     Private Integrations Guide
                   </a>
@@ -305,7 +308,7 @@ export default function DeadLeadRevivalPage() {
               <Button 
                 onClick={handleAddAccount} 
                 disabled={connecting}
-                className="w-full"
+                className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 {connecting ? 'Connecting...' : 'Connect Account'}
               </Button>
@@ -315,14 +318,13 @@ export default function DeadLeadRevivalPage() {
       </div>
 
       {accounts.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <TrendingUp className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground mb-4 text-center">
-              No GHL accounts connected yet.<br />
-              Add your first account to start tracking dead lead revivals.
+        <Card className="border">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <TrendingUp className="h-16 w-16 text-muted-foreground mb-4" />
+            <p className="text-[15px] text-muted-foreground mb-4 text-center max-w-md">
+              No GHL accounts connected yet. Add your first account to start tracking dead lead revivals.
             </p>
-            <Button onClick={() => setIsAddModalOpen(true)}>
+            <Button onClick={() => setIsAddModalOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Plus className="h-4 w-4 mr-2" />
               Add Your First Account
             </Button>
@@ -331,11 +333,11 @@ export default function DeadLeadRevivalPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {accounts.map((account) => (
-            <Card key={account.id} className="relative">
+            <Card key={account.id} className="border hover:shadow-md transition-shadow">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-lg">{account.account_name}</CardTitle>
+                    <CardTitle className="text-[15px] font-semibold text-[#0A0F2C]">{account.account_name}</CardTitle>
                     <CardDescription className="text-xs mt-1">
                       Location: {account.location_id?.substring(0, 12)}...
                     </CardDescription>
@@ -343,7 +345,7 @@ export default function DeadLeadRevivalPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                    className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                     onClick={() => setAccountToDelete(account.id)}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -359,7 +361,7 @@ export default function DeadLeadRevivalPage() {
                   <Button 
                     variant="outline" 
                     size="sm"
-                    className="flex-1"
+                    className="flex-1 h-9"
                     onClick={() => router.push(`/revival/account/${account.id}`)}
                   >
                     View Data

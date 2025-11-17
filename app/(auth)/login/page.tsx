@@ -50,34 +50,24 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      {/* Background Decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
-      </div>
-
-      <Card className="w-full max-w-md relative backdrop-blur-sm bg-card/95 border-border">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[#0A0F2C]">
+      <Card className="w-full max-w-md border">
         <div className="p-8 space-y-6">
-          {/* Logo & Branding */}
           <div className="space-y-3 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary mx-auto">
-              <Sparkles className="h-8 w-8 text-white" />
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-primary mx-auto">
+              <Sparkles className="h-8 w-8 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">
-                <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                  Aether AI Lab
-                </span>
+              <h1 className="text-[26px] font-semibold text-[#0A0F2C]">
+                Aether AI Consulting
               </h1>
             </div>
-            <p className="text-muted-foreground">Sign in to your account</p>
+            <p className="text-[15px] text-muted-foreground">Sign in to your account</p>
           </div>
 
-          {/* Login Form */}
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+              <Label htmlFor="email" className="text-sm font-medium text-[#0A0F2C]">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -93,7 +83,7 @@ export default function LoginPage() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                <Label htmlFor="password" className="text-sm font-medium text-[#0A0F2C]">Password</Label>
                 <Link 
                   href="#" 
                   className="text-xs text-primary hover:text-primary/80 transition-colors"
@@ -116,7 +106,7 @@ export default function LoginPage() {
 
             <Button 
               type="submit" 
-              className="w-full h-11 bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-opacity"
+              className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90"
               disabled={loading}
             >
               {loading ? (
@@ -130,7 +120,6 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* Sign Up Link */}
           <div className="text-center text-sm">
             <span className="text-muted-foreground">Don't have an account? </span>
             <Link 

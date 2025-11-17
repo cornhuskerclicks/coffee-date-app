@@ -11,10 +11,10 @@ const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: Coffee, label: "Coffee Date Demo", href: "/demo" },
   { icon: ClipboardList, label: "AI Readiness Quiz", href: "/quiz" },
-  { icon: MessageSquareHeart, label: "Dead Lead Revival", href: "/revival" },
+  { icon: MessageSquareHeart, label: "GHL Dead Lead Accounts", href: "/revival" },
   { icon: FileSearch, label: "AI Audit", href: "/audit" },
   { icon: Library, label: "Prompt Library", href: "/library" },
-  { icon: Users, label: "Client Dashboard", href: "/clients" },
+  { icon: Users, label: "Clients", href: "/clients" },
   { icon: Settings, label: "Settings", href: "/settings" },
 ]
 
@@ -37,18 +37,16 @@ export function AppSidebar() {
 
   return (
     <aside className={cn(
-      "border-r border-border bg-card h-screen sticky top-0 flex flex-col transition-all duration-300",
+      "border-r border-border bg-white h-screen sticky top-0 flex flex-col transition-all duration-300",
       isCollapsed ? "w-16" : "w-64"
     )}>
       <div className={cn(
         "p-6 border-b border-border flex items-center justify-between",
-        isCollapsed && "px-2"
+        isCollapsed && "px-2 justify-center"
       )}>
         {!isCollapsed && (
-          <h1 className="text-xl font-bold">
-            <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Aether AI Lab
-            </span>
+          <h1 className="text-xl font-semibold text-[#0A0F2C]">
+            Aether AI Consulting
           </h1>
         )}
         <Button
@@ -56,7 +54,7 @@ export function AppSidebar() {
           size="icon"
           onClick={toggleCollapse}
           className={cn(
-            "h-8 w-8 transition-transform duration-300",
+            "h-8 w-8 transition-transform duration-300 text-[#0A0F2C]",
             isCollapsed ? "rotate-180" : ""
           )}
         >
@@ -75,10 +73,10 @@ export function AppSidebar() {
               href={item.href}
               title={isCollapsed ? item.label : undefined}
               className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-sm font-medium",
+                "flex items-center gap-3 px-4 py-3 rounded-md transition-colors text-sm font-medium",
                 isActive
                   ? "bg-primary text-primary-foreground"
-                  : "text-foreground hover:bg-accent",
+                  : "text-[#0A0F2C] hover:bg-primary/10",
                 isCollapsed && "justify-center px-0"
               )}
             >
