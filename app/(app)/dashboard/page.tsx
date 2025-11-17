@@ -39,7 +39,7 @@ export default async function DashboardPage() {
     .eq("user_id", user.id)
 
   const { data: quizzesData } = await supabase
-    .from("quizzes")
+    .from("quiz_templates")
     .select("id")
     .eq("user_id", user.id)
 
