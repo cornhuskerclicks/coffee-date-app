@@ -6,6 +6,7 @@ import { Coffee, Sparkles, Plus, Trash2, Calendar } from 'lucide-react'
 import DemoStartButton from "@/components/demo-start-button"
 import Link from "next/link"
 import DeleteDemoButton from "@/components/delete-demo-button"
+import DeleteAndroidButton from "@/components/delete-android-button"
 
 export default async function DemoPage() {
   const supabase = await createClient()
@@ -113,10 +114,15 @@ export default async function DemoPage() {
                 return (
                   <Card key={android.id} className="hover:border-primary transition-colors">
                     <CardHeader>
-                      <CardTitle className="text-lg">{android.name}</CardTitle>
-                      <CardDescription>
-                        {companyName} • {niche}
-                      </CardDescription>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="text-lg">{android.name}</CardTitle>
+                          <CardDescription>
+                            {companyName} • {niche}
+                          </CardDescription>
+                        </div>
+                        <DeleteAndroidButton androidId={android.id} androidName={android.name} />
+                      </div>
                     </CardHeader>
                     <CardContent>
                       <Button asChild className="w-full">
