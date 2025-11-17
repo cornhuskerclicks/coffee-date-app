@@ -119,6 +119,7 @@ export default function ConnectGHLPage() {
                 placeholder="Client Name or Agency Account"
                 value={accountName}
                 onChange={(e) => setAccountName(e.target.value)}
+                autoComplete="off"
               />
               <p className="text-xs text-muted-foreground">
                 A friendly name to identify this connection
@@ -133,6 +134,8 @@ export default function ConnectGHLPage() {
                 placeholder="Enter your agency-level API key"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
+                autoComplete="new-password"
+                name="ghl-api-key"
               />
               <p className="text-xs text-muted-foreground">
                 Your agency API key (not a sub-account key)
@@ -146,6 +149,7 @@ export default function ConnectGHLPage() {
                 placeholder="Enter the client's sub-account location ID"
                 value={locationId}
                 onChange={(e) => setLocationId(e.target.value)}
+                autoComplete="off"
               />
               <p className="text-xs text-muted-foreground">
                 Required: The unique ID of the client sub-account you want to access
