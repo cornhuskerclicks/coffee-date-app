@@ -46,7 +46,9 @@ export function AppSidebar() {
       )}>
         {!isCollapsed && (
           <h1 className="text-xl font-bold">
-            RE:VIVE <span className="text-primary">by Aether</span>
+            <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              Aether AI Lab
+            </span>
           </h1>
         )}
         <Button

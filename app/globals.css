@@ -1,72 +1,67 @@
-/* Aether AI Lab - SaaS Platform Global Styles */
 @import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
 
-/* Aether AI Lab Color Palette */
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222 47% 11%;
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
   
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
+  --card: 222 47% 15%;
+  --card-foreground: 210 40% 98%;
   
-  --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
+  --popover: 222 47% 15%;
+  --popover-foreground: 210 40% 98%;
   
-  --primary: 199 98% 48%; /* Electric Blue #089FEF */
-  --primary-foreground: 0 0% 100%;
+  --primary: 199 100% 50%; /* Electric Blue #089FEF */
+  --primary-foreground: 210 40% 98%;
   
-  --secondary: 274 89% 48%; /* Soft Purple #A708EF */
-  --secondary-foreground: 0 0% 100%;
-  
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 47%;
-  
-  --accent: 210 40% 96%;
-  --accent-foreground: 222 47% 11%;
-  
-  --destructive: 0 85% 49%; /* Soft Red #EA1010 */
-  --destructive-foreground: 0 0% 98%;
-  
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
-  --ring: 199 98% 48%;
-  
-  --radius: 0.5rem;
-  
-  /* Added Aether color variable for Coffee Date demo */
-  --aether: 199 98% 48%;
-}
-
-.dark {
-  --background: 222 47% 11%; /* Dark Slate */
-  --foreground: 0 0% 98%; /* Off-White */
-  
-  --card: 217 33% 17%;
-  --card-foreground: 0 0% 98%;
-  
-  --popover: 217 33% 17%;
-  --popover-foreground: 0 0% 98%;
-  
-  --primary: 199 98% 48%; /* Electric Blue */
-  --primary-foreground: 0 0% 100%;
-  
-  --secondary: 274 89% 48%; /* Soft Purple */
-  --secondary-foreground: 0 0% 100%;
+  --secondary: 280 100% 50%; /* Soft Purple #A708EF */
+  --secondary-foreground: 210 40% 98%;
   
   --muted: 217 33% 17%;
   --muted-foreground: 215 20% 65%;
   
-  --accent: 217 33% 17%;
-  --accent-foreground: 0 0% 98%;
+  --accent: 199 100% 50%;
+  --accent-foreground: 210 40% 98%;
   
-  --destructive: 0 85% 49%;
-  --destructive-foreground: 0 0% 98%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 210 40% 98%;
   
-  --border: 217 33% 17%;
-  --input: 217 33% 17%;
-  --ring: 199 98% 48%;
+  --border: 217 33% 20%;
+  --input: 217 33% 20%;
+  --ring: 199 100% 50%;
+  
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+  
+  --card: 222 47% 15%;
+  --card-foreground: 210 40% 98%;
+  
+  --popover: 222 47% 15%;
+  --popover-foreground: 210 40% 98%;
+  
+  --primary: 199 100% 50%;
+  --primary-foreground: 210 40% 98%;
+  
+  --secondary: 280 100% 50%;
+  --secondary-foreground: 210 40% 98%;
+  
+  --muted: 217 33% 17%;
+  --muted-foreground: 215 20% 65%;
+  
+  --accent: 199 100% 50%;
+  --accent-foreground: 210 40% 98%;
+  
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 210 40% 98%;
+  
+  --border: 217 33% 20%;
+  --input: 217 33% 20%;
+  --ring: 199 100% 50%;
 }
 
 @theme inline {
@@ -92,23 +87,23 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   
-  /* Added Aether color for Coffee Date demo */
-  --color-aether: var(--aether);
+  /* Coffee Date Brand Colors */
+  --color-coffee: var(--coffee);
+  --color-cream: var(--cream);
+  --color-rose-gold: var(--rose-gold);
+  --color-dark-roast: var(--dark-roast);
   
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 6px);
   
-  /* Added Coffee Date demo animation keyframes */
-  --animate-fade-in: fade-in 0.5s ease-out;
-  --animate-fade-in-up: fade-in-up 0.4s ease-out;
-  --animate-message-slide-in: message-slide-in 0.3s ease-out;
-  --animate-phone-scale-in: phone-scale-in 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
-  --animate-breathing-glow: breathing-glow 4s ease-in-out infinite;
-  --animate-pulse-slow: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  --animate-typing-dot: typing-dot 1.4s infinite;
-  --animate-typewriter: typewriter 2s steps(40) 1s 1 normal both;
+  /* Coffee Date Animations */
+  --animate-fade-in: fade-in 0.6s ease-out;
+  --animate-fade-in-up: fade-in-up 0.5s ease-out;
+  --animate-slide-up: slide-up 0.4s ease-out;
+  --animate-scale-in: scale-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --animate-breathing: breathing 3s ease-in-out infinite;
 }
 
 @layer base {
@@ -131,40 +126,63 @@
     display: none;
   }
   
-  /* Added Coffee Date demo glass effect utilities */
+  /* Coffee Date Glass Effects */
   .glass {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  
+  .glass-dark {
     background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
   }
   
   .glass-border {
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
   
-  .aether-glow {
-    box-shadow: 0 0 20px rgba(8, 159, 239, 0.4);
+  /* Coffee Date Gradient Utilities */
+  .gradient-coffee {
+    background: linear-gradient(135deg, hsl(var(--coffee)) 0%, hsl(var(--dark-roast)) 100%);
   }
   
-  /* Added Coffee Date demo color utilities */
-  .text-aether {
-    color: hsl(var(--aether));
+  .gradient-rose {
+    background: linear-gradient(135deg, hsl(var(--rose-gold)) 0%, hsl(var(--coffee)) 100%);
   }
   
-  .bg-aether {
-    background-color: hsl(var(--aether));
+  .gradient-cream {
+    background: linear-gradient(180deg, hsl(var(--cream)) 0%, hsl(var(--background)) 100%);
   }
   
-  .border-aether {
-    border-color: hsl(var(--aether));
+  /* Coffee Date Shadow Effects */
+  .shadow-soft {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   }
   
-  .text-white-secondary {
-    color: rgba(255, 255, 255, 0.7);
+  .shadow-glow {
+    box-shadow: 0 0 30px rgba(217, 137, 114, 0.3);
+  }
+  
+  /* Coffee Date Text Effects */
+  .text-coffee {
+    color: hsl(var(--coffee));
+  }
+  
+  .text-rose-gold {
+    color: hsl(var(--rose-gold));
+  }
+  
+  .text-gradient {
+    background: linear-gradient(135deg, hsl(var(--rose-gold)), hsl(var(--coffee)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 }
 
-/* Added Coffee Date demo animations */
+/* Coffee Date Demo Animations */
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -174,45 +192,14 @@
   }
 }
 
-@keyframes fade-in-up {
+@keyframes slide-up {
   from {
-    opacity: 0;
     transform: translateY(10px);
+    opacity: 0;
   }
   to {
-    opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes message-slide-in {
-  from {
-    opacity: 0;
-    transform: translateX(-10px);
-  }
-  to {
     opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes phone-scale-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes breathing-glow {
-  0%, 100% {
-    opacity: 0.3;
-  }
-  50% {
-    opacity: 0.6;
   }
 }
 
@@ -225,52 +212,14 @@
   }
 }
 
-@keyframes typing-dot {
-  0%, 60%, 100% {
-    transform: translateY(0);
-  }
-  30% {
-    transform: translateY(-10px);
-  }
-}
-
-@keyframes typewriter {
-  from {
-    width: 0;
-  }
-  to {
-    width: 100%;
-  }
-}
-
 .animate-fade-in {
-  animation: fade-in 0.5s ease-out;
+  animation: fade-in 0.6s ease-out;
 }
 
-.animate-fade-in-up {
-  animation: fade-in-up 0.4s ease-out;
-}
-
-.animate-message-slide-in {
-  animation: message-slide-in 0.3s ease-out;
-}
-
-.animate-phone-scale-in {
-  animation: phone-scale-in 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.animate-breathing-glow {
-  animation: breathing-glow 4s ease-in-out infinite;
+.animate-slide-up {
+  animation: slide-up 0.4s ease-out;
 }
 
 .animate-pulse-slow {
-  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.animate-typing-dot {
-  animation: typing-dot 1.4s infinite;
-}
-
-.animate-typewriter {
-  animation: typewriter 2s steps(40) 1s 1 normal both;
+  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
