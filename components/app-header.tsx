@@ -24,6 +24,18 @@ export function AppHeader() {
 
   useEffect(() => {
     loadProfile()
+    
+    const handleProfileUpdate = (event: any) => {
+      if (event.detail?.imageUrl) {
+        setProfileImage(event.detail.imageUrl)
+      }
+    }
+    
+    window.addEventListener('profile-image-updated', handleProfileUpdate)
+    
+    return () => {
+      window.removeEventListener('profile-image-updated', handleProfileUpdate)
+    }
   }, [])
 
   const loadProfile = async () => {

@@ -85,6 +85,9 @@ export default function SettingsPage() {
       })
 
       loadProfile()
+      window.dispatchEvent(new CustomEvent('profile-image-updated', { 
+        detail: { imageUrl: data.publicUrl } 
+      }))
     } catch (error: any) {
       toast({
         title: "Upload failed",
