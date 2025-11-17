@@ -1,239 +1,329 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Upload, Mail, MessageSquare, CheckCircle, Clock } from 'lucide-react'
-import { useState } from "react"
+import { Plus, Download, RefreshCw, Settings, TrendingUp, MessageSquare, Users } from 'lucide-react'
+import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { Textarea } from "@/components/ui/textarea"
+import { createClient } from "@/lib/supabase/client"
+import { useRouter } from 'next/navigation'
 
-const mockLeads = [
-  { id: 1, name: "John Smith", source: "LinkedIn", status: "pending", lastMessage: "2 days ago", replied: false },
-  { id: 2, name: "Sarah Johnson", source: "Email", status: "sent", lastMessage: "1 day ago", replied: true },
-  { id: 3, name: "Mike Davis", source: "CRM", status: "pending", lastMessage: "3 days ago", replied: false },
-  { id: 4, name: "Emily Brown", source: "LinkedIn", status: "sent", lastMessage: "4 hours ago", replied: false },
-  { id: 5, name: "David Wilson", source: "Email", status: "completed", lastMessage: "1 week ago", replied: true },
-]
+type GHLConnection = {
+  id: string
+  account_name: string | null
+  location_id: string | null
+  last_synced_at: string | null
+  connected_at: string
+}
+
+type Campaign = {
+  id: string
+  name: string
+  status: string | null
+  metrics: {
+    total_conversations?: number
+    total_messages?: number
+    response_rate?: number
+  }
+  synced_at: string
+}
 
 export default function DeadLeadRevivalPage() {
-  const [channel, setChannel] = useState("email")
-  const [tone, setTone] = useState("friendly")
-  const [selectedLead, setSelectedLead] = useState<typeof mockLeads[0] | null>(mockLeads[1])
-  const [replyMessage, setReplyMessage] = useState("")
+  const [connection, setConnection] = useState<GHLConnection | null>(null)
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
   const { toast } = useToast()
+  const router = useRouter()
+  const supabase = createClient()
 
-  const handleUpload = () => {
-    toast({
-      title: "File Uploaded",
-      description: "CSV file processed successfully",
-    })
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    try {
+      setLoading(true)
+
+      // Load GHL connection
+      const { data: connectionData, error: connError } = await supabase
+        .from('ghl_connections')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (connError && connError.code !== 'PGRST116') {
+        throw connError
+      }
+
+      setConnection(connectionData || null)
+
+      // Load campaigns
+      const { data: campaignsData, error: campaignsError } = await supabase
+        .from('revival_campaigns')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (campaignsError) throw campaignsError
+
+      setCampaigns(campaignsData || [])
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load data",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleStartCampaign = () => {
-    toast({
-      title: "Campaign Started",
-      description: "Revival messages are being sent",
-    })
+  const handleSync = async () => {
+    if (!connection) {
+      toast({
+        title: "No Connection",
+        description: "Please connect to GoHighLevel first",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setSyncing(true)
+    try {
+      const response = await fetch('/api/revival/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ connectionId: connection.id })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Sync failed')
+      }
+
+      const result = await response.json()
+      
+      toast({
+        title: "Sync Complete",
+        description: `Synced ${result.campaignsCount} campaigns and ${result.conversationsCount} conversations`
+      })
+
+      await loadData()
+    } catch (error: any) {
+      toast({
+        title: "Sync Failed",
+        description: error.message,
+        variant: "destructive"
+      })
+    } finally {
+      setSyncing(false)
+    }
   }
 
-  const handleSendMessage = () => {
-    toast({
-      title: "Message Sent",
-      description: "Your message has been delivered",
-    })
-    setReplyMessage("")
+  const handleDownloadCampaign = async (campaignId: string, campaignName: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('revival_conversations')
+        .select('*')
+        .eq('campaign_id', campaignId)
+
+      if (error) throw error
+
+      const csvContent = [
+        ['Contact Name', 'Email', 'Phone', 'Status', 'Last Message', 'Messages Count'],
+        ...data.map(conv => [
+          conv.contact_name || '',
+          conv.contact_email || '',
+          conv.contact_phone || '',
+          conv.status || '',
+          conv.last_message_at || '',
+          Array.isArray(conv.messages) ? conv.messages.length : 0
+        ])
+      ].map(row => row.join(',')).join('\n')
+
+      const blob = new Blob([csvContent], { type: 'text/csv' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${campaignName.replace(/\s+/g, '_')}_conversations.csv`
+      a.click()
+      window.URL.revokeObjectURL(url)
+
+      toast({
+        title: "Downloaded",
+        description: "Campaign data exported successfully"
+      })
+    } catch (error: any) {
+      toast({
+        title: "Download Failed",
+        description: error.message,
+        variant: "destructive"
+      })
+    }
   }
 
-  return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Dead Lead Revival Engine</h1>
-        <p className="text-muted-foreground">Automatically revive and engage cold leads</p>
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-muted rounded w-1/3"></div>
+          <div className="h-32 bg-muted rounded"></div>
+        </div>
       </div>
+    )
+  }
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Upload Leads</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors">
-                <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="font-medium">Drop CSV file here or click to upload</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Supported format: CSV with name, email, phone
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Channel</Label>
-                  <Select value={channel} onValueChange={setChannel}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="email">Email</SelectItem>
-                      <SelectItem value="sms">SMS</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Tone</Label>
-                  <Select value={tone} onValueChange={setTone}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="friendly">Friendly</SelectItem>
-                      <SelectItem value="direct">Direct</SelectItem>
-                      <SelectItem value="polite">Polite</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <Button onClick={handleStartCampaign} className="w-full">
-                Start Revival Campaign
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Campaign Leads</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Contact Name</TableHead>
-                    <TableHead>Source</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Last Message</TableHead>
-                    <TableHead>Reply</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {mockLeads.map((lead) => (
-                    <TableRow
-                      key={lead.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => setSelectedLead(lead)}
-                    >
-                      <TableCell className="font-medium">{lead.name}</TableCell>
-                      <TableCell>{lead.source}</TableCell>
-                      <TableCell>
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
-                            lead.status === "completed"
-                              ? "bg-green-100 text-green-700"
-                              : lead.status === "sent"
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-gray-100 text-gray-700"
-                          }`}
-                        >
-                          {lead.status === "completed" ? (
-                            <CheckCircle className="h-3 w-3" />
-                          ) : (
-                            <Clock className="h-3 w-3" />
-                          )}
-                          {lead.status}
-                        </span>
-                      </TableCell>
-                      <TableCell>{lead.lastMessage}</TableCell>
-                      <TableCell>
-                        {lead.replied ? (
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Button size="sm" variant="outline">
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+  if (!connection) {
+    return (
+      <div className="p-6 space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Dead Lead Revival Engine</h1>
+          <p className="text-muted-foreground">Connect to GoHighLevel to sync campaigns and conversations</p>
         </div>
 
-        <Card>
+        <Card className="max-w-2xl">
           <CardHeader>
-            <CardTitle>Conversation Inbox</CardTitle>
+            <CardTitle>Connect GoHighLevel</CardTitle>
+            <CardDescription>
+              Enter your GoHighLevel API key to start syncing campaigns and AI conversations
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {selectedLead ? (
-              <>
-                <div className="space-y-2">
-                  <div className="font-semibold">{selectedLead.name}</div>
-                  <div className="text-sm text-muted-foreground">{selectedLead.source}</div>
-                </div>
-
-                <div className="space-y-3 max-h-[300px] overflow-y-auto">
-                  <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-sm">
-                      Hi {selectedLead.name}, I wanted to follow up on our previous conversation...
-                    </p>
-                    <span className="text-xs text-muted-foreground">Sent 1 day ago</span>
-                  </div>
-
-                  {selectedLead.replied && (
-                    <div className="bg-primary/10 p-3 rounded-lg ml-4">
-                      <p className="text-sm">Thanks for reaching out! I'd be interested to learn more.</p>
-                      <span className="text-xs text-muted-foreground">Received 12 hours ago</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
-                  <div className="font-medium text-sm">AI Reply Suggestion</div>
-                  <p className="text-sm">
-                    Great to hear from you! I'd love to share how we've helped similar businesses achieve [specific
-                    result]. Would you be available for a 15-minute call this week?
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Your Message</Label>
-                  <Textarea
-                    placeholder="Edit the message or write your own..."
-                    value={replyMessage}
-                    onChange={(e) => setReplyMessage(e.target.value)}
-                    rows={4}
-                  />
-                </div>
-
-                <Button onClick={handleSendMessage} className="w-full">
-                  Approve & Send
-                </Button>
-              </>
-            ) : (
-              <div className="text-center text-muted-foreground py-8">
-                Select a lead to view conversation
-              </div>
-            )}
+          <CardContent>
+            <Button onClick={() => router.push('/revival/connect')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Connect GoHighLevel Account
+            </Button>
           </CardContent>
         </Card>
       </div>
+    )
+  }
+
+  const totalConversations = campaigns.reduce((sum, c) => sum + (c.metrics.total_conversations || 0), 0)
+  const totalMessages = campaigns.reduce((sum, c) => sum + (c.metrics.total_messages || 0), 0)
+  const avgResponseRate = campaigns.length > 0
+    ? campaigns.reduce((sum, c) => sum + (c.metrics.response_rate || 0), 0) / campaigns.length
+    : 0
+
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Dead Lead Revival Engine</h1>
+          <p className="text-muted-foreground">
+            Connected to {connection.account_name || 'GoHighLevel'}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => router.push('/revival/connect')}>
+            <Settings className="h-4 w-4 mr-2" />
+            Settings
+          </Button>
+          <Button onClick={handleSync} disabled={syncing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Syncing...' : 'Sync Now'}
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Campaigns</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-8 w-8 text-primary" />
+              <div className="text-3xl font-bold">{campaigns.length}</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Conversations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-8 w-8 text-primary" />
+              <div className="text-3xl font-bold">{totalConversations}</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Response Rate</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <Users className="h-8 w-8 text-primary" />
+              <div className="text-3xl font-bold">{avgResponseRate.toFixed(1)}%</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Campaigns</CardTitle>
+          <CardDescription>
+            {connection.last_synced_at 
+              ? `Last synced ${new Date(connection.last_synced_at).toLocaleString()}`
+              : 'Not synced yet'
+            }
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {campaigns.length === 0 ? (
+            <div className="text-center py-12">
+              <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground mb-4">No campaigns found</p>
+              <Button onClick={handleSync}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Sync Campaigns
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {campaigns.map((campaign) => (
+                <div
+                  key={campaign.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex-1">
+                    <h3 className="font-semibold">{campaign.name}</h3>
+                    <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
+                      <span>{campaign.metrics.total_conversations || 0} conversations</span>
+                      <span>{campaign.metrics.total_messages || 0} messages</span>
+                      {campaign.metrics.response_rate && (
+                        <span>{campaign.metrics.response_rate}% response rate</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push(`/revival/campaign/${campaign.id}`)}
+                    >
+                      View Details
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownloadCampaign(campaign.id, campaign.name)}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
