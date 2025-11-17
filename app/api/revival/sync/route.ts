@@ -26,37 +26,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Connection not found' }, { status: 404 })
     }
 
-    let accessToken = connection.api_key
-    
-    if (connection.location_id) {
-      console.log('[v0] Exchanging agency token for location token')
-      const tokenResponse = await fetch('https://services.leadconnectorhq.com/oauth/locationToken', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${connection.api_key}`,
-          'Version': '2021-07-28',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          locationId: connection.location_id
-        })
-      })
+    const privateIntegrationToken = connection.api_key
+    const locationId = connection.location_id
 
-      if (!tokenResponse.ok) {
-        throw new Error('Failed to exchange token for location access')
-      }
-
-      const tokenData = await tokenResponse.json()
-      accessToken = tokenData.access_token
-      console.log('[v0] Successfully obtained location token')
+    if (!locationId) {
+      return NextResponse.json({ message: 'Location ID is required' }, { status: 400 })
     }
 
-    // Fetch conversations from GHL API
     console.log('[v0] Fetching conversations from GHL')
-    const ghlResponse = await fetch('https://services.leadconnectorhq.com/conversations/search?limit=100', {
+    const ghlResponse = await fetch(`https://services.leadconnectorhq.com/locations/${locationId}/conversations?limit=100`, {
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Version': '2021-07-28'
+        'Authorization': privateIntegrationToken,
+        'Version': '2021-07-28',
+        'Accept': 'application/json'
       }
     })
 

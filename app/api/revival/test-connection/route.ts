@@ -2,24 +2,23 @@ import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
   try {
-    const { apiKey, locationId } = await request.json()
+    const { privateIntegrationToken, locationId } = await request.json()
 
-    if (!apiKey || !locationId) {
+    if (!privateIntegrationToken || !locationId) {
       return NextResponse.json({ 
-        message: 'Both Location API Key and Location ID are required' 
+        message: 'Both Private Integration Token and Location ID are required' 
       }, { status: 400 })
     }
 
-    console.log('[v0] Testing GHL location API key')
+    console.log('[v0] Testing GHL Private Integration token')
     
     try {
-      // Test with conversations endpoint for this location
-      const testEndpoint = `https://services.leadconnectorhq.com/conversations/search?locationId=${locationId}`
+      const testEndpoint = `https://services.leadconnectorhq.com/locations/${locationId}/conversations`
       
       const testResponse = await fetch(testEndpoint, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          'Authorization': privateIntegrationToken,
           'Version': '2021-07-28',
           'Accept': 'application/json'
         }
@@ -33,7 +32,7 @@ export async function POST(request: Request) {
         
         return NextResponse.json(
           { 
-            message: 'Invalid Location ID or API Key. Please verify your credentials in GoHighLevel.',
+            message: 'Invalid Location ID or Private Integration token. Please check the client sub-account settings and try again.',
             details: testResponseText,
             status: testResponse.status
           },

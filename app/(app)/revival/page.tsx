@@ -44,7 +44,7 @@ export default function DeadLeadRevivalPage() {
   // Form state
   const [accountName, setAccountName] = useState("")
   const [locationId, setLocationId] = useState("")
-  const [locationApiKey, setLocationApiKey] = useState("")
+  const [privateIntegrationToken, setPrivateIntegrationToken] = useState("")
   const [connecting, setConnecting] = useState(false)
   
   const { toast } = useToast()
@@ -77,7 +77,7 @@ export default function DeadLeadRevivalPage() {
   }
 
   const handleAddAccount = async () => {
-    if (!accountName.trim() || !locationId.trim() || !locationApiKey.trim()) {
+    if (!accountName.trim() || !locationId.trim() || !privateIntegrationToken.trim()) {
       toast({
         title: "Missing Fields",
         description: "Please fill in all required fields",
@@ -92,7 +92,7 @@ export default function DeadLeadRevivalPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          apiKey: locationApiKey, 
+          privateIntegrationToken: privateIntegrationToken, 
           locationId: locationId.trim() 
         })
       })
@@ -108,7 +108,7 @@ export default function DeadLeadRevivalPage() {
 
       const { error } = await supabase.from('ghl_connections').insert({
         user_id: user.id,
-        api_key: locationApiKey,
+        api_key: privateIntegrationToken,
         location_id: locationId.trim(),
         account_name: accountName.trim()
       })
@@ -123,7 +123,7 @@ export default function DeadLeadRevivalPage() {
       // Reset form and reload
       setAccountName("")
       setLocationId("")
-      setLocationApiKey("")
+      setPrivateIntegrationToken("")
       setIsAddModalOpen(false)
       await loadAccounts()
 
@@ -200,22 +200,22 @@ export default function DeadLeadRevivalPage() {
             <DialogHeader>
               <DialogTitle>Add GHL Dead Lead Account</DialogTitle>
               <DialogDescription>
-                Connect a GoHighLevel sub-account to track dead lead revival campaigns
+                Connect a GoHighLevel sub-account using a Private Integration token
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="accountName">Account Name *</Label>
+                <Label htmlFor="accountName">Account Name (Friendly Business Name) *</Label>
                 <Input
                   id="accountName"
-                  placeholder="EcoScapes – Omaha"
+                  placeholder="Friendly Business Name"
                   value={accountName}
                   onChange={(e) => setAccountName(e.target.value)}
                   autoComplete="off"
                 />
                 <p className="text-xs text-muted-foreground">
-                  A label to identify this client inside the Aether app
+                  This is the label you'll see inside your dashboard.
                 </p>
               </div>
 
@@ -223,43 +223,43 @@ export default function DeadLeadRevivalPage() {
                 <Label htmlFor="locationId">Location ID *</Label>
                 <Input
                   id="locationId"
-                  placeholder="Paste your GHL Location ID"
+                  placeholder="Paste your GoHighLevel Location ID"
                   value={locationId}
                   onChange={(e) => setLocationId(e.target.value)}
                   autoComplete="off"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Found in GHL: Sub-Account → Settings → Business Profile
+                  In the client sub-account, go to Settings → Business Profile and copy the Location ID.
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="locationApiKey">Location API Key *</Label>
+                <Label htmlFor="privateIntegrationToken">Private Integration Token *</Label>
                 <Input
-                  id="locationApiKey"
+                  id="privateIntegrationToken"
                   type="password"
-                  placeholder="Paste your Location API Key"
-                  value={locationApiKey}
-                  onChange={(e) => setLocationApiKey(e.target.value)}
+                  placeholder="Paste your Private Integration Token"
+                  value={privateIntegrationToken}
+                  onChange={(e) => setPrivateIntegrationToken(e.target.value)}
                   autoComplete="new-password"
-                  name="ghl-location-api-key"
+                  name="ghl-private-integration-token"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Found in GHL: Sub-Account → Settings → API Keys → Location API Key
+                  In the client sub-account, go to Settings → Private Integrations. Create a new integration, select scopes for Contacts, Conversations, Opportunities, and Campaigns. Copy the token and paste it here.
                 </p>
               </div>
 
               <div className="flex gap-2 items-center p-3 bg-muted rounded-lg">
                 <ExternalLink className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <p className="text-xs text-muted-foreground">
-                  Need help finding your credentials? Visit the{" "}
+                  Need help? Visit{" "}
                   <a 
-                    href="https://help.gohighlevel.com/support/solutions/articles/48001204848" 
+                    href="https://help.leadconnectorhq.com/support/solutions/articles/155000002774" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="underline"
                   >
-                    GHL API documentation
+                    Private Integrations Guide
                   </a>
                 </p>
               </div>
