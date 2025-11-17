@@ -2,8 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Plus, FileText, Trash2, Download, Calendar, Search, ExternalLink } from 'lucide-react'
+import { Plus, FileText, Trash2, Download, Calendar, ExternalLink, Lightbulb } from 'lucide-react'
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
@@ -30,7 +29,6 @@ interface Audit {
 export default function AuditHomePage() {
   const [audits, setAudits] = useState<Audit[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const { toast } = useToast()
   const supabase = createClient()
@@ -104,12 +102,91 @@ export default function AuditHomePage() {
     })
   }
 
-  const filteredAudits = audits.filter(audit =>
-    audit.name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
 
   return (
     <div className="p-6 space-y-6">
+      <Card className="bg-gradient-to-br from-[#00A8FF]/5 to-transparent border-[#00A8FF]/20">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-[#00A8FF]/10">
+              <Lightbulb className="h-5 w-5 text-[#00A8FF]" />
+            </div>
+            <div>
+              <CardTitle className="text-xl">Top Tips for Delivering a Successful AI Readiness Audit</CardTitle>
+              <CardDescription>Keep these principles visible whenever you complete an audit</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid md:grid-cols-2 gap-4 text-sm">
+            <div className="space-y-2">
+              <h4 className="font-semibold text-[#00A8FF]">1. Start with business goals, not AI opportunities</h4>
+              <p className="text-muted-foreground">Always begin by asking what the business is trying to achieve this quarter and this year. Only then map AI improvements to those goals.</p>
+            </div>
+            
+            <div className="space-y-2">
+              <h4 className="font-semibold text-[#00A8FF]">2. Identify bottlenecks before proposing solutions</h4>
+              <p className="text-muted-foreground">Look for friction points in their workflow. A great audit focuses on problems before tools.</p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold text-[#00A8FF]">3. Keep every question practical</h4>
+              <p className="text-muted-foreground">Avoid abstract or technical prompts. Ask questions that reveal how the business actually operates day to day.</p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold text-[#00A8FF]">4. Use numbers wherever possible</h4>
+              <p className="text-muted-foreground">Ask for approximate time per week, conversion rates, or rough numbers to show clear ROI later.</p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold text-[#00A8FF]">5. Capture everything in their words</h4>
+              <p className="text-muted-foreground">When they describe a pain point, write it down verbatim. Their language should shape your final report.</p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold text-[#00A8FF]">6. Don't jump to conclusions during the audit</h4>
+              <p className="text-muted-foreground">Stay neutral. Your job is to listen, map processes, and ask smart questions. Recommendations come later.</p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold text-[#00A8FF]">7. Look for high-impact, low-complexity wins</h4>
+              <p className="text-muted-foreground">Simple automations or AI-driven workflows that save time within days create trust and momentum.</p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold text-[#00A8FF]">8. Validate every AI opportunity</h4>
+              <p className="text-muted-foreground">Good use-cases must be Useful (solves real problems), Usable (team can adopt it), and Profitable (reduces cost or generates revenue).</p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold text-[#00A8FF]">9. Prioritise a small number of clear recommendations</h4>
+              <p className="text-muted-foreground">Most businesses can only action 3-4 improvements in 90 days. Make them specific and actionable.</p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold text-[#00A8FF]">10. Show quick proof, not long explanations</h4>
+              <p className="text-muted-foreground">Use short examples, quick prototypes, or simple text flows to demonstrate how AI might improve a process.</p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold text-[#00A8FF]">11. Connect every recommendation to financial value</h4>
+              <p className="text-muted-foreground">Even if the numbers are rough, outline the potential savings or revenue uplift.</p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold text-[#00A8FF]">12. Keep the tone collaborative, not prescriptive</h4>
+              <p className="text-muted-foreground">You are running a professional diagnostic. Make them feel understood, not corrected.</p>
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <h4 className="font-semibold text-[#00A8FF]">13. End with a clear next step</h4>
+              <p className="text-muted-foreground">Every great audit ends with one question: "What do you want to move forward with first?"</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">AI Readiness Audits</h1>
@@ -133,50 +210,30 @@ export default function AuditHomePage() {
         </div>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search audits by business name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </CardContent>
-      </Card>
 
       {loading ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground">Loading audits...</p>
         </div>
-      ) : filteredAudits.length === 0 ? (
+      ) : audits.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <FileText className="h-16 w-16 text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">
-              {searchQuery ? "No audits found" : "No audits yet"}
-            </h3>
+            <h3 className="text-xl font-semibold mb-2">No audits yet</h3>
             <p className="text-muted-foreground mb-6 text-center max-w-md">
-              {searchQuery 
-                ? "Try adjusting your search query"
-                : "Create your first AI readiness audit to help clients understand their AI transformation opportunities"
-              }
+              Create your first AI readiness audit to help clients understand their AI transformation opportunities
             </p>
-            {!searchQuery && (
-              <Link href="/audit/builder">
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create First Audit
-                </Button>
-              </Link>
-            )}
+            <Link href="/audit/builder">
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Create First Audit
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredAudits.map((audit) => (
+          {audits.map((audit) => (
             <Card key={audit.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <div className="flex items-start justify-between">
