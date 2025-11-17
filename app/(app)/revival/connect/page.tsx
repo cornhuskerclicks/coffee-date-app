@@ -82,15 +82,15 @@ export default function ConnectGHLPage() {
 
       <div>
         <h1 className="text-3xl font-bold">Connect GoHighLevel</h1>
-        <p className="text-muted-foreground">Enter your API credentials to sync campaigns and conversations</p>
+        <p className="text-muted-foreground">Enter your agency API credentials to sync sub-account campaigns and conversations</p>
       </div>
 
       <div className="grid gap-6 max-w-2xl">
         <Card>
           <CardHeader>
-            <CardTitle>API Credentials</CardTitle>
+            <CardTitle>Agency API Credentials</CardTitle>
             <CardDescription>
-              You can find your API key in your GoHighLevel account settings
+              Connect your agency account to access client sub-account data
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -98,56 +98,84 @@ export default function ConnectGHLPage() {
               <Label htmlFor="accountName">Account Name (Optional)</Label>
               <Input
                 id="accountName"
-                placeholder="My GHL Account"
+                placeholder="Client Name or Agency Account"
                 value={accountName}
                 onChange={(e) => setAccountName(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">
+                A friendly name to identify this connection
+              </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="apiKey">API Key *</Label>
+              <Label htmlFor="apiKey">Agency API Key *</Label>
               <Input
                 id="apiKey"
                 type="password"
-                placeholder="Enter your GoHighLevel API key"
+                placeholder="Enter your agency-level API key"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">
+                Your agency API key (not a sub-account key)
+              </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="locationId">Location ID (Optional)</Label>
+              <Label htmlFor="locationId">Sub-Account Location ID *</Label>
               <Input
                 id="locationId"
-                placeholder="Enter location ID if using sub-account"
+                placeholder="Enter the client's sub-account location ID"
                 value={locationId}
                 onChange={(e) => setLocationId(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Required only if you're using a sub-account
+                Required: The unique ID of the client sub-account you want to access
               </p>
             </div>
 
             <Button onClick={handleConnect} disabled={loading} className="w-full">
-              {loading ? 'Connecting...' : 'Connect Account'}
+              {loading ? 'Connecting...' : 'Connect Agency Account'}
             </Button>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>How to Get Your API Key</CardTitle>
+            <CardTitle>How to Connect Your Agency Account</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <ol className="list-decimal list-inside space-y-2 text-muted-foreground">
-              <li>Log in to your GoHighLevel account</li>
-              <li>Go to Settings → Integrations</li>
-              <li>Find the API section and generate a new API key</li>
-              <li>Copy the key and paste it above</li>
-            </ol>
+          <CardContent className="space-y-4">
+            <div className="space-y-3 text-sm">
+              <div>
+                <p className="font-medium mb-2">Step 1: Get Your Agency API Key</p>
+                <ol className="list-decimal list-inside space-y-1 text-muted-foreground ml-2">
+                  <li>Log in to your GoHighLevel agency account</li>
+                  <li>Go to Settings → Company → API Keys (or Integrations)</li>
+                  <li>Create or copy your agency-level API key</li>
+                </ol>
+              </div>
+              
+              <div>
+                <p className="font-medium mb-2">Step 2: Find the Sub-Account Location ID</p>
+                <ol className="list-decimal list-inside space-y-1 text-muted-foreground ml-2">
+                  <li>Navigate to the client's sub-account</li>
+                  <li>Go to Settings → Business Profile</li>
+                  <li>Copy the Location ID shown at the top</li>
+                </ol>
+              </div>
+
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-xs font-medium mb-1">Important:</p>
+                <p className="text-xs text-muted-foreground">
+                  Both the agency API key AND the sub-account location ID are required to access client data. 
+                  The system will automatically exchange your agency token for a location-specific access token.
+                </p>
+              </div>
+            </div>
+            
             <Button variant="outline" size="sm" asChild>
-              <a href="https://marketplace.gohighlevel.com/docs" target="_blank" rel="noopener noreferrer">
-                View API Documentation
+              <a href="https://help.gohighlevel.com/support/solutions/articles/48001204848" target="_blank" rel="noopener noreferrer">
+                Learn More About Location IDs
                 <ExternalLink className="h-4 w-4 ml-2" />
               </a>
             </Button>

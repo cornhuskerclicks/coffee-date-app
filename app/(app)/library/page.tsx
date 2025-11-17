@@ -333,22 +333,6 @@ export default function PromptLibraryPage() {
           )}
         </div>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Global Tone Profile</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Default Communication Style</Label>
-            <Textarea
-              placeholder="Define your default tone and style for all AI communications..."
-              rows={4}
-            />
-          </div>
-          <Button>Save Tone Profile</Button>
-        </CardContent>
-      </Card>
     </div>
   )
 }

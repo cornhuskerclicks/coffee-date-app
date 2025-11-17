@@ -12,6 +12,8 @@ export async function POST(request: Request) {
 
     const { connectionId } = await request.json()
 
+    console.log('[v0] Starting sync for connection:', connectionId)
+
     // Get GHL connection
     const { data: connection, error: connError } = await supabase
       .from('ghl_connections')
@@ -24,26 +26,56 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Connection not found' }, { status: 404 })
     }
 
+    let accessToken = connection.api_key
+    
+    if (connection.location_id) {
+      console.log('[v0] Exchanging agency token for location token')
+      const tokenResponse = await fetch('https://services.leadconnectorhq.com/oauth/locationToken', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${connection.api_key}`,
+          'Version': '2021-07-28',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          locationId: connection.location_id
+        })
+      })
+
+      if (!tokenResponse.ok) {
+        throw new Error('Failed to exchange token for location access')
+      }
+
+      const tokenData = await tokenResponse.json()
+      accessToken = tokenData.access_token
+      console.log('[v0] Successfully obtained location token')
+    }
+
     // Fetch conversations from GHL API
-    const ghlResponse = await fetch('https://services.leadconnectorhq.com/conversations/search', {
+    console.log('[v0] Fetching conversations from GHL')
+    const ghlResponse = await fetch('https://services.leadconnectorhq.com/conversations/search?limit=100', {
       headers: {
-        'Authorization': `Bearer ${connection.api_key}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Version': '2021-07-28'
       }
     })
 
     if (!ghlResponse.ok) {
+      const errorText = await ghlResponse.text()
+      console.error('[v0] GHL API error:', errorText)
       throw new Error('Failed to fetch from GoHighLevel')
     }
 
     const ghlData = await ghlResponse.json()
     const conversations = ghlData.conversations || []
 
+    console.log('[v0] Fetched conversations:', conversations.length)
+
     // Group conversations by campaign (you may need to adjust based on actual GHL data structure)
     const campaignMap = new Map()
     
     for (const conv of conversations) {
-      const campaignName = conv.campaign || 'Uncategorized'
+      const campaignName = conv.campaign || conv.source || 'Uncategorized'
       if (!campaignMap.has(campaignName)) {
         campaignMap.set(campaignName, [])
       }
@@ -99,6 +131,8 @@ export async function POST(request: Request) {
         }
       }
     }
+
+    console.log('[v0] Sync complete - Campaigns:', campaignsCount, 'Conversations:', conversationsCount)
 
     // Update last synced time
     await supabase
