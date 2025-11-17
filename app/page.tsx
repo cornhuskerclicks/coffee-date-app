@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
+import Image from 'next/image'
 
 export default function HomePage() {
   const [isSignUp, setIsSignUp] = useState(false)
@@ -83,35 +84,40 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0F2C] text-white">
+    <div className="min-h-screen bg-black text-white">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
-        {/* Background gradient effect */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0EE7FF]/10 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0EE7FF]/5 via-transparent to-transparent" />
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24">
           {/* Logo/Brand */}
           <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-[#0EE7FF]/10 border border-[#0EE7FF]/20 mb-6">
-              <Sparkles className="h-10 w-10 text-[#0EE7FF]" />
+            <div className="inline-flex items-center justify-center mb-6">
+              <Image 
+                src="/images/aether-logo.png" 
+                alt="Aether" 
+                width={80} 
+                height={80}
+                className="drop-shadow-[0_0_20px_rgba(14,231,255,0.3)]"
+              />
             </div>
-            <h1 className="text-[56px] font-bold tracking-tight mb-4">
+            <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-4">
               Aether AI Lab
             </h1>
-            <p className="text-[20px] text-gray-400 max-w-2xl mx-auto">
-              AI-Powered SaaS Platform for Agency Workflows
+            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+              AI-Powered Platform for Agency Workflows
             </p>
           </div>
 
           <div className="max-w-md mx-auto mb-20">
-            <div className="bg-white rounded-lg p-8 border border-gray-200">
-              <h2 className="text-[24px] font-bold text-[#0A0F2C] mb-6 text-center">
+            <div className="bg-white rounded-xl p-8 border border-gray-200 shadow-xl">
+              <h2 className="text-2xl font-bold text-black mb-6 text-center">
                 {isSignUp ? 'Create Account' : 'Sign In'}
               </h2>
               
               <form onSubmit={handleEmailAuth} className="space-y-4">
                 <div>
-                  <Label htmlFor="email" className="text-[#0A0F2C] text-[15px]">
+                  <Label htmlFor="email" className="text-black font-medium">
                     Email
                   </Label>
                   <Input
@@ -121,12 +127,12 @@ export default function HomePage() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
                     required
-                    className="mt-1 border-gray-300 text-[#0A0F2C]"
+                    className="mt-1.5 h-12 border-gray-300 text-black"
                   />
                 </div>
                 
                 <div>
-                  <Label htmlFor="password" className="text-[#0A0F2C] text-[15px]">
+                  <Label htmlFor="password" className="text-black font-medium">
                     Password
                   </Label>
                   <Input
@@ -136,14 +142,14 @@ export default function HomePage() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     required
-                    className="mt-1 border-gray-300 text-[#0A0F2C]"
+                    className="mt-1.5 h-12 border-gray-300 text-black"
                   />
                 </div>
 
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-12 bg-[#0EE7FF] text-[#0A0F2C] hover:bg-[#0EE7FF]/90 font-semibold text-[15px]"
+                  className="w-full h-12 bg-[#0EE7FF] text-black hover:bg-[#0EE7FF]/90 font-semibold"
                 >
                   {loading ? 'Loading...' : (isSignUp ? 'Sign Up' : 'Sign In')}
                 </Button>
@@ -161,7 +167,7 @@ export default function HomePage() {
               <Button
                 onClick={handleGoogleAuth}
                 variant="outline"
-                className="w-full h-12 border-gray-300 text-[#0A0F2C] hover:bg-gray-50 font-semibold text-[15px]"
+                className="w-full h-12 border-gray-300 text-black hover:bg-gray-50 font-semibold"
               >
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                   <path
@@ -188,7 +194,7 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={() => setIsSignUp(!isSignUp)}
-                  className="text-[15px] text-[#0EE7FF] hover:underline"
+                  className="text-[#0EE7FF] hover:underline font-medium"
                 >
                   {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
                 </button>
@@ -198,38 +204,38 @@ export default function HomePage() {
 
           {/* Features Grid */}
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            <div className="bg-white rounded-lg p-6 border border-gray-200">
+            <div className="bg-white rounded-xl p-6 border border-gray-200">
               <div className="w-12 h-12 rounded-lg bg-[#0EE7FF]/10 flex items-center justify-center mb-4">
                 <MessageSquare className="h-6 w-6 text-[#0EE7FF]" />
               </div>
-              <h3 className="text-[18px] font-semibold text-[#0A0F2C] mb-2">
+              <h3 className="text-lg font-semibold text-black mb-2">
                 Coffee Date Demo
               </h3>
-              <p className="text-[15px] text-gray-600">
+              <p className="text-gray-600">
                 Create AI-powered conversational demos for your clients with custom personas
               </p>
             </div>
 
-            <div className="bg-white rounded-lg p-6 border border-gray-200">
+            <div className="bg-white rounded-xl p-6 border border-gray-200">
               <div className="w-12 h-12 rounded-lg bg-[#0EE7FF]/10 flex items-center justify-center mb-4">
                 <Target className="h-6 w-6 text-[#0EE7FF]" />
               </div>
-              <h3 className="text-[18px] font-semibold text-[#0A0F2C] mb-2">
+              <h3 className="text-lg font-semibold text-black mb-2">
                 AI Readiness Audit
               </h3>
-              <p className="text-[15px] text-gray-600">
+              <p className="text-gray-600">
                 Build and deploy comprehensive AI readiness assessments for prospects
               </p>
             </div>
 
-            <div className="bg-white rounded-lg p-6 border border-gray-200">
+            <div className="bg-white rounded-xl p-6 border border-gray-200">
               <div className="w-12 h-12 rounded-lg bg-[#0EE7FF]/10 flex items-center justify-center mb-4">
                 <Zap className="h-6 w-6 text-[#0EE7FF]" />
               </div>
-              <h3 className="text-[18px] font-semibold text-[#0A0F2C] mb-2">
+              <h3 className="text-lg font-semibold text-black mb-2">
                 Dead Lead Revival
               </h3>
-              <p className="text-[15px] text-gray-600">
+              <p className="text-gray-600">
                 Connect to GHL and analyze campaign metrics with AI conversation insights
               </p>
             </div>

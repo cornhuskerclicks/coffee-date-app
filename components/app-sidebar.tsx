@@ -6,6 +6,7 @@ import { LayoutDashboard, Coffee, ClipboardList, MessageSquareHeart, FileSearch,
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
+import Image from 'next/image'
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
@@ -37,29 +38,55 @@ export function AppSidebar() {
 
   return (
     <aside className={cn(
-      "border-r border-border bg-white h-screen sticky top-0 flex flex-col transition-all duration-300",
+      "border-r border-gray-200 bg-white h-screen sticky top-0 flex flex-col transition-all duration-300",
       isCollapsed ? "w-16" : "w-64"
     )}>
       <div className={cn(
-        "p-6 border-b border-border flex items-center justify-between",
-        isCollapsed && "px-2 justify-center"
+        "p-6 border-b border-gray-200 flex items-center gap-3",
+        isCollapsed ? "px-2 justify-center" : "justify-between"
       )}>
-        {!isCollapsed && (
-          <h1 className="text-xl font-semibold text-[#0A0F2C]">
-            Aether AI Consulting
-          </h1>
+        {!isCollapsed ? (
+          <>
+            <div className="flex items-center gap-3">
+              <Image 
+                src="/images/aether-logo.png" 
+                alt="Aether" 
+                width={32} 
+                height={32}
+                className="flex-shrink-0"
+              />
+              <h1 className="text-xl font-semibold text-black">
+                Aether AI Lab
+              </h1>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleCollapse}
+              className="h-8 w-8 text-black hover:bg-gray-100 flex-shrink-0"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </>
+        ) : (
+          <>
+            <Image 
+              src="/images/aether-logo.png" 
+              alt="Aether" 
+              width={28} 
+              height={28}
+              className="mb-2"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleCollapse}
+              className="h-8 w-8 text-black hover:bg-gray-100 rotate-180 absolute right-2"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleCollapse}
-          className={cn(
-            "h-8 w-8 transition-transform duration-300 text-[#0A0F2C]",
-            isCollapsed ? "rotate-180" : ""
-          )}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
@@ -73,10 +100,10 @@ export function AppSidebar() {
               href={item.href}
               title={isCollapsed ? item.label : undefined}
               className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-md transition-colors text-sm font-medium",
+                "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-sm font-medium",
                 isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-[#0A0F2C] hover:bg-primary/10",
+                  ? "bg-primary text-black"
+                  : "text-black hover:bg-primary/10",
                 isCollapsed && "justify-center px-0"
               )}
             >

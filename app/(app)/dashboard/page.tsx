@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { ArrowUp, MessageSquare, Calendar, PlayCircle, Sparkles, Zap, TrendingUp } from 'lucide-react'
 import Link from "next/link"
+import Image from 'next/image'
 
 const stats = [
   { label: "Leads Revived", value: "247", change: "+12%", icon: MessageSquare },
@@ -28,15 +28,23 @@ const quickActions = [
 export default function DashboardPage() {
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto">
-      <div className="space-y-2">
-        <h1 className="text-[26px] font-semibold text-[#0A0F2C]">
-          Welcome to Aether AI Consulting
-        </h1>
-        <p className="text-[15px] text-muted-foreground">Your AI agency platform for demos, lead revival, and client tools.</p>
+      <div className="flex items-center gap-4 pb-6 border-b border-gray-200">
+        <Image 
+          src="/images/aether-logo.png" 
+          alt="Aether" 
+          width={48} 
+          height={48}
+        />
+        <div className="space-y-1">
+          <h1 className="text-[26px] font-semibold text-black">
+            Welcome to Aether AI Lab
+          </h1>
+          <p className="text-[15px] text-gray-600">Your AI agency platform for demos, lead revival, and client tools.</p>
+        </div>
       </div>
 
       <section className="space-y-4">
-        <h2 className="text-[18px] font-semibold text-[#0A0F2C]">Quick Actions</h2>
+        <h2 className="text-[18px] font-semibold text-black">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {quickActions.map((action) => {
             const Icon = action.icon
@@ -47,7 +55,7 @@ export default function DashboardPage() {
                     <div className="h-12 w-12 rounded-md bg-primary flex items-center justify-center">
                       <Icon className="h-6 w-6 text-primary-foreground" />
                     </div>
-                    <h3 className="font-medium text-[15px] text-[#0A0F2C] group-hover:text-primary transition-colors">
+                    <h3 className="font-medium text-[15px] text-black group-hover:text-primary transition-colors">
                       {action.label}
                     </h3>
                   </CardContent>
@@ -59,7 +67,7 @@ export default function DashboardPage() {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-[18px] font-semibold text-[#0A0F2C]">Metrics</h2>
+        <h2 className="text-[18px] font-semibold text-black">Metrics</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat) => {
             const Icon = stat.icon
@@ -74,8 +82,8 @@ export default function DashboardPage() {
                     </span>
                   </div>
                   <div className="space-y-1">
-                    <div className="text-[26px] font-semibold text-[#0A0F2C]">{stat.value}</div>
-                    <div className="text-[15px] text-muted-foreground">{stat.label}</div>
+                    <div className="text-[26px] font-semibold text-black">{stat.value}</div>
+                    <div className="text-[15px] text-gray-600">{stat.label}</div>
                   </div>
                 </CardContent>
               </Card>
@@ -85,7 +93,7 @@ export default function DashboardPage() {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-[18px] font-semibold text-[#0A0F2C]">Recent Activity</h2>
+        <h2 className="text-[18px] font-semibold text-black">Recent Activity</h2>
         <Card className="border">
           <CardContent className="p-6">
             <div className="space-y-6">
@@ -95,8 +103,8 @@ export default function DashboardPage() {
                     <MessageSquare className="h-5 w-5 text-primary" />
                   </div>
                   <div className="flex-1 space-y-1">
-                    <p className="font-medium text-[15px] text-[#0A0F2C] leading-relaxed">{activity.message}</p>
-                    <p className="text-sm text-muted-foreground">{activity.time}</p>
+                    <p className="font-medium text-[15px] text-black leading-relaxed">{activity.message}</p>
+                    <p className="text-sm text-gray-600">{activity.time}</p>
                   </div>
                 </div>
               ))}
