@@ -3,34 +3,34 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Aether Consulting brand colors - pure black and cyan */
+  /* Aether AI Lab brand colors - pure black and bright blue */
   --background: 0 0% 0%; /* Pure Black #000000 */
   --foreground: 0 0% 100%; /* Pure White */
   
-  --card: 0 0% 100%; /* White cards */
-  --card-foreground: 0 0% 0%; /* Black text on white cards */
+  --card: 0 0% 7%; /* Dark cards for black background */
+  --card-foreground: 0 0% 100%; /* White text on dark cards */
   
-  --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 0%;
+  --popover: 0 0% 7%;
+  --popover-foreground: 0 0% 100%;
   
-  --primary: 188 100% 52%; /* Cyan #0EE7FF */
-  --primary-foreground: 0 0% 0%; /* Black text on cyan */
+  --primary: 199 100% 50%; /* Bright Blue #00A8FF */
+  --primary-foreground: 0 0% 100%; /* White text on blue */
   
-  --secondary: 0 0% 10%; /* Near black */
+  --secondary: 0 0% 15%; /* Dark gray */
   --secondary-foreground: 0 0% 100%;
   
-  --muted: 0 0% 96%;
-  --muted-foreground: 0 0% 45%;
+  --muted: 0 0% 20%;
+  --muted-foreground: 0 0% 60%;
   
-  --accent: 188 100% 52%;
-  --accent-foreground: 0 0% 0%;
+  --accent: 199 100% 50%;
+  --accent-foreground: 0 0% 100%;
   
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
   
-  --border: 0 0% 90%;
-  --input: 0 0% 90%;
-  --ring: 188 100% 52%;
+  --border: 0 0% 15%;
+  --input: 0 0% 15%;
+  --ring: 199 100% 50%;
   
   --radius: 0.5rem; /* 8px rounded corners */
 }
@@ -39,30 +39,30 @@
   --background: 0 0% 0%;
   --foreground: 0 0% 100%;
   
-  --card: 0 0% 100%;
-  --card-foreground: 0 0% 0%;
+  --card: 0 0% 7%;
+  --card-foreground: 0 0% 100%;
   
-  --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 0%;
+  --popover: 0 0% 7%;
+  --popover-foreground: 0 0% 100%;
   
-  --primary: 188 100% 52%;
-  --primary-foreground: 0 0% 0%;
+  --primary: 199 100% 50%;
+  --primary-foreground: 0 0% 100%;
   
-  --secondary: 0 0% 10%;
+  --secondary: 0 0% 15%;
   --secondary-foreground: 0 0% 100%;
   
-  --muted: 0 0% 96%;
-  --muted-foreground: 0 0% 45%;
+  --muted: 0 0% 20%;
+  --muted-foreground: 0 0% 60%;
   
-  --accent: 188 100% 52%;
-  --accent-foreground: 0 0% 0%;
+  --accent: 199 100% 50%;
+  --accent-foreground: 0 0% 100%;
   
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
   
-  --border: 0 0% 90%;
-  --input: 0 0% 90%;
-  --ring: 188 100% 52%;
+  --border: 0 0% 15%;
+  --input: 0 0% 15%;
+  --ring: 199 100% 50%;
 }
 
 @theme inline {

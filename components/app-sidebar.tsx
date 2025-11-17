@@ -38,11 +38,11 @@ export function AppSidebar() {
 
   return (
     <aside className={cn(
-      "border-r border-gray-200 bg-white h-screen sticky top-0 flex flex-col transition-all duration-300",
+      "border-r border-white/10 bg-black h-screen sticky top-0 flex flex-col transition-all duration-300",
       isCollapsed ? "w-16" : "w-64"
     )}>
       <div className={cn(
-        "p-6 border-b border-gray-200 flex items-center gap-3",
+        "p-6 border-b border-white/10 flex items-center gap-3",
         isCollapsed ? "px-2 justify-center" : "justify-between"
       )}>
         {!isCollapsed ? (
@@ -55,7 +55,7 @@ export function AppSidebar() {
                 height={32}
                 className="flex-shrink-0"
               />
-              <h1 className="text-xl font-semibold text-black">
+              <h1 className="text-xl font-semibold text-white">
                 Aether AI Lab
               </h1>
             </div>
@@ -63,7 +63,7 @@ export function AppSidebar() {
               variant="ghost"
               size="icon"
               onClick={toggleCollapse}
-              className="h-8 w-8 text-black hover:bg-gray-100 flex-shrink-0"
+              className="h-8 w-8 text-white hover:bg-white/10 flex-shrink-0"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -81,7 +81,7 @@ export function AppSidebar() {
               variant="ghost"
               size="icon"
               onClick={toggleCollapse}
-              className="h-8 w-8 text-black hover:bg-gray-100 rotate-180 absolute right-2"
+              className="h-8 w-8 text-white hover:bg-white/10 rotate-180 absolute right-2"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -102,8 +102,8 @@ export function AppSidebar() {
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-sm font-medium",
                 isActive
-                  ? "bg-primary text-black"
-                  : "text-black hover:bg-primary/10",
+                  ? "bg-primary text-white"
+                  : "text-white/70 hover:bg-white/5 hover:text-white",
                 isCollapsed && "justify-center px-0"
               )}
             >
