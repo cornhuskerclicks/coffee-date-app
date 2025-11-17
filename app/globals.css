@@ -125,6 +125,75 @@
   .glass-border {
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
+  
+  /* Background glow effects only - matching REVIVE MVP with #00A8FF blue */
+  .bg-glow-blue {
+    position: relative;
+  }
+  
+  .bg-glow-blue::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 800px;
+    height: 800px;
+    background: radial-gradient(circle, rgba(0, 168, 255, 0.15) 0%, rgba(0, 168, 255, 0.05) 40%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  .bg-glow-blue-sm {
+    position: relative;
+  }
+  
+  .bg-glow-blue-sm::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(0, 168, 255, 0.12) 0%, rgba(0, 168, 255, 0.04) 50%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(60px);
+  }
+  
+  /* Adding cyan glow effects matching REVIVE MVP */
+  .glow-cyan {
+    box-shadow: 0 0 20px rgba(14, 231, 255, 0.3),
+                0 0 40px rgba(14, 231, 255, 0.2),
+                0 0 60px rgba(14, 231, 255, 0.1);
+  }
+  
+  .glow-cyan-strong {
+    box-shadow: 0 0 30px rgba(14, 231, 255, 0.5),
+                0 0 60px rgba(14, 231, 255, 0.3),
+                0 0 90px rgba(14, 231, 255, 0.2);
+  }
+  
+  .glow-cyan-subtle {
+    box-shadow: 0 0 15px rgba(14, 231, 255, 0.2),
+                0 0 30px rgba(14, 231, 255, 0.1);
+  }
+  
+  .text-glow-cyan {
+    text-shadow: 0 0 20px rgba(14, 231, 255, 0.5),
+                 0 0 40px rgba(14, 231, 255, 0.3);
+  }
+  
+  .hover-glow-cyan {
+    transition: box-shadow 0.3s ease;
+  }
+  
+  .hover-glow-cyan:hover {
+    box-shadow: 0 0 25px rgba(14, 231, 255, 0.4),
+                0 0 50px rgba(14, 231, 255, 0.2),
+                0 0 75px rgba(14, 231, 255, 0.1);
+  }
 }
 
 /* Demo Animations */
