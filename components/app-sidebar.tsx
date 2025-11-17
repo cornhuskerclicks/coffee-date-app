@@ -38,12 +38,12 @@ export function AppSidebar() {
 
   return (
     <aside className={cn(
-      "border-r border-white/10 bg-black h-screen sticky top-0 flex flex-col transition-all duration-300 relative",
+      "border-r border-white/10 bg-black h-screen sticky top-0 flex flex-col transition-all duration-300 relative group",
       isCollapsed ? "w-16" : "w-64"
     )}>
       <div className={cn(
-        "p-6 border-b border-white/10 flex items-center gap-3",
-        isCollapsed ? "px-2 justify-center flex-col py-4" : "justify-between"
+        "border-b border-white/10 flex items-center h-[73px]",
+        isCollapsed ? "px-3 justify-center" : "px-6 justify-between"
       )}>
         {!isCollapsed ? (
           <>
@@ -63,20 +63,18 @@ export function AppSidebar() {
               variant="ghost"
               size="icon"
               onClick={toggleCollapse}
-              className="h-8 w-8 text-white hover:bg-white/10 flex-shrink-0"
+              className="h-8 w-8 text-white/70 hover:text-white hover:bg-primary/20 flex-shrink-0 transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
           </>
         ) : (
-          <div className="flex flex-col items-center gap-2">
-            <Image 
-              src="/images/aether-logo.png" 
-              alt="Aether" 
-              width={28} 
-              height={28}
-            />
-          </div>
+          <Image 
+            src="/images/aether-logo.png" 
+            alt="Aether" 
+            width={32} 
+            height={32}
+          />
         )}
       </div>
 
@@ -110,25 +108,11 @@ export function AppSidebar() {
           variant="ghost"
           size="icon"
           onClick={toggleCollapse}
-          className="absolute -right-3 top-20 h-6 w-6 rounded-full bg-black border border-white/20 text-white hover:bg-primary hover:border-primary shadow-lg z-50 opacity-0 hover:opacity-100 transition-opacity group-hover:opacity-100"
+          className="absolute -right-3 top-24 h-8 w-8 rounded-full bg-black border-2 border-primary text-primary hover:bg-primary hover:text-white shadow-lg z-50 opacity-0 group-hover:opacity-100 transition-all duration-200"
           title="Expand sidebar"
         >
-          <ChevronRight className="h-3 w-3" />
+          <ChevronRight className="h-4 w-4" />
         </Button>
-      )}
-      
-      {isCollapsed && (
-        <div 
-          className="absolute inset-y-0 -right-4 w-8 group"
-          onMouseEnter={(e) => {
-            const btn = e.currentTarget.previousElementSibling as HTMLElement
-            if (btn) btn.style.opacity = '1'
-          }}
-          onMouseLeave={(e) => {
-            const btn = e.currentTarget.previousElementSibling as HTMLElement
-            if (btn && !btn.matches(':hover')) btn.style.opacity = '0'
-          }}
-        />
       )}
     </aside>
   )

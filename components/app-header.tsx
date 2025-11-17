@@ -1,6 +1,6 @@
 "use client"
 
-import { Bell, Search, User, LogOut, Settings2 } from 'lucide-react'
+import { Bell, User, LogOut, Settings2 } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -67,17 +67,7 @@ export function AppHeader() {
 
   return (
     <header className="sticky top-0 z-10 border-b border-white/10 bg-black">
-      <div className="flex items-center justify-between px-6 py-4">
-        <div className="flex items-center gap-4 flex-1 max-w-xl">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-            <Input
-              placeholder="Search..."
-              className="pl-10 border-white/10 bg-white/5 text-white placeholder:text-white/40"
-            />
-          </div>
-        </div>
-
+      <div className="flex items-center justify-end px-6 py-4 h-[73px]">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
             <Bell className="h-5 w-5" />
