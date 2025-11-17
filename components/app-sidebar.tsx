@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Coffee, ClipboardList, MessageSquareHeart, FileSearch, Library, Users, Settings, ChevronLeft } from 'lucide-react'
+import { LayoutDashboard, Coffee, ClipboardList, MessageSquareHeart, FileSearch, Library, Users, Settings2, ChevronLeft } from 'lucide-react'
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,7 @@ const menuItems = [
   { icon: FileSearch, label: "AI Audit", href: "/audit" },
   { icon: Library, label: "Prompt Library", href: "/library" },
   { icon: Users, label: "Clients", href: "/clients" },
-  { icon: Settings, label: "Settings", href: "/settings" },
+  { icon: Settings2, label: "Settings", href: "/settings" },
 ]
 
 export function AppSidebar() {
