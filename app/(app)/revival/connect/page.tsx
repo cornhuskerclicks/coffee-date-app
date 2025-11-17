@@ -29,6 +29,15 @@ export default function ConnectGHLPage() {
       return
     }
 
+    if (!locationId.trim()) {
+      toast({
+        title: "Location ID Required",
+        description: "Please enter the sub-account location ID",
+        variant: "destructive"
+      })
+      return
+    }
+
     setLoading(true)
     try {
       // Test the API key first
@@ -40,7 +49,14 @@ export default function ConnectGHLPage() {
 
       if (!testResponse.ok) {
         const error = await testResponse.json()
-        throw new Error(error.message || 'Invalid API credentials')
+        console.log('[v0] Connection test failed:', error)
+        
+        // Show detailed error with status code
+        const errorMessage = error.details 
+          ? `${error.message}\n\nDetails: ${error.details}\nStatus: ${error.status}`
+          : error.message || 'Invalid API credentials'
+        
+        throw new Error(errorMessage)
       }
 
       // Save connection
@@ -63,10 +79,12 @@ export default function ConnectGHLPage() {
 
       router.push('/revival')
     } catch (error: any) {
+      console.error('[v0] Connection error:', error)
       toast({
         title: "Connection Failed",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 10000
       })
     } finally {
       setLoading(false)
