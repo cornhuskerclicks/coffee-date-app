@@ -125,10 +125,10 @@ export default function AccountDetailPage() {
 
   if (loading || !account) {
     return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-muted rounded w-1/3"></div>
-          <div className="h-32 bg-muted rounded"></div>
+      <div className="p-8 bg-black min-h-screen">
+        <div className="animate-pulse space-y-4 max-w-7xl mx-auto">
+          <div className="h-8 bg-white/10 rounded w-1/3"></div>
+          <div className="h-32 bg-white/10 rounded"></div>
         </div>
       </div>
     )
@@ -141,113 +141,116 @@ export default function AccountDetailPage() {
     : 0
 
   return (
-    <div className="p-6 space-y-6">
-      <Button variant="ghost" onClick={() => router.push('/revival')}>
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Accounts
-      </Button>
-
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">{account.account_name}</h1>
-          <p className="text-muted-foreground">
-            Location ID: {account.location_id}
-          </p>
-        </div>
-        <Button onClick={handleSync} disabled={syncing}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-          {syncing ? 'Syncing...' : 'Sync Now'}
+    <div className="bg-black min-h-screen">
+      <div className="p-8 space-y-6 max-w-7xl mx-auto">
+        <Button variant="ghost" onClick={() => router.push('/revival')} className="text-white hover:text-[#00A8FF] hover:bg-white/5">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Accounts
         </Button>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Campaigns</CardTitle>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-[32px] font-bold text-white">{account.account_name}</h1>
+            <p className="text-white/60 text-[15px]">
+              Location ID: {account.location_id}
+            </p>
+          </div>
+          <Button onClick={handleSync} disabled={syncing} className="bg-[#00A8FF] text-white hover:bg-[#00A8FF]/90">
+            <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Syncing...' : 'Sync Now'}
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="border border-white/10 bg-white/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-white/60">Total Campaigns</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-8 w-8 text-[#00A8FF]" />
+                <div className="text-3xl font-bold text-white">{campaigns.length}</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border border-white/10 bg-white/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-white/60">Total Conversations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-8 w-8 text-[#00A8FF]" />
+                <div className="text-3xl font-bold text-white">{totalConversations}</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border border-white/10 bg-white/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-white/60">Avg Response Rate</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Users className="h-8 w-8 text-[#00A8FF]" />
+                <div className="text-3xl font-bold text-white">{avgResponseRate.toFixed(1)}%</div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="border border-white/10 bg-white/5">
+          <CardHeader>
+            <CardTitle className="text-white">Campaigns</CardTitle>
+            <CardDescription className="text-white/60">
+              {account.last_synced_at 
+                ? `Last synced ${new Date(account.last_synced_at).toLocaleString()}`
+                : 'Not synced yet'
+              }
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-8 w-8 text-primary" />
-              <div className="text-3xl font-bold">{campaigns.length}</div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Conversations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <MessageSquare className="h-8 w-8 text-primary" />
-              <div className="text-3xl font-bold">{totalConversations}</div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Response Rate</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Users className="h-8 w-8 text-primary" />
-              <div className="text-3xl font-bold">{avgResponseRate.toFixed(1)}%</div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Campaigns</CardTitle>
-          <CardDescription>
-            {account.last_synced_at 
-              ? `Last synced ${new Date(account.last_synced_at).toLocaleString()}`
-              : 'Not synced yet'
-            }
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {campaigns.length === 0 ? (
-            <div className="text-center py-12">
-              <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-4">No campaigns found</p>
-              <Button onClick={handleSync}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Sync Campaigns
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {campaigns.map((campaign) => (
-                <div
-                  key={campaign.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex-1">
-                    <h3 className="font-semibold">{campaign.name}</h3>
-                    <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
-                      <span>{campaign.metrics.total_conversations || 0} conversations</span>
-                      <span>{campaign.metrics.total_messages || 0} messages</span>
-                      {campaign.metrics.response_rate && (
-                        <span>{campaign.metrics.response_rate}% response rate</span>
-                      )}
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => router.push(`/revival/campaign/${campaign.id}`)}
+            {campaigns.length === 0 ? (
+              <div className="text-center py-12">
+                <MessageSquare className="h-12 w-12 mx-auto text-[#00A8FF] mb-4" />
+                <p className="text-white/60 mb-4">No campaigns found</p>
+                <Button onClick={handleSync} className="bg-[#00A8FF] text-white hover:bg-[#00A8FF]/90">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Sync Campaigns
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {campaigns.map((campaign) => (
+                  <div
+                    key={campaign.id}
+                    className="flex items-center justify-between p-4 border border-white/10 rounded-lg bg-white/5 hover:bg-white/10 hover:border-[#00A8FF]/50 transition-all"
                   >
-                    View Details
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-white">{campaign.name}</h3>
+                      <div className="flex gap-4 mt-2 text-sm text-white/60">
+                        <span>{campaign.metrics.total_conversations || 0} conversations</span>
+                        <span>{campaign.metrics.total_messages || 0} messages</span>
+                        {campaign.metrics.response_rate && (
+                          <span>{campaign.metrics.response_rate}% response rate</span>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-white/10 text-white hover:bg-[#00A8FF] hover:text-white hover:border-[#00A8FF]"
+                      onClick={() => router.push(`/revival/campaign/${campaign.id}`)}
+                    >
+                      View Details
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

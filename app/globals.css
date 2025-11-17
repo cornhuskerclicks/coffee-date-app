@@ -101,8 +101,13 @@
   }
   
   body {
-    @apply bg-background text-foreground;
+    @apply bg-black text-white;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Fix hover states - ensure proper contrast on black backgrounds */
+  a:hover, button:hover {
+    color: hsl(var(--foreground)) !important;
   }
 }
 
