@@ -250,8 +250,41 @@ export default function DeadLeadRevivalPage() {
                   name="ghl-private-integration-token"
                 />
                 <p className="text-xs text-muted-foreground">
-                  In the client sub-account, go to Settings → Private Integrations. Create a new integration, select scopes for Contacts, Conversations, Opportunities, and Campaigns. Copy the token and paste it here.
+                  In the client sub-account, go to Settings → Private Integrations. Create a new integration and select the required scopes below.
                 </p>
+              </div>
+
+              <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg space-y-2">
+                <p className="text-sm font-semibold">Required Scopes for Private Integration:</p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <p className="font-medium text-muted-foreground">Conversations:</p>
+                    <ul className="ml-4 list-disc text-muted-foreground">
+                      <li>conversations.readonly</li>
+                      <li>conversations.write</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-medium text-muted-foreground">Contacts:</p>
+                    <ul className="ml-4 list-disc text-muted-foreground">
+                      <li>contacts.readonly</li>
+                      <li>contacts.write</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-medium text-muted-foreground">Opportunities:</p>
+                    <ul className="ml-4 list-disc text-muted-foreground">
+                      <li>opportunities.readonly</li>
+                      <li>opportunities.write</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-medium text-muted-foreground">Campaigns:</p>
+                    <ul className="ml-4 list-disc text-muted-foreground">
+                      <li>campaigns.readonly</li>
+                    </ul>
+                  </div>
+                </div>
               </div>
 
               <div className="flex gap-2 items-center p-3 bg-muted rounded-lg">

@@ -75,6 +75,8 @@ export default function AccountDetailPage() {
   const handleSync = async () => {
     setSyncing(true)
     try {
+      console.log('[v0] Starting sync for account:', accountId)
+      
       const response = await fetch('/api/revival/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -83,10 +85,24 @@ export default function AccountDetailPage() {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.message || 'Sync failed')
+        console.error('[v0] Sync failed:', error)
+        
+        let errorMessage = error.message || 'Sync failed'
+        
+        // Add helpful messages based on error type
+        if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+          errorMessage = 'Authentication failed. Please check your Private Integration token has the correct scopes: conversations.readonly, contacts.readonly, opportunities.readonly, campaigns.readonly'
+        } else if (errorMessage.includes('403') || errorMessage.includes('Forbidden')) {
+          errorMessage = 'Access denied. Ensure your Private Integration has been granted all required permissions in the GoHighLevel sub-account.'
+        } else if (errorMessage.includes('404')) {
+          errorMessage = 'Location not found. Please verify the Location ID is correct.'
+        }
+        
+        throw new Error(errorMessage)
       }
 
       const result = await response.json()
+      console.log('[v0] Sync result:', result)
       
       toast({
         title: "Sync Complete",
@@ -95,10 +111,12 @@ export default function AccountDetailPage() {
 
       await loadData()
     } catch (error: any) {
+      console.error('[v0] Sync error:', error)
       toast({
         title: "Sync Failed",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 10000
       })
     } finally {
       setSyncing(false)

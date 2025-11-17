@@ -33,8 +33,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Location ID is required' }, { status: 400 })
     }
 
-    console.log('[v0] Fetching conversations from GHL')
-    const ghlResponse = await fetch(`https://services.leadconnectorhq.com/locations/${locationId}/conversations?limit=100`, {
+    console.log('[v0] Fetching conversations from GHL using search endpoint')
+    const ghlResponse = await fetch(`https://services.leadconnectorhq.com/conversations/search?locationId=${locationId}&limit=100`, {
       headers: {
         'Authorization': `Bearer ${privateIntegrationToken}`,
         'Version': '2021-07-28',
@@ -44,8 +44,18 @@ export async function POST(request: Request) {
 
     if (!ghlResponse.ok) {
       const errorText = await ghlResponse.text()
-      console.error('[v0] GHL API error:', errorText)
-      throw new Error('Failed to fetch from GoHighLevel')
+      console.error('[v0] GHL API error status:', ghlResponse.status)
+      console.error('[v0] GHL API error body:', errorText)
+      
+      let errorMessage = 'Failed to fetch from GoHighLevel'
+      try {
+        const errorJson = JSON.parse(errorText)
+        errorMessage = errorJson.message || errorJson.error || errorMessage
+      } catch (e) {
+        errorMessage = errorText || errorMessage
+      }
+      
+      throw new Error(errorMessage)
     }
 
     const ghlData = await ghlResponse.json()
@@ -53,11 +63,12 @@ export async function POST(request: Request) {
 
     console.log('[v0] Fetched conversations:', conversations.length)
 
-    // Group conversations by campaign (you may need to adjust based on actual GHL data structure)
+    // Group conversations by campaign/source
     const campaignMap = new Map()
     
     for (const conv of conversations) {
-      const campaignName = conv.campaign || conv.source || 'Uncategorized'
+      // Try to extract campaign name from various possible fields
+      const campaignName = conv.campaignName || conv.campaign || conv.source || conv.type || 'Uncategorized'
       if (!campaignMap.has(campaignName)) {
         campaignMap.set(campaignName, [])
       }
@@ -69,18 +80,23 @@ export async function POST(request: Request) {
 
     // Save campaigns and conversations
     for (const [campaignName, convs] of campaignMap.entries()) {
+      const totalMessages = convs.reduce((sum: number, c: any) => sum + (c.messageCount || 0), 0)
+      const conversationsWithReplies = convs.filter((c: any) => c.unreadCount !== c.messageCount).length
+      const responseRate = convs.length > 0 ? Math.round((conversationsWithReplies / convs.length) * 100) : 0
+
       // Create or update campaign
       const { data: campaign } = await supabase
         .from('revival_campaigns')
         .upsert({
           user_id: user.id,
           ghl_connection_id: connection.id,
+          ghl_campaign_id: campaignName,
           name: campaignName,
           status: 'active',
           metrics: {
             total_conversations: convs.length,
-            total_messages: convs.reduce((sum: number, c: any) => sum + (c.messages?.length || 0), 0),
-            response_rate: Math.round(Math.random() * 50 + 30) // Mock response rate
+            total_messages: totalMessages,
+            response_rate: responseRate
           },
           synced_at: new Date().toISOString()
         }, {
@@ -99,12 +115,12 @@ export async function POST(request: Request) {
             ghl_connection_id: connection.id,
             campaign_id: campaign.id,
             ghl_conversation_id: conv.id,
-            contact_name: conv.contactName || conv.contact?.name,
+            contact_name: conv.contactName || conv.contact?.name || 'Unknown',
             contact_email: conv.contact?.email,
             contact_phone: conv.contact?.phone,
-            last_message_at: conv.lastMessageDate,
-            messages: conv.messages || [],
-            status: conv.status,
+            last_message_at: conv.lastMessageDate || conv.dateUpdated,
+            messages: [], // Messages would need to be fetched separately via messages endpoint
+            status: conv.status || 'active',
             synced_at: new Date().toISOString()
           }, {
             onConflict: 'ghl_conversation_id'
