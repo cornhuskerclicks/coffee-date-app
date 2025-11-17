@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, FileText, Trash2, Download, Calendar, Search } from 'lucide-react'
+import { Plus, FileText, Trash2, Download, Calendar, Search, ExternalLink } from 'lucide-react'
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
@@ -115,12 +115,22 @@ export default function AuditHomePage() {
           <h1 className="text-3xl font-bold">AI Readiness Audits</h1>
           <p className="text-muted-foreground">Create and manage comprehensive AI readiness assessments</p>
         </div>
-        <Link href="/audit/builder">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            New Audit
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            onClick={() => window.open('https://docs.google.com/document/d/1QsJ94eM9DnXmxPZlFCj3rLWH1sqtWZewlU73YVT0VW0/edit?usp=sharing', '_blank')}
+            className="border-[#00A8FF]/20 hover:border-[#00A8FF]/40 hover:bg-[#00A8FF]/5"
+          >
+            <ExternalLink className="h-4 w-4 mr-2" />
+            View Audit Questions
           </Button>
-        </Link>
+          <Link href="/audit/builder">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              New Audit
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <Card>
