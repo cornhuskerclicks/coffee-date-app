@@ -2,8 +2,10 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Coffee, Sparkles } from 'lucide-react'
+import { Coffee, Sparkles, Plus, Trash2, Calendar } from 'lucide-react'
 import DemoStartButton from "@/components/demo-start-button"
+import Link from "next/link"
+import DeleteDemoButton from "@/components/delete-demo-button"
 
 export default async function DemoPage() {
   const supabase = await createClient()
@@ -26,6 +28,23 @@ export default async function DemoPage() {
     console.error("Error fetching androids:", error)
   }
 
+  const { data: sessions, error: sessionsError } = await supabase
+    .from("sessions")
+    .select(`
+      *,
+      androids (
+        id,
+        name,
+        business_context
+      )
+    `)
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+
+  if (sessionsError) {
+    console.error("Error fetching sessions:", sessionsError)
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -35,7 +54,15 @@ export default async function DemoPage() {
             Start an interactive AI demo session with your prospect
           </p>
         </div>
-        <DemoStartButton androids={androids || []} />
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link href="/prompt-generator">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Android
+            </Link>
+          </Button>
+          <DemoStartButton androids={androids || []} />
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -93,13 +120,61 @@ export default async function DemoPage() {
                     </CardHeader>
                     <CardContent>
                       <Button asChild className="w-full">
-                        <a href={`/demo/${android.id}`}>
+                        <Link href={`/demo/${android.id}`}>
                           <Coffee className="h-4 w-4 mr-2" />
                           Start Demo
-                        </a>
+                        </Link>
                       </Button>
                     </CardContent>
                   </Card>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {sessions && sessions.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Saved Demo Sessions</CardTitle>
+            <CardDescription>View and manage your previous demo conversations</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {sessions.map((session) => {
+                const android = session.androids as any
+                const companyName = android?.business_context?.company_name || android?.business_context?.businessName || "Unknown"
+                const androidName = android?.name || "Unknown Android"
+                
+                return (
+                  <div
+                    key={session.id}
+                    className="flex items-center justify-between p-4 rounded-lg border hover:border-primary/50 transition-colors"
+                  >
+                    <div className="flex items-start gap-3 flex-1">
+                      <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium truncate">
+                          {session.title || "Untitled Session"}
+                        </h4>
+                        <p className="text-sm text-muted-foreground">
+                          {androidName} — {companyName}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(session.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/demo/${session.android_id}`}>
+                          View
+                        </Link>
+                      </Button>
+                      <DeleteDemoButton sessionId={session.id} />
+                    </div>
+                  </div>
                 )
               })}
             </div>
