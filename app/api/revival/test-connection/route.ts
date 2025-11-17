@@ -10,15 +10,15 @@ export async function POST(request: Request) {
       }, { status: 400 })
     }
 
-    console.log('[v0] Testing GHL Private Integration token')
+    console.log('[v0] Testing GHL Private Integration token for location:', locationId)
     
     try {
-      const testEndpoint = `https://services.leadconnectorhq.com/locations/${locationId}/conversations`
+      const testEndpoint = `https://services.leadconnectorhq.com/locations/${locationId}`
       
       const testResponse = await fetch(testEndpoint, {
         method: 'GET',
         headers: {
-          'Authorization': privateIntegrationToken,
+          'Authorization': `Bearer ${privateIntegrationToken}`,
           'Version': '2021-07-28',
           'Accept': 'application/json'
         }
@@ -26,6 +26,7 @@ export async function POST(request: Request) {
 
       const testResponseText = await testResponse.text()
       console.log('[v0] API test response status:', testResponse.status)
+      console.log('[v0] API test response:', testResponseText.substring(0, 200))
 
       if (!testResponse.ok) {
         console.error('[v0] API test failed:', testResponseText)
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
         return NextResponse.json(
           { 
             message: 'Invalid Location ID or Private Integration token. Please check the client sub-account settings and try again.',
-            details: testResponseText,
+            details: `Status ${testResponse.status}: ${testResponseText.substring(0, 200)}`,
             status: testResponse.status
           },
           { status: 401 }

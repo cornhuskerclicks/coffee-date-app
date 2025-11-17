@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     console.log('[v0] Fetching conversations from GHL')
     const ghlResponse = await fetch(`https://services.leadconnectorhq.com/locations/${locationId}/conversations?limit=100`, {
       headers: {
-        'Authorization': privateIntegrationToken,
+        'Authorization': `Bearer ${privateIntegrationToken}`,
         'Version': '2021-07-28',
         'Accept': 'application/json'
       }
