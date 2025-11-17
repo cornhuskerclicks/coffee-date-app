@@ -38,11 +38,11 @@ export function AppSidebar() {
 
   return (
     <aside className={cn(
-      "border-r border-white/10 bg-black h-screen sticky top-0 flex flex-col transition-all duration-300 relative group",
+      "border-r border-white/10 bg-black h-screen sticky top-0 flex flex-col transition-all duration-300 relative",
       isCollapsed ? "w-16" : "w-64"
     )}>
       <div className={cn(
-        "border-b border-white/10 flex items-center h-[73px]",
+        "border-b border-white/10 flex items-center h-[73px] relative",
         isCollapsed ? "px-3 justify-center" : "px-6 justify-between"
       )}>
         {!isCollapsed ? (
@@ -59,14 +59,6 @@ export function AppSidebar() {
                 Aether AI Lab
               </h1>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleCollapse}
-              className="h-8 w-8 text-white/70 hover:text-white hover:bg-primary/20 flex-shrink-0 transition-colors"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
           </>
         ) : (
           <Image 
@@ -76,6 +68,20 @@ export function AppSidebar() {
             height={32}
           />
         )}
+        
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleCollapse}
+          className="absolute -right-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-black border-2 border-white/20 text-white hover:border-primary hover:text-primary shadow-lg z-50 transition-all duration-200"
+          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {isCollapsed ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <ChevronLeft className="h-4 w-4" />
+          )}
+        </Button>
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
@@ -102,18 +108,6 @@ export function AppSidebar() {
           )
         })}
       </nav>
-
-      {isCollapsed && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleCollapse}
-          className="absolute -right-3 top-24 h-8 w-8 rounded-full bg-black border-2 border-primary text-primary hover:bg-primary hover:text-white shadow-lg z-50 opacity-0 group-hover:opacity-100 transition-all duration-200"
-          title="Expand sidebar"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      )}
     </aside>
   )
 }
