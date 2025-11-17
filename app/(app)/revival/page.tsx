@@ -2,76 +2,73 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus, Download, RefreshCw, Settings, TrendingUp, MessageSquare, Users } from 'lucide-react'
+import { Plus, Trash2, ExternalLink, TrendingUp } from 'lucide-react'
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from 'next/navigation'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 type GHLConnection = {
   id: string
   account_name: string | null
   location_id: string | null
-  last_synced_at: string | null
   connected_at: string
 }
 
-type Campaign = {
-  id: string
-  name: string
-  status: string | null
-  metrics: {
-    total_conversations?: number
-    total_messages?: number
-    response_rate?: number
-  }
-  synced_at: string
-}
-
 export default function DeadLeadRevivalPage() {
-  const [connection, setConnection] = useState<GHLConnection | null>(null)
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [accounts, setAccounts] = useState<GHLConnection[]>([])
   const [loading, setLoading] = useState(true)
-  const [syncing, setSyncing] = useState(false)
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [accountToDelete, setAccountToDelete] = useState<string | null>(null)
+  
+  // Form state
+  const [accountName, setAccountName] = useState("")
+  const [locationId, setLocationId] = useState("")
+  const [locationApiKey, setLocationApiKey] = useState("")
+  const [connecting, setConnecting] = useState(false)
+  
   const { toast } = useToast()
   const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
-    loadData()
+    loadAccounts()
   }, [])
 
-  const loadData = async () => {
+  const loadAccounts = async () => {
     try {
       setLoading(true)
-
-      // Load GHL connection
-      const { data: connectionData, error: connError } = await supabase
+      const { data, error } = await supabase
         .from('ghl_connections')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
 
-      if (connError && connError.code !== 'PGRST116') {
-        throw connError
-      }
-
-      setConnection(connectionData || null)
-
-      // Load campaigns
-      const { data: campaignsData, error: campaignsError } = await supabase
-        .from('revival_campaigns')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (campaignsError) throw campaignsError
-
-      setCampaigns(campaignsData || [])
+      if (error) throw error
+      setAccounts(data || [])
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to load data",
+        description: error.message || "Failed to load accounts",
         variant: "destructive"
       })
     } finally {
@@ -79,84 +76,92 @@ export default function DeadLeadRevivalPage() {
     }
   }
 
-  const handleSync = async () => {
-    if (!connection) {
+  const handleAddAccount = async () => {
+    if (!accountName.trim() || !locationId.trim() || !locationApiKey.trim()) {
       toast({
-        title: "No Connection",
-        description: "Please connect to GoHighLevel first",
+        title: "Missing Fields",
+        description: "Please fill in all required fields",
         variant: "destructive"
       })
       return
     }
 
-    setSyncing(true)
+    setConnecting(true)
     try {
-      const response = await fetch('/api/revival/sync', {
+      const testResponse = await fetch('/api/revival/test-connection', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ connectionId: connection.id })
+        body: JSON.stringify({ 
+          apiKey: locationApiKey, 
+          locationId: locationId.trim() 
+        })
+      })
+
+      if (!testResponse.ok) {
+        const error = await testResponse.json()
+        throw new Error(error.message || 'Invalid credentials')
+      }
+
+      // Save connection
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      const { error } = await supabase.from('ghl_connections').insert({
+        user_id: user.id,
+        api_key: locationApiKey,
+        location_id: locationId.trim(),
+        account_name: accountName.trim()
+      })
+
+      if (error) throw error
+
+      toast({
+        title: "Account Connected",
+        description: `${accountName} connected successfully`
+      })
+
+      // Reset form and reload
+      setAccountName("")
+      setLocationId("")
+      setLocationApiKey("")
+      setIsAddModalOpen(false)
+      await loadAccounts()
+
+    } catch (error: any) {
+      toast({
+        title: "Connection Failed",
+        description: error.message,
+        variant: "destructive",
+        duration: 10000
+      })
+    } finally {
+      setConnecting(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (!accountToDelete) return
+
+    try {
+      const response = await fetch(`/api/revival/delete-account?id=${accountToDelete}`, {
+        method: 'DELETE'
       })
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.message || 'Sync failed')
+        throw new Error(error.message)
       }
 
-      const result = await response.json()
-      
       toast({
-        title: "Sync Complete",
-        description: `Synced ${result.campaignsCount} campaigns and ${result.conversationsCount} conversations`
+        title: "Account Deleted",
+        description: "Account and all related data removed"
       })
 
-      await loadData()
+      setAccountToDelete(null)
+      await loadAccounts()
     } catch (error: any) {
       toast({
-        title: "Sync Failed",
-        description: error.message,
-        variant: "destructive"
-      })
-    } finally {
-      setSyncing(false)
-    }
-  }
-
-  const handleDownloadCampaign = async (campaignId: string, campaignName: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('revival_conversations')
-        .select('*')
-        .eq('campaign_id', campaignId)
-
-      if (error) throw error
-
-      const csvContent = [
-        ['Contact Name', 'Email', 'Phone', 'Status', 'Last Message', 'Messages Count'],
-        ...data.map(conv => [
-          conv.contact_name || '',
-          conv.contact_email || '',
-          conv.contact_phone || '',
-          conv.status || '',
-          conv.last_message_at || '',
-          Array.isArray(conv.messages) ? conv.messages.length : 0
-        ])
-      ].map(row => row.join(',')).join('\n')
-
-      const blob = new Blob([csvContent], { type: 'text/csv' })
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${campaignName.replace(/\s+/g, '_')}_conversations.csv`
-      a.click()
-      window.URL.revokeObjectURL(url)
-
-      toast({
-        title: "Downloaded",
-        description: "Campaign data exported successfully"
-      })
-    } catch (error: any) {
-      toast({
-        title: "Download Failed",
+        title: "Delete Failed",
         description: error.message,
         variant: "destructive"
       })
@@ -174,156 +179,176 @@ export default function DeadLeadRevivalPage() {
     )
   }
 
-  if (!connection) {
-    return (
-      <div className="p-6 space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Dead Lead Revival Engine</h1>
-          <p className="text-muted-foreground">Connect to GoHighLevel to sync campaigns and conversations</p>
-        </div>
-
-        <Card className="max-w-2xl">
-          <CardHeader>
-            <CardTitle>Connect GoHighLevel</CardTitle>
-            <CardDescription>
-              Enter your GoHighLevel API key to start syncing campaigns and AI conversations
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => router.push('/revival/connect')}>
-              <Plus className="h-4 w-4 mr-2" />
-              Connect GoHighLevel Account
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  const totalConversations = campaigns.reduce((sum, c) => sum + (c.metrics.total_conversations || 0), 0)
-  const totalMessages = campaigns.reduce((sum, c) => sum + (c.metrics.total_messages || 0), 0)
-  const avgResponseRate = campaigns.length > 0
-    ? campaigns.reduce((sum, c) => sum + (c.metrics.response_rate || 0), 0) / campaigns.length
-    : 0
-
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Dead Lead Revival Engine</h1>
+          <h1 className="text-3xl font-bold">GHL Dead Lead Accounts</h1>
           <p className="text-muted-foreground">
-            Connected to {connection.account_name || 'GoHighLevel'}
+            Manage your GoHighLevel sub-account connections
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => router.push('/revival/connect')}>
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
-          </Button>
-          <Button onClick={handleSync} disabled={syncing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-            {syncing ? 'Syncing...' : 'Sync Now'}
-          </Button>
-        </div>
-      </div>
+        
+        <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add GHL Dead Lead Account
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Add GHL Dead Lead Account</DialogTitle>
+              <DialogDescription>
+                Connect a GoHighLevel sub-account to track dead lead revival campaigns
+              </DialogDescription>
+            </DialogHeader>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Campaigns</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-8 w-8 text-primary" />
-              <div className="text-3xl font-bold">{campaigns.length}</div>
-            </div>
-          </CardContent>
-        </Card>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="accountName">Account Name *</Label>
+                <Input
+                  id="accountName"
+                  placeholder="EcoScapes – Omaha"
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                  autoComplete="off"
+                />
+                <p className="text-xs text-muted-foreground">
+                  A label to identify this client inside the Aether app
+                </p>
+              </div>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Conversations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <MessageSquare className="h-8 w-8 text-primary" />
-              <div className="text-3xl font-bold">{totalConversations}</div>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="space-y-2">
+                <Label htmlFor="locationId">Location ID *</Label>
+                <Input
+                  id="locationId"
+                  placeholder="Paste your GHL Location ID"
+                  value={locationId}
+                  onChange={(e) => setLocationId(e.target.value)}
+                  autoComplete="off"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Found in GHL: Sub-Account → Settings → Business Profile
+                </p>
+              </div>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Response Rate</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Users className="h-8 w-8 text-primary" />
-              <div className="text-3xl font-bold">{avgResponseRate.toFixed(1)}%</div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+              <div className="space-y-2">
+                <Label htmlFor="locationApiKey">Location API Key *</Label>
+                <Input
+                  id="locationApiKey"
+                  type="password"
+                  placeholder="Paste your Location API Key"
+                  value={locationApiKey}
+                  onChange={(e) => setLocationApiKey(e.target.value)}
+                  autoComplete="new-password"
+                  name="ghl-location-api-key"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Found in GHL: Sub-Account → Settings → API Keys → Location API Key
+                </p>
+              </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Campaigns</CardTitle>
-          <CardDescription>
-            {connection.last_synced_at 
-              ? `Last synced ${new Date(connection.last_synced_at).toLocaleString()}`
-              : 'Not synced yet'
-            }
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {campaigns.length === 0 ? (
-            <div className="text-center py-12">
-              <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-4">No campaigns found</p>
-              <Button onClick={handleSync}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Sync Campaigns
+              <div className="flex gap-2 items-center p-3 bg-muted rounded-lg">
+                <ExternalLink className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <p className="text-xs text-muted-foreground">
+                  Need help finding your credentials? Visit the{" "}
+                  <a 
+                    href="https://help.gohighlevel.com/support/solutions/articles/48001204848" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    GHL API documentation
+                  </a>
+                </p>
+              </div>
+
+              <Button 
+                onClick={handleAddAccount} 
+                disabled={connecting}
+                className="w-full"
+              >
+                {connecting ? 'Connecting...' : 'Connect Account'}
               </Button>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {campaigns.map((campaign) => (
-                <div
-                  key={campaign.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {accounts.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <TrendingUp className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground mb-4 text-center">
+              No GHL accounts connected yet.<br />
+              Add your first account to start tracking dead lead revivals.
+            </p>
+            <Button onClick={() => setIsAddModalOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Your First Account
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {accounts.map((account) => (
+            <Card key={account.id} className="relative">
+              <CardHeader>
+                <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="font-semibold">{campaign.name}</h3>
-                    <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
-                      <span>{campaign.metrics.total_conversations || 0} conversations</span>
-                      <span>{campaign.metrics.total_messages || 0} messages</span>
-                      {campaign.metrics.response_rate && (
-                        <span>{campaign.metrics.response_rate}% response rate</span>
-                      )}
-                    </div>
+                    <CardTitle className="text-lg">{account.account_name}</CardTitle>
+                    <CardDescription className="text-xs mt-1">
+                      Location: {account.location_id?.substring(0, 12)}...
+                    </CardDescription>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/revival/campaign/${campaign.id}`)}
-                    >
-                      View Details
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownloadCampaign(campaign.id, campaign.name)}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                    onClick={() => setAccountToDelete(account.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                  Connected {new Date(account.connected_at).toLocaleDateString()}
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => router.push(`/revival/account/${account.id}`)}
+                  >
+                    View Data
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <AlertDialog open={!!accountToDelete} onOpenChange={() => setAccountToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this GHL account connection and all associated campaign and conversation data. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete Account
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
