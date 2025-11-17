@@ -1,295 +1,236 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { FileText, Download, Copy, RotateCw } from 'lucide-react'
-import { useState } from "react"
+import { Plus, FileText, Trash2, Download, Calendar, Search } from 'lucide-react'
+import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { Progress } from "@/components/ui/progress"
+import { createClient } from "@/lib/supabase/client"
+import Link from "next/link"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
-export default function AIAuditPage() {
-  const [businessName, setBusinessName] = useState("")
-  const [website, setWebsite] = useState("")
-  const [goals, setGoals] = useState("")
-  const [generated, setGenerated] = useState(false)
+interface Audit {
+  id: string
+  name: string
+  created_at: string
+  updated_at: string
+  responses: Record<string, string>
+}
+
+export default function AuditHomePage() {
+  const [audits, setAudits] = useState<Audit[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [deleteId, setDeleteId] = useState<string | null>(null)
   const { toast } = useToast()
+  const supabase = createClient()
 
-  const handleGenerate = () => {
-    if (!businessName || !website) {
+  useEffect(() => {
+    loadAudits()
+  }, [])
+
+  async function loadAudits() {
+    try {
+      const { data, error } = await supabase
+        .from('audits')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setAudits(data || [])
+    } catch (error) {
+      console.error('[v0] Error loading audits:', error)
       toast({
-        title: "Missing Information",
-        description: "Please fill in required fields",
+        title: "Error",
+        description: "Failed to load audits",
         variant: "destructive",
       })
-      return
+    } finally {
+      setLoading(false)
     }
+  }
 
-    setGenerated(true)
+  async function handleDelete(id: string) {
+    try {
+      const { error } = await supabase
+        .from('audits')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+
+      setAudits(audits.filter(a => a.id !== id))
+      toast({
+        title: "Deleted",
+        description: "Audit deleted successfully",
+      })
+    } catch (error) {
+      console.error('[v0] Error deleting audit:', error)
+      toast({
+        title: "Error",
+        description: "Failed to delete audit",
+        variant: "destructive",
+      })
+    }
+    setDeleteId(null)
+  }
+
+  function handleDownload(audit: Audit) {
+    const content = `AI READINESS AUDIT\n\nBusiness: ${audit.name}\nDate: ${new Date(audit.created_at).toLocaleDateString()}\n\n${Object.entries(audit.responses).map(([key, value]) => `${key}:\n${value}\n`).join('\n')}`
+    
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${audit.name.replace(/\s+/g, '-')}-audit.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
     toast({
-      title: "Audit Generated",
-      description: "Your AI audit is ready",
+      title: "Downloaded",
+      description: "Audit downloaded successfully",
     })
   }
 
-  const handleExport = () => {
-    toast({
-      title: "Exporting PDF",
-      description: "Your audit is being prepared for download",
-    })
-  }
+  const filteredAudits = audits.filter(audit =>
+    audit.name.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">AI Audit Generator</h1>
-        <p className="text-muted-foreground">Generate comprehensive AI readiness audits for clients</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">AI Readiness Audits</h1>
+          <p className="text-muted-foreground">Create and manage comprehensive AI readiness assessments</p>
+        </div>
+        <Link href="/audit/builder">
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            New Audit
+          </Button>
+        </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <Card>
+        <CardContent className="pt-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search audits by business name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {loading ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Loading audits...</p>
+        </div>
+      ) : filteredAudits.length === 0 ? (
         <Card>
-          <CardHeader>
-            <CardTitle>Business Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="business">Business Name *</Label>
-              <Input
-                id="business"
-                placeholder="Enter business name"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="website">Website *</Label>
-              <Input
-                id="website"
-                type="url"
-                placeholder="https://example.com"
-                value={website}
-                onChange={(e) => setWebsite(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="goals">Primary Goals</Label>
-              <Textarea
-                id="goals"
-                placeholder="What are the main business goals?"
-                value={goals}
-                onChange={(e) => setGoals(e.target.value)}
-                rows={3}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="crm">Current CRM</Label>
-              <Input id="crm" placeholder="e.g., Salesforce, HubSpot" />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="traffic">Traffic Sources</Label>
-              <Input id="traffic" placeholder="e.g., Google Ads, SEO, Social" />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="sales">Sales Process</Label>
-              <Textarea id="sales" placeholder="Describe your sales process" rows={3} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="challenges">Biggest Challenges</Label>
-              <Textarea id="challenges" placeholder="What are the main pain points?" rows={3} />
-            </div>
-
-            <Button onClick={handleGenerate} className="w-full">
-              Generate AI Audit
-            </Button>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <FileText className="h-16 w-16 text-muted-foreground mb-4" />
+            <h3 className="text-xl font-semibold mb-2">
+              {searchQuery ? "No audits found" : "No audits yet"}
+            </h3>
+            <p className="text-muted-foreground mb-6 text-center max-w-md">
+              {searchQuery 
+                ? "Try adjusting your search query"
+                : "Create your first AI readiness audit to help clients understand their AI transformation opportunities"
+              }
+            </p>
+            {!searchQuery && (
+              <Link href="/audit/builder">
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create First Audit
+                </Button>
+              </Link>
+            )}
           </CardContent>
         </Card>
-
-        <div className="lg:col-span-2 space-y-4">
-          {generated ? (
-            <>
-              <div className="flex gap-2">
-                <Button onClick={handleExport} variant="outline" className="flex-1">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export PDF
-                </Button>
-                <Button variant="outline" className="flex-1">
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copy Summary
-                </Button>
-                <Button variant="outline" className="flex-1">
-                  <RotateCw className="h-4 w-4 mr-2" />
-                  Regenerate
-                </Button>
-              </div>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>AI Readiness Scorecard</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="text-center">
-                    <div className="text-5xl font-bold text-primary mb-2">72/100</div>
-                    <p className="text-muted-foreground">Overall AI Readiness Score</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredAudits.map((audit) => (
+            <Card key={audit.id} className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="text-lg line-clamp-1">{audit.name}</CardTitle>
+                    <CardDescription className="flex items-center gap-2 mt-2">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(audit.created_at).toLocaleDateString()}
+                    </CardDescription>
                   </div>
-
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Data Infrastructure</span>
-                        <span className="font-medium">85/100</span>
-                      </div>
-                      <Progress value={85} />
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Automation Potential</span>
-                        <span className="font-medium">70/100</span>
-                      </div>
-                      <Progress value={70} />
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>AI Integration Readiness</span>
-                        <span className="font-medium">60/100</span>
-                      </div>
-                      <Progress value={60} />
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Team Capability</span>
-                        <span className="font-medium">75/100</span>
-                      </div>
-                      <Progress value={75} />
-                    </div>
+                  <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="text-sm text-muted-foreground">
+                    {Object.keys(audit.responses).length} questions answered
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Transformation Map</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex gap-4 items-start">
-                      <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-white font-bold">
-                        1
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-semibold">Quick Wins (0-30 days)</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Implement chatbot for lead qualification, automate email follow-ups
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-4 items-start">
-                      <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-white font-bold">
-                        2
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-semibold">Medium Term (30-90 days)</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Deploy AI-powered CRM integrations, predictive lead scoring
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-4 items-start">
-                      <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-white font-bold">
-                        3
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-semibold">Long Term (90+ days)</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Full AI sales automation, custom AI models for your business
-                        </p>
-                      </div>
-                    </div>
+                  <div className="flex gap-2">
+                    <Link href={`/audit/builder?id=${audit.id}`} className="flex-1">
+                      <Button variant="outline" className="w-full">
+                        View/Edit
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleDownload(audit)}
+                      title="Download"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setDeleteId(audit.id)}
+                      title="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Revival Opportunity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div>
-                      <div className="text-2xl font-bold text-primary">347</div>
-                      <div className="text-sm text-muted-foreground">Dead Leads</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-secondary">$87K</div>
-                      <div className="text-sm text-muted-foreground">Potential Revenue</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-primary">15%</div>
-                      <div className="text-sm text-muted-foreground">Est. Conversion</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Key Recommendations</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3">
-                    <li className="flex gap-3">
-                      <FileText className="h-5 w-5 text-primary flex-shrink-0" />
-                      <span className="text-sm">
-                        Implement AI-powered lead qualification to reduce manual screening by 80%
-                      </span>
-                    </li>
-                    <li className="flex gap-3">
-                      <FileText className="h-5 w-5 text-primary flex-shrink-0" />
-                      <span className="text-sm">
-                        Deploy automated follow-up sequences to engage cold leads within 24 hours
-                      </span>
-                    </li>
-                    <li className="flex gap-3">
-                      <FileText className="h-5 w-5 text-primary flex-shrink-0" />
-                      <span className="text-sm">
-                        Integrate predictive analytics to identify high-value opportunities early
-                      </span>
-                    </li>
-                    <li className="flex gap-3">
-                      <FileText className="h-5 w-5 text-primary flex-shrink-0" />
-                      <span className="text-sm">
-                        Create personalized AI personas for different customer segments
-                      </span>
-                    </li>
-                  </ul>
-                </CardContent>
-              </Card>
-            </>
-          ) : (
-            <Card className="h-full flex items-center justify-center min-h-[600px]">
-              <CardContent className="text-center space-y-4">
-                <FileText className="h-16 w-16 mx-auto text-muted-foreground" />
-                <h3 className="text-xl font-semibold">No Audit Generated Yet</h3>
-                <p className="text-muted-foreground max-w-md">
-                  Fill in the business information form and click "Generate AI Audit" to create a comprehensive report
-                </p>
+                </div>
               </CardContent>
             </Card>
-          )}
+          ))}
         </div>
-      </div>
+      )}
+
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Audit</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this audit? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteId && handleDelete(deleteId)}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
