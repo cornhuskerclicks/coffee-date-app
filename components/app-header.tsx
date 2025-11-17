@@ -1,6 +1,6 @@
 "use client"
 
-import { Bell, Search, User, LogOut } from 'lucide-react'
+import { Bell, Search, User, LogOut, Settings2 } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -58,7 +58,7 @@ export function AppHeader() {
                 Profile
               </DropdownMenuItem>
               <DropdownMenuItem className="cursor-pointer">
-                <Settings className="h-4 w-4 mr-2" />
+                <Settings2 className="h-4 w-4 mr-2" />
                 Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />

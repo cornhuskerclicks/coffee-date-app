@@ -1,5 +1,6 @@
 "use client"
 
+// Version: 2.0.0 - Updated for Aether branding
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,21 +17,21 @@ import { AI_AUDIT_QUESTIONS, getQuestionsByCategory } from "@/lib/audit-question
 function AuditBuilderContent() {
   const [auditName, setAuditName] = useState("")
   const [responses, setResponses] = useState<Record<string, string>>({})
-  const [loading, setLoading] = useState(false)
-  const [auditId, setAuditId] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
   const { toast } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const auditId = searchParams?.get('id')
   const supabase = createClient()
 
-  const categories = getQuestionsByCategory()
-
   useEffect(() => {
-    const id = searchParams.get('id')
-    if (id) {
-      loadAudit(id)
+    if (auditId) {
+      loadAudit(auditId)
+    } else {
+      setLoading(false)
     }
-  }, [searchParams])
+  }, [auditId])
 
   async function loadAudit(id: string) {
     try {
@@ -42,9 +43,10 @@ function AuditBuilderContent() {
 
       if (error) throw error
 
-      setAuditId(id)
-      setAuditName(data.name)
-      setResponses(data.responses)
+      if (data) {
+        setAuditName(data.name)
+        setResponses(data.responses || {})
+      }
     } catch (error) {
       console.error('[v0] Error loading audit:', error)
       toast({
@@ -52,20 +54,22 @@ function AuditBuilderContent() {
         description: "Failed to load audit",
         variant: "destructive",
       })
+    } finally {
+      setLoading(false)
     }
   }
 
   async function handleSave() {
     if (!auditName.trim()) {
       toast({
-        title: "Missing Information",
+        title: "Validation Error",
         description: "Please enter a business name",
         variant: "destructive",
       })
       return
     }
 
-    setLoading(true)
+    setSaving(true)
 
     try {
       if (auditId) {
@@ -80,30 +84,24 @@ function AuditBuilderContent() {
           .eq('id', auditId)
 
         if (error) throw error
-
-        toast({
-          title: "Saved",
-          description: "Audit updated successfully",
-        })
       } else {
         // Create new audit
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('audits')
           .insert({
             name: auditName,
             responses,
           })
-          .select()
-          .single()
 
         if (error) throw error
-
-        setAuditId(data.id)
-        toast({
-          title: "Saved",
-          description: "Audit created successfully",
-        })
       }
+
+      toast({
+        title: "Saved",
+        description: "Audit saved successfully",
+      })
+
+      router.push('/audit')
     } catch (error) {
       console.error('[v0] Error saving audit:', error)
       toast({
@@ -112,26 +110,16 @@ function AuditBuilderContent() {
         variant: "destructive",
       })
     } finally {
-      setLoading(false)
+      setSaving(false)
     }
   }
 
   function handleDownload() {
-    if (!auditName.trim()) {
-      toast({
-        title: "Missing Information",
-        description: "Please save the audit first",
-        variant: "destructive",
-      })
-      return
-    }
-
-    const content = `AI READINESS AUDIT\n\nBusiness: ${auditName}\nDate: ${new Date().toLocaleDateString()}\n\n` +
-      categories.map(([category, questions]) =>
-        `${category.toUpperCase()}\n\n` +
-        questions.map(q => `${q.question}\n${responses[q.id] || '[Not answered]'}\n`).join('\n')
-      ).join('\n\n')
-
+    const content = `AI READINESS AUDIT\n\nBusiness: ${auditName}\nDate: ${new Date().toLocaleDateString()}\n\n${Object.entries(responses).map(([key, value]) => {
+      const question = AI_AUDIT_QUESTIONS.find(q => q.id === key)
+      return `${question?.question || key}:\n${value}\n`
+    }).join('\n')}`
+    
     const blob = new Blob([content], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -148,30 +136,45 @@ function AuditBuilderContent() {
     })
   }
 
+  const categorizedQuestions = getQuestionsByCategory()
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
+          <p className="text-muted-foreground">Loading audit...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/audit">
             <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
           <div>
             <h1 className="text-3xl font-bold">
               {auditId ? 'Edit Audit' : 'New Audit'}
             </h1>
-            <p className="text-muted-foreground">Complete the AI readiness assessment</p>
+            <p className="text-muted-foreground">
+              Complete the AI readiness assessment
+            </p>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleDownload}>
+          <Button variant="outline" onClick={handleDownload} disabled={!auditName}>
             <Download className="h-4 w-4 mr-2" />
             Download
           </Button>
-          <Button onClick={handleSave} disabled={loading}>
+          <Button onClick={handleSave} disabled={saving}>
             <Save className="h-4 w-4 mr-2" />
-            {loading ? 'Saving...' : 'Save Audit'}
+            {saving ? 'Saving...' : 'Save Audit'}
           </Button>
         </div>
       </div>
@@ -183,10 +186,10 @@ function AuditBuilderContent() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <Label htmlFor="auditName">Business Name *</Label>
+            <Label htmlFor="business-name">Business Name *</Label>
             <Input
-              id="auditName"
-              placeholder="Enter business name..."
+              id="business-name"
+              placeholder="Enter business name"
               value={auditName}
               onChange={(e) => setAuditName(e.target.value)}
             />
@@ -194,7 +197,7 @@ function AuditBuilderContent() {
         </CardContent>
       </Card>
 
-      {categories.map(([category, questions]) => (
+      {categorizedQuestions.map(([category, questions]) => (
         <Card key={category}>
           <CardHeader>
             <CardTitle>{category}</CardTitle>
@@ -206,21 +209,21 @@ function AuditBuilderContent() {
                 {question.type === 'text' ? (
                   <Input
                     id={question.id}
+                    placeholder="Your answer..."
                     value={responses[question.id] || ''}
                     onChange={(e) =>
                       setResponses({ ...responses, [question.id]: e.target.value })
                     }
-                    placeholder="Your answer..."
                   />
                 ) : (
                   <Textarea
                     id={question.id}
+                    placeholder="Your answer..."
+                    rows={4}
                     value={responses[question.id] || ''}
                     onChange={(e) =>
                       setResponses({ ...responses, [question.id]: e.target.value })
                     }
-                    placeholder="Your answer..."
-                    rows={3}
                   />
                 )}
               </div>
@@ -228,6 +231,16 @@ function AuditBuilderContent() {
           </CardContent>
         </Card>
       ))}
+
+      <div className="flex justify-end gap-2">
+        <Link href="/audit">
+          <Button variant="outline">Cancel</Button>
+        </Link>
+        <Button onClick={handleSave} disabled={saving}>
+          <Save className="h-4 w-4 mr-2" />
+          {saving ? 'Saving...' : 'Save Audit'}
+        </Button>
+      </div>
     </div>
   )
 }
@@ -235,8 +248,11 @@ function AuditBuilderContent() {
 export default function AuditBuilderPage() {
   return (
     <Suspense fallback={
-      <div className="p-6">
-        <p className="text-muted-foreground">Loading audit builder...</p>
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
+          <p className="text-muted-foreground">Loading audit builder...</p>
+        </div>
       </div>
     }>
       <AuditBuilderContent />
