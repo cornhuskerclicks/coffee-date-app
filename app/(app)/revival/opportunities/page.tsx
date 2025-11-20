@@ -33,7 +33,7 @@ type Niche = {
   }
 }
 
-const STATUSES = ["Not Reviewed", "Shortlisted", "Outreach In Progress", "Proposal Sent", "Won", "Dropped"]
+const STATUSES = ["Not Reviewed", "Shortlisted", "Out Reach in Progress", "Coffee Date Done", "Success"]
 
 export default function OpportunitiesPage() {
   const [view, setView] = useState<"table" | "board">("table")
