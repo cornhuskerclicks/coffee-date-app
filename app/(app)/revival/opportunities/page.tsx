@@ -294,11 +294,13 @@ export default function OpportunitiesV2() {
   }
 
   const calculateAOV = (aov: number) => {
+    console.log("[v0] Calculating AOV with value:", aov)
     const cpl = aov * 0.05 // 5% of AOV for cost per lead
     const cpa = aov / 3 // Customer acquisition cost is 1/3 of AOV
     const potentialRetainer = cpl * 100 // Estimate for 100 leads/month
     const profitSplit = potentialRetainer * 0.5
 
+    console.log("[v0] Calculation results:", { cpl, cpa, potentialRetainer, profitSplit })
     return { cpl, cpa, potentialRetainer, profitSplit }
   }
 
@@ -514,7 +516,7 @@ export default function OpportunitiesV2() {
       const response = await fetch("/api/opportunities/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: JSON.JSON.stringify({
           messages: updatedMessages,
           nicheName: selectedNiche.niche_name,
         }),
@@ -771,8 +773,12 @@ export default function OpportunitiesV2() {
                           </Label>
                           <Textarea
                             value={localInputs.researchNotes}
-                            onChange={(e) => setLocalInputs({ ...localInputs, researchNotes: e.target.value })}
+                            onChange={(e) => {
+                              console.log("[v0] Research notes changed, length:", e.target.value.length)
+                              setLocalInputs({ ...localInputs, researchNotes: e.target.value })
+                            }}
                             onBlur={() => {
+                              console.log("[v0] Research notes blur, saving:", localInputs.researchNotes.length)
                               updateNicheState({
                                 research_notes: localInputs.researchNotes,
                               })
@@ -784,9 +790,15 @@ export default function OpportunitiesV2() {
                             <Checkbox
                               checked={selectedNiche.user_state?.research_notes_added || false}
                               disabled={!localInputs.researchNotes || localInputs.researchNotes.length < 200}
-                              onCheckedChange={(checked) =>
+                              onCheckedChange={(checked) => {
+                                console.log("[v0] Research notes checkbox changed:", checked)
+                                console.log("[v0] Current notes length:", localInputs.researchNotes.length)
+                                console.log(
+                                  "[v0] Disabled state:",
+                                  !localInputs.researchNotes || localInputs.researchNotes.length < 200,
+                                )
                                 updateNicheState({ research_notes_added: checked as boolean })
-                              }
+                              }}
                               className="border-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
                             />
                             <span
@@ -812,11 +824,14 @@ export default function OpportunitiesV2() {
                                 value={localInputs.aovInput}
                                 onChange={(e) => {
                                   const newValue = e.target.value
+                                  console.log("[v0] AOV input changed:", newValue)
                                   setLocalInputs({ ...localInputs, aovInput: newValue })
 
                                   const aov = newValue === "" ? 0 : Number(newValue)
+                                  console.log("[v0] Parsed AOV value:", aov)
                                   if (aov > 0) {
                                     const calc = calculateAOV(aov)
+                                    console.log("[v0] Updating niche state with calculations")
                                     updateNicheState({
                                       aov_input: aov,
                                       cpl_calculated: calc.cpl,
@@ -892,9 +907,11 @@ export default function OpportunitiesV2() {
                             <Checkbox
                               checked={selectedNiche.user_state?.aov_calculator_completed || false}
                               disabled={!selectedNiche.user_state?.aov_input || selectedNiche.user_state.aov_input <= 0}
-                              onCheckedChange={(checked) =>
+                              onCheckedChange={(checked) => {
+                                console.log("[v0] AOV calculator checkbox changed:", checked)
+                                console.log("[v0] Current AOV input:", selectedNiche.user_state?.aov_input)
                                 updateNicheState({ aov_calculator_completed: checked as boolean })
-                              }
+                              }}
                               className="border-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
                             />
                             <span
@@ -917,15 +934,22 @@ export default function OpportunitiesV2() {
                             <Button
                               onClick={startProfileChat}
                               disabled={generatingProfile}
-                              className="w-full bg-primary hover:bg-primary/90"
+                              className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 shadow-lg shadow-primary/20 transition-all"
                             >
-                              Start ICP Interview
+                              {generatingProfile ? (
+                                <span className="flex items-center gap-2">
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Starting Interview...
+                                </span>
+                              ) : (
+                                "Start ICP Interview"
+                              )}
                             </Button>
                           )}
 
                           {isProfileChatActive && (
                             <div className="space-y-3">
-                              <div className="max-h-[400px] overflow-y-auto space-y-3 p-4 bg-gradient-to-b from-black/40 to-black/60 rounded-lg border border-white/10 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-white/30">
+                              <div className="max-h-[400px] overflow-y-auto space-y-3 p-4 bg-gradient-to-b from-black/40 to-black/60 rounded-lg border border-white/10 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-black/20 [&::-webkit-scrollbar-thumb]:bg-primary/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-primary/60">
                                 {profileChatMessages.map((msg, idx) => (
                                   <div
                                     key={idx}
@@ -966,7 +990,8 @@ export default function OpportunitiesV2() {
                                   onClick={sendProfileChatMessage}
                                   disabled={isProfileChatLoading || !profileChatInput.trim()}
                                   size="icon"
-                                  className="bg-primary hover:bg-primary/90 shrink-0"
+                                  className="bg-primary hover:bg-primary/90 shrink-0 w-10 h-10 shadow-lg shadow-primary/20"
+                                  title="Send message"
                                 >
                                   <Send className="h-4 w-4" />
                                 </Button>
@@ -1019,9 +1044,11 @@ export default function OpportunitiesV2() {
                             <Checkbox
                               checked={selectedNiche.user_state?.customer_profile_generated || false}
                               disabled={!selectedNiche.user_state?.customer_profile}
-                              onCheckedChange={(checked) =>
+                              onCheckedChange={(checked) => {
+                                console.log("[v0] Customer profile checkbox changed:", checked)
+                                console.log("[v0] Has customer profile:", !!selectedNiche.user_state?.customer_profile)
                                 updateNicheState({ customer_profile_generated: checked as boolean })
-                              }
+                              }}
                               className="border-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
                             />
                             <span
