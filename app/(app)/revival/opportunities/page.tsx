@@ -126,6 +126,12 @@ export default function OpportunitiesV2() {
     profile: true,
   })
 
+  const [checkboxStates, setCheckboxStates] = useState({
+    research_notes_added: false,
+    aov_calculator_completed: false,
+    customer_profile_generated: false,
+  })
+
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   const { toast } = useToast()
@@ -141,8 +147,13 @@ export default function OpportunitiesV2() {
   }, [niches, searchTerm, industryFilter, statusFilter, favouritesOnly, sortBy])
 
   useEffect(() => {
-    console.log("[v0] Selected niche changed:", selectedNiche?.niche_name)
-    if (selectedNiche) {
+    if (selectedNiche?.user_state) {
+      setCheckboxStates({
+        research_notes_added: selectedNiche.user_state.research_notes_added || false,
+        aov_calculator_completed: selectedNiche.user_state.aov_calculator_completed || false,
+        customer_profile_generated: selectedNiche.user_state.customer_profile_generated || false,
+      })
+      console.log("[v0] Selected niche changed:", selectedNiche?.niche_name)
       console.log("[v0] User state:", selectedNiche.user_state)
       setLocalInputs({
         researchNotes: selectedNiche.user_state?.research_notes || "",
@@ -455,6 +466,17 @@ export default function OpportunitiesV2() {
 
       setSelectedNiche(updatedNiche)
       setNiches(niches.map((n) => (n.id === selectedNiche.id ? updatedNiche : n)))
+
+      // Sync local checkbox states after successful DB update
+      if (updates.research_notes_added !== undefined) {
+        setCheckboxStates((prev) => ({ ...prev, research_notes_added: updates.research_notes_added! }))
+      }
+      if (updates.aov_calculator_completed !== undefined) {
+        setCheckboxStates((prev) => ({ ...prev, aov_calculator_completed: updates.aov_calculator_completed! }))
+      }
+      if (updates.customer_profile_generated !== undefined) {
+        setCheckboxStates((prev) => ({ ...prev, customer_profile_generated: updates.customer_profile_generated! }))
+      }
 
       toast({
         title: "Saved",
@@ -919,37 +941,16 @@ export default function OpportunitiesV2() {
                             className="bg-white/5 border-white/10 text-white placeholder:text-white/40 min-h-[120px]"
                           />
                           <div className="flex items-center gap-2">
-                            {/* Improved checkbox handler with more logging */}
                             <Checkbox
                               id="research-notes-checkbox"
-                              checked={selectedNiche.user_state?.research_notes_added || false}
+                              checked={checkboxStates.research_notes_added}
                               disabled={!localInputs.researchNotes || localInputs.researchNotes.length < 200}
                               onCheckedChange={(checked) => {
-                                console.log("[v0] ========== CHECKBOX CLICKED ==========")
-                                console.log("[v0] Checked value:", checked)
-                                console.log("[v0] Checked type:", typeof checked)
-                                console.log("[v0] Current notes:", localInputs.researchNotes)
-                                console.log("[v0] Notes length:", localInputs.researchNotes?.length)
-                                console.log(
-                                  "[v0] Is disabled:",
-                                  !localInputs.researchNotes || localInputs.researchNotes.length < 200,
-                                )
-                                console.log(
-                                  "[v0] Current database state:",
-                                  selectedNiche.user_state?.research_notes_added,
-                                )
-
                                 if (checked !== "indeterminate") {
-                                  console.log("[v0] Calling updateNicheState with:", { research_notes_added: checked })
+                                  // Update local state immediately for instant feedback
+                                  setCheckboxStates((prev) => ({ ...prev, research_notes_added: checked }))
+                                  // Then update database
                                   updateNicheState({ research_notes_added: checked })
-                                    .then(() => {
-                                      console.log("[v0] updateNicheState completed successfully")
-                                      // Force a refresh of the niches data
-                                      loadNiches()
-                                    })
-                                    .catch((err) => {
-                                      console.error("[v0] updateNicheState failed:", err)
-                                    })
                                 }
                               }}
                               className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary disabled:opacity-30 disabled:cursor-not-allowed"
@@ -1138,13 +1139,13 @@ export default function OpportunitiesV2() {
 
                           <div className="flex items-center gap-2 pt-2">
                             <Checkbox
-                              checked={selectedNiche.user_state?.aov_calculator_completed || false}
+                              checked={checkboxStates.aov_calculator_completed}
                               disabled={!localInputs.aovInput || Number.parseFloat(localInputs.aovInput) <= 0}
                               onCheckedChange={(checked) => {
-                                console.log("[v0] AOV checkbox toggled:", checked)
-                                console.log("[v0] Has AOV input:", !!localInputs.aovInput)
-                                console.log("[v0] AOV input value:", Number.parseFloat(localInputs.aovInput))
                                 if (checked !== "indeterminate") {
+                                  // Update local state immediately for instant feedback
+                                  setCheckboxStates((prev) => ({ ...prev, aov_calculator_completed: checked }))
+                                  // Then update database
                                   updateNicheState({ aov_calculator_completed: checked })
                                 }
                               }}
@@ -1281,12 +1282,13 @@ export default function OpportunitiesV2() {
 
                           <div className="flex items-center gap-2">
                             <Checkbox
-                              checked={selectedNiche.user_state?.customer_profile_generated || false}
+                              checked={checkboxStates.customer_profile_generated}
                               disabled={!selectedNiche.user_state?.customer_profile}
                               onCheckedChange={(checked) => {
-                                console.log("[v0] Customer profile checkbox changed:", checked)
-                                console.log("[v0] Has customer profile:", !!selectedNiche.user_state?.customer_profile)
                                 if (checked !== "indeterminate") {
+                                  // Update local state immediately for instant feedback
+                                  setCheckboxStates((prev) => ({ ...prev, customer_profile_generated: checked }))
+                                  // Then update database
                                   updateNicheState({ customer_profile_generated: checked })
                                 }
                               }}
