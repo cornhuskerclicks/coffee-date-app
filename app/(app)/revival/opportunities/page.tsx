@@ -67,7 +67,6 @@ type Niche = {
     outreach_messages_sent: number
     outreach_notes: string | null
     demo_script_created: boolean
-    // Coffee Date phase
     demo_script: string | null
     coffee_date_completed: boolean
     ghl_sub_account_id: string | null
@@ -92,10 +91,22 @@ export default function OpportunitiesV2() {
   const [favouritesOnly, setFavouritesOnly] = useState(false)
   const [sortBy, setSortBy] = useState<string>("alphabetical")
 
+  const [localInputs, setLocalInputs] = useState({
+    researchNotes: "",
+    aovInput: "",
+    databaseSizeInput: "",
+    outreachNotes: "",
+  })
+
   // AI generation states
   const [generatingProfile, setGeneratingProfile] = useState(false)
   const [generatingMessaging, setGeneratingMessaging] = useState(false)
   const [generatingDemo, setGeneratingDemo] = useState(false)
+
+  const [profileChatMessages, setProfileChatMessages] = useState<Array<{ role: string; content: string }>>([])
+  const [profileChatInput, setProfileChatInput] = useState("")
+  const [isProfileChatActive, setIsProfileChatActive] = useState(false)
+  const [isProfileChatLoading, setIsProfileChatLoading] = useState(false)
 
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     research: true,
@@ -113,6 +124,17 @@ export default function OpportunitiesV2() {
   useEffect(() => {
     applyFilters()
   }, [niches, searchTerm, industryFilter, statusFilter, favouritesOnly, sortBy])
+
+  useEffect(() => {
+    if (selectedNiche) {
+      setLocalInputs({
+        researchNotes: selectedNiche.user_state?.research_notes || "",
+        aovInput: selectedNiche.user_state?.aov_input?.toString() || "",
+        databaseSizeInput: selectedNiche.user_state?.database_size_input?.toString() || "",
+        outreachNotes: selectedNiche.user_state?.outreach_notes || "",
+      })
+    }
+  }, [selectedNiche])
 
   const loadData = async () => {
     try {
@@ -459,6 +481,68 @@ export default function OpportunitiesV2() {
     }
   }
 
+  const startProfileChat = async () => {
+    setIsProfileChatActive(true)
+    setProfileChatMessages([
+      {
+        role: "assistant",
+        content:
+          "Hi! I'm here to help you define your Ideal Customer Profile for this niche. Let's start with your business - who do you currently serve in this space?",
+      },
+    ])
+  }
+
+  const sendProfileChatMessage = async () => {
+    if (!profileChatInput.trim() || !selectedNiche) return
+
+    const userMessage = { role: "user", content: profileChatInput }
+    const updatedMessages = [...profileChatMessages, userMessage]
+    setProfileChatMessages(updatedMessages)
+    setProfileChatInput("")
+    setIsProfileChatLoading(true)
+
+    try {
+      const response = await fetch("/api/opportunities/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: updatedMessages,
+          nicheName: selectedNiche.niche_name,
+        }),
+      })
+
+      if (!response.ok) throw new Error("Failed to get chat response")
+
+      const result = await response.json()
+
+      if (result.success) {
+        const assistantMessage = { role: "assistant", content: result.message }
+        setProfileChatMessages([...updatedMessages, assistantMessage])
+
+        // If we have the complete ICP, save it
+        if (result.icpComplete && result.customerProfile) {
+          await updateNicheState({
+            customer_profile: result.customerProfile,
+            customer_profile_generated: true,
+          })
+          setIsProfileChatActive(false)
+          toast({
+            title: "Customer Profile Saved",
+            description: "Your ICP has been generated and saved successfully!",
+          })
+        }
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send message",
+        variant: "destructive",
+      })
+    } finally {
+      setIsProfileChatLoading(false)
+    }
+  }
+
   // Add toggleSection function
   const toggleSection = (section: string) => {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }))
@@ -673,12 +757,13 @@ export default function OpportunitiesV2() {
                         <div className="space-y-2">
                           <Label className="text-white">Research Notes</Label>
                           <Textarea
-                            value={selectedNiche.user_state?.research_notes || ""}
-                            onChange={(e) => updateNicheState({ research_notes: e.target.value })}
+                            value={localInputs.researchNotes}
+                            onChange={(e) => setLocalInputs({ ...localInputs, researchNotes: e.target.value })}
                             onBlur={() => {
-                              if (selectedNiche.user_state?.research_notes) {
-                                updateNicheState({ research_notes_added: true })
-                              }
+                              updateNicheState({
+                                research_notes: localInputs.researchNotes,
+                                research_notes_added: !!localInputs.researchNotes,
+                              })
                             }}
                             placeholder="Add your research notes..."
                             className="bg-white/5 border-white/10 text-white placeholder:text-white/40 min-h-[100px]"
@@ -686,12 +771,17 @@ export default function OpportunitiesV2() {
                           <div className="flex items-center gap-2">
                             <Checkbox
                               checked={selectedNiche.user_state?.research_notes_added || false}
+                              disabled={!localInputs.researchNotes}
                               onCheckedChange={(checked) =>
                                 updateNicheState({ research_notes_added: checked as boolean })
                               }
-                              className="border-white/20"
+                              className="border-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
                             />
-                            <span className="text-sm text-white/70">Notes Added</span>
+                            <span
+                              className={cn("text-sm", localInputs.researchNotes ? "text-white/70" : "text-white/40")}
+                            >
+                              Notes Added {!localInputs.researchNotes && "(add notes first)"}
+                            </span>
                           </div>
                         </div>
 
@@ -703,9 +793,11 @@ export default function OpportunitiesV2() {
                               <Label className="text-xs text-white/70">Average Order Value ($)</Label>
                               <Input
                                 type="number"
-                                value={selectedNiche.user_state?.aov_input || ""}
-                                onChange={(e) => {
-                                  const aov = Number(e.target.value)
+                                value={localInputs.aovInput}
+                                onChange={(e) => setLocalInputs({ ...localInputs, aovInput: e.target.value })}
+                                onBlur={() => {
+                                  const aov = localInputs.aovInput === "" ? 0 : Number(localInputs.aovInput)
+
                                   if (aov > 0) {
                                     const calc = calculateAOV(aov)
                                     updateNicheState({
@@ -716,9 +808,16 @@ export default function OpportunitiesV2() {
                                       profit_split_potential: calc.profitSplit,
                                       aov_calculator_completed: true,
                                     })
+                                  } else if (localInputs.aovInput === "") {
+                                    updateNicheState({
+                                      aov_input: null,
+                                      aov_calculator_completed: false, // Reset if cleared
+                                    })
                                   }
                                 }}
                                 placeholder="5000"
+                                min="0"
+                                step="100"
                                 className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
                               />
                             </div>
@@ -726,15 +825,25 @@ export default function OpportunitiesV2() {
                               <Label className="text-xs text-white/70">Database Size (optional)</Label>
                               <Input
                                 type="number"
-                                value={selectedNiche.user_state?.database_size_input || ""}
-                                onChange={(e) => updateNicheState({ database_size_input: Number(e.target.value) })}
+                                value={localInputs.databaseSizeInput}
+                                onChange={(e) => setLocalInputs({ ...localInputs, databaseSizeInput: e.target.value })}
+                                onBlur={() => {
+                                  updateNicheState({
+                                    database_size_input:
+                                      localInputs.databaseSizeInput === ""
+                                        ? null
+                                        : Number(localInputs.databaseSizeInput),
+                                  })
+                                }}
                                 placeholder="1000"
+                                min="0"
+                                step="100"
                                 className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
                               />
                             </div>
                           </div>
 
-                          {selectedNiche.user_state?.aov_input && selectedNiche.user_state?.aov_input > 0 && (
+                          {selectedNiche.user_state?.aov_input && selectedNiche.user_state.aov_input > 0 && (
                             <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/10">
                               <div>
                                 <p className="text-[10px] text-white/50 uppercase tracking-wider">Cost Per Lead</p>
@@ -770,65 +879,167 @@ export default function OpportunitiesV2() {
                           <div className="flex items-center gap-2 pt-2">
                             <Checkbox
                               checked={selectedNiche.user_state?.aov_calculator_completed || false}
+                              disabled={!selectedNiche.user_state?.aov_input || selectedNiche.user_state.aov_input <= 0}
                               onCheckedChange={(checked) =>
                                 updateNicheState({ aov_calculator_completed: checked as boolean })
                               }
-                              className="border-white/20"
+                              className="border-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
                             />
-                            <span className="text-sm text-white/70">AOV Calculator Completed</span>
+                            <span
+                              className={cn(
+                                "text-sm",
+                                selectedNiche.user_state?.aov_input ? "text-white/70" : "text-white/40",
+                              )}
+                            >
+                              AOV Calculator Completed{" "}
+                              {(!selectedNiche.user_state?.aov_input || selectedNiche.user_state.aov_input <= 0) &&
+                                "(enter AOV first)"}
+                            </span>
                           </div>
                         </div>
 
-                        {/* Customer Profile Generator */}
                         <div className="space-y-3 p-4 bg-black/20 rounded-lg border border-white/10">
                           <h4 className="text-sm font-semibold text-white">Customer Profile Generator</h4>
-                          <Button
-                            onClick={generateCustomerProfile}
-                            disabled={generatingProfile}
-                            className="w-full bg-primary hover:bg-primary/90"
-                          >
-                            {generatingProfile ? (
-                              <>
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                Generating...
-                              </>
-                            ) : (
-                              "Generate Customer Profile"
-                            )}
-                          </Button>
+
+                          {!isProfileChatActive && !selectedNiche.user_state?.customer_profile && (
+                            <Button
+                              onClick={startProfileChat}
+                              disabled={generatingProfile}
+                              className="w-full bg-primary hover:bg-primary/90"
+                            >
+                              Start ICP Interview
+                            </Button>
+                          )}
+
+                          {isProfileChatActive && (
+                            <div className="space-y-3">
+                              <div className="max-h-[300px] overflow-y-auto space-y-3 p-3 bg-black/40 rounded border border-white/5 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full">
+                                {profileChatMessages.map((msg, idx) => (
+                                  <div
+                                    key={idx}
+                                    className={cn(
+                                      "p-3 rounded-lg text-sm",
+                                      msg.role === "assistant"
+                                        ? "bg-primary/10 text-white/90 border border-primary/20"
+                                        : "bg-white/5 text-white/80 ml-8",
+                                    )}
+                                  >
+                                    {msg.content}
+                                  </div>
+                                ))}
+                                {isProfileChatLoading && (
+                                  <div className="p-3 rounded-lg text-sm bg-primary/10 text-white/90 border border-primary/20">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex gap-2">
+                                <Input
+                                  value={profileChatInput}
+                                  onChange={(e) => setProfileChatInput(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey) {
+                                      e.preventDefault()
+                                      sendProfileChatMessage()
+                                    }
+                                  }}
+                                  placeholder="Type your answer..."
+                                  disabled={isProfileChatLoading}
+                                  className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                                />
+                                <Button
+                                  onClick={sendProfileChatMessage}
+                                  disabled={isProfileChatLoading || !profileChatInput.trim()}
+                                  size="sm"
+                                  className="bg-primary hover:bg-primary/90"
+                                >
+                                  Send
+                                </Button>
+                              </div>
+
+                              <Button
+                                onClick={() => {
+                                  setIsProfileChatActive(false)
+                                  setProfileChatMessages([])
+                                }}
+                                variant="outline"
+                                size="sm"
+                                className="w-full border-white/10 text-white/60 hover:text-white hover:bg-white/5"
+                              >
+                                Cancel Interview
+                              </Button>
+                            </div>
+                          )}
 
                           {selectedNiche.user_state?.customer_profile && (
-                            <div className="text-xs text-white/80 space-y-2 p-3 bg-white/5 rounded border border-white/5">
-                              <p>
-                                <strong className="text-white">Decision Maker:</strong>{" "}
-                                {selectedNiche.user_state.customer_profile.decision_maker}
-                              </p>
-                              <p>
-                                <strong className="text-white">Pain Points:</strong>{" "}
-                                {selectedNiche.user_state.customer_profile.pain_points}
-                              </p>
+                            <div className="space-y-2">
+                              <div className="text-xs text-white/80 space-y-2 p-3 bg-white/5 rounded border border-white/5">
+                                <p>
+                                  <strong className="text-white">Decision Maker:</strong>{" "}
+                                  {selectedNiche.user_state.customer_profile.decision_maker}
+                                </p>
+                                <p>
+                                  <strong className="text-white">Pain Points:</strong>{" "}
+                                  {selectedNiche.user_state.customer_profile.pain_points}
+                                </p>
+                                {selectedNiche.user_state.customer_profile.gathering_places && (
+                                  <p>
+                                    <strong className="text-white">Where to Find Them:</strong>{" "}
+                                    {selectedNiche.user_state.customer_profile.gathering_places}
+                                  </p>
+                                )}
+                              </div>
+                              <Button
+                                onClick={startProfileChat}
+                                variant="outline"
+                                size="sm"
+                                className="w-full border-white/10 text-white/60 hover:text-white hover:bg-white/5 bg-transparent"
+                              >
+                                Refine ICP
+                              </Button>
                             </div>
                           )}
 
                           <div className="flex items-center gap-2">
                             <Checkbox
                               checked={selectedNiche.user_state?.customer_profile_generated || false}
+                              disabled={!selectedNiche.user_state?.customer_profile}
                               onCheckedChange={(checked) =>
                                 updateNicheState({ customer_profile_generated: checked as boolean })
                               }
-                              className="border-white/20"
+                              className="border-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
                             />
-                            <span className="text-sm text-white/70">Customer Profile Generated</span>
+                            <span
+                              className={cn(
+                                "text-sm",
+                                selectedNiche.user_state?.customer_profile ? "text-white/70" : "text-white/40",
+                              )}
+                            >
+                              Customer Profile Generated{" "}
+                              {!selectedNiche.user_state?.customer_profile && "(generate profile first)"}
+                            </span>
                           </div>
                         </div>
 
-                        {/* Advance Button - Only show in Research status */}
-                        {currentStatus === "Research" && canAdvanceFromResearch() && (
+                        {currentStatus === "Research" && (
                           <Button
                             onClick={() => advanceStatus("Shortlisted")}
-                            className="w-full bg-primary hover:bg-primary/90"
+                            disabled={!canAdvanceFromResearch()}
+                            className={cn(
+                              "w-full",
+                              canAdvanceFromResearch()
+                                ? "bg-primary hover:bg-primary/90"
+                                : "bg-white/5 text-white/40 cursor-not-allowed",
+                            )}
                           >
-                            Move to Shortlisted <ChevronRight className="ml-2 h-4 w-4" />
+                            {canAdvanceFromResearch() ? (
+                              <>
+                                Complete Research & Move to Shortlisted <ChevronRight className="ml-2 h-4 w-4" />
+                              </>
+                            ) : (
+                              <>Complete All Research Tasks First</>
+                            )}
                           </Button>
                         )}
                       </div>
@@ -929,8 +1140,9 @@ export default function OpportunitiesV2() {
                         <div>
                           <Label className="text-white">Outreach Notes</Label>
                           <Textarea
-                            value={selectedNiche.user_state?.outreach_notes || ""}
-                            onChange={(e) => updateNicheState({ outreach_notes: e.target.value })}
+                            value={localInputs.outreachNotes}
+                            onChange={(e) => setLocalInputs({ ...localInputs, outreachNotes: e.target.value })}
+                            onBlur={() => updateNicheState({ outreach_notes: localInputs.outreachNotes })}
                             placeholder="Track responses, scheduling, etc..."
                             className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                           />
@@ -997,6 +1209,12 @@ export default function OpportunitiesV2() {
                                   ghl_sub_account_id: ghlId,
                                   status: "Win",
                                   win_completed: true,
+                                })
+                              } else {
+                                updateNicheState({
+                                  ghl_sub_account_id: null,
+                                  status: "Coffee Date Demo",
+                                  win_completed: false,
                                 })
                               }
                             }}
