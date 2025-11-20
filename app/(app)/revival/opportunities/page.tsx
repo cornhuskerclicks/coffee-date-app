@@ -313,6 +313,8 @@ export default function OpportunitiesV2() {
       } = await supabase.auth.getUser()
       if (!user) return
 
+      console.log("[v0] Updating niche state with:", updates)
+
       const { error } = await supabase.from("niche_user_state").upsert(
         {
           niche_id: selectedNiche.id,
@@ -325,12 +327,19 @@ export default function OpportunitiesV2() {
         },
       )
 
-      if (error) throw error
+      if (error) {
+        console.error("[v0] Error updating niche state:", error)
+        throw error
+      }
+
+      console.log("[v0] Successfully updated database")
 
       const updatedNiche = {
         ...selectedNiche,
         user_state: { ...selectedNiche.user_state!, ...updates },
       }
+
+      console.log("[v0] Setting updated niche:", updatedNiche)
 
       setSelectedNiche(updatedNiche)
       setNiches(niches.map((n) => (n.id === selectedNiche.id ? updatedNiche : n)))
@@ -340,6 +349,7 @@ export default function OpportunitiesV2() {
         description: "Changes saved successfully",
       })
     } catch (error: any) {
+      console.error("[v0] Failed to save:", error)
       toast({
         title: "Error",
         description: error.message,
@@ -824,14 +834,15 @@ export default function OpportunitiesV2() {
                                 value={localInputs.aovInput}
                                 onChange={(e) => {
                                   const newValue = e.target.value
-                                  console.log("[v0] AOV input changed:", newValue)
-                                  setLocalInputs({ ...localInputs, aovInput: newValue })
+                                  console.log("[v0] AOV input changed to:", newValue)
+                                  setLocalInputs((prev) => ({ ...prev, aovInput: newValue }))
 
-                                  const aov = newValue === "" ? 0 : Number(newValue)
-                                  console.log("[v0] Parsed AOV value:", aov)
-                                  if (aov > 0) {
+                                  if (newValue && newValue !== "" && Number(newValue) > 0) {
+                                    const aov = Number(newValue)
+                                    console.log("[v0] Calculating for AOV:", aov)
                                     const calc = calculateAOV(aov)
-                                    console.log("[v0] Updating niche state with calculations")
+                                    console.log("[v0] Calculator results:", calc)
+
                                     updateNicheState({
                                       aov_input: aov,
                                       cpl_calculated: calc.cpl,
@@ -853,14 +864,16 @@ export default function OpportunitiesV2() {
                               <Input
                                 type="number"
                                 value={localInputs.databaseSizeInput}
-                                onChange={(e) => setLocalInputs({ ...localInputs, databaseSizeInput: e.target.value })}
+                                onChange={(e) => {
+                                  const newValue = e.target.value
+                                  setLocalInputs((prev) => ({ ...prev, databaseSizeInput: newValue }))
+                                }}
                                 onBlur={() => {
-                                  updateNicheState({
-                                    database_size_input:
-                                      localInputs.databaseSizeInput === ""
-                                        ? null
-                                        : Number(localInputs.databaseSizeInput),
-                                  })
+                                  if (localInputs.databaseSizeInput) {
+                                    updateNicheState({
+                                      database_size_input: Number(localInputs.databaseSizeInput),
+                                    })
+                                  }
                                 }}
                                 placeholder="1000"
                                 min="0"
@@ -870,12 +883,12 @@ export default function OpportunitiesV2() {
                             </div>
                           </div>
 
-                          {selectedNiche.user_state?.aov_input && selectedNiche.user_state.aov_input > 0 && (
+                          {selectedNiche.user_state?.cpl_calculated && selectedNiche.user_state.cpl_calculated > 0 && (
                             <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/10">
                               <div>
                                 <p className="text-[10px] text-white/50 uppercase tracking-wider">Cost Per Lead</p>
                                 <p className="text-lg font-semibold text-white">
-                                  ${selectedNiche.user_state.cpl_calculated?.toFixed(2)}
+                                  ${selectedNiche.user_state.cpl_calculated.toFixed(2)}
                                 </p>
                               </div>
                               <div>
@@ -906,10 +919,12 @@ export default function OpportunitiesV2() {
                           <div className="flex items-center gap-2 pt-2">
                             <Checkbox
                               checked={selectedNiche.user_state?.aov_calculator_completed || false}
-                              disabled={!selectedNiche.user_state?.aov_input || selectedNiche.user_state.aov_input <= 0}
+                              disabled={
+                                !selectedNiche.user_state?.cpl_calculated ||
+                                selectedNiche.user_state.cpl_calculated <= 0
+                              }
                               onCheckedChange={(checked) => {
-                                console.log("[v0] AOV calculator checkbox changed:", checked)
-                                console.log("[v0] Current AOV input:", selectedNiche.user_state?.aov_input)
+                                console.log("[v0] Checkbox changed to:", checked)
                                 updateNicheState({ aov_calculator_completed: checked as boolean })
                               }}
                               className="border-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
@@ -917,11 +932,14 @@ export default function OpportunitiesV2() {
                             <span
                               className={cn(
                                 "text-sm",
-                                selectedNiche.user_state?.aov_input ? "text-white/70" : "text-white/40",
+                                selectedNiche.user_state?.cpl_calculated && selectedNiche.user_state.cpl_calculated > 0
+                                  ? "text-white/70"
+                                  : "text-white/40",
                               )}
                             >
                               AOV Calculator Completed{" "}
-                              {(!selectedNiche.user_state?.aov_input || selectedNiche.user_state.aov_input <= 0) &&
+                              {(!selectedNiche.user_state?.cpl_calculated ||
+                                selectedNiche.user_state.cpl_calculated <= 0) &&
                                 "(enter AOV first)"}
                             </span>
                           </div>
