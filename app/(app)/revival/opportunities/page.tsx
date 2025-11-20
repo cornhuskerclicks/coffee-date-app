@@ -19,6 +19,8 @@ import {
   Calendar,
   Trophy,
   X,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -94,6 +96,12 @@ export default function OpportunitiesV2() {
   const [generatingProfile, setGeneratingProfile] = useState(false)
   const [generatingMessaging, setGeneratingMessaging] = useState(false)
   const [generatingDemo, setGeneratingDemo] = useState(false)
+
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    research: true,
+    calculator: true,
+    profile: true,
+  })
 
   const { toast } = useToast()
   const supabase = createClient()
@@ -255,8 +263,8 @@ export default function OpportunitiesV2() {
   }
 
   const calculateAOV = (aov: number) => {
-    const cpl = (aov / 3) * 0.05
-    const cpa = aov / 3
+    const cpl = aov * 0.05 // 5% of AOV for cost per lead
+    const cpa = aov / 3 // Customer acquisition cost is 1/3 of AOV
     const potentialRetainer = cpl * 100 // Estimate for 100 leads/month
     const profitSplit = potentialRetainer * 0.5
 
@@ -339,26 +347,35 @@ export default function OpportunitiesV2() {
 
     setGeneratingProfile(true)
     try {
-      const response = await fetch("/api/chat", {
+      const response = await fetch("/api/opportunities/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [
-            {
-              role: "user",
-              content: `Generate a detailed customer profile for "${selectedNiche.niche_name}" businesses. Include: decision maker, pain points, objections, buying triggers, language style, and where they gather online. Format as JSON.`,
-            },
-          ],
+          type: "customer_profile",
+          nicheName: selectedNiche.niche_name,
         }),
       })
 
-      const data = await response.json()
-      await updateNicheState({
-        customer_profile: JSON.parse(data.message || "{}"),
-        customer_profile_generated: true,
-      })
+      if (!response.ok) {
+        throw new Error("Failed to generate customer profile")
+      }
+
+      const result = await response.json()
+
+      if (result.success && result.data) {
+        await updateNicheState({
+          customer_profile: result.data,
+          customer_profile_generated: true,
+        })
+      } else {
+        throw new Error("Invalid response format")
+      }
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" })
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate customer profile",
+        variant: "destructive",
+      })
     } finally {
       setGeneratingProfile(false)
     }
@@ -369,25 +386,35 @@ export default function OpportunitiesV2() {
 
     setGeneratingMessaging(true)
     try {
-      const response = await fetch("/api/chat", {
+      const response = await fetch("/api/opportunities/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [
-            {
-              role: "user",
-              content: `Generate outreach messaging for "${selectedNiche.niche_name}": LinkedIn messages, Facebook Group posts, Email scripts, Forum posts, and lead magnet angles. Format as JSON.`,
-            },
-          ],
+          type: "messaging",
+          nicheName: selectedNiche.niche_name,
         }),
       })
 
-      const data = await response.json()
-      await updateNicheState({
-        messaging_scripts: JSON.parse(data.message || "{}"),
-      })
+      if (!response.ok) {
+        throw new Error("Failed to generate messaging scripts")
+      }
+
+      const result = await response.json()
+
+      if (result.success && result.data) {
+        await updateNicheState({
+          messaging_scripts: result.data,
+          messaging_prepared: true,
+        })
+      } else {
+        throw new Error("Invalid response format")
+      }
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" })
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate messaging scripts",
+        variant: "destructive",
+      })
     } finally {
       setGeneratingMessaging(false)
     }
@@ -398,30 +425,43 @@ export default function OpportunitiesV2() {
 
     setGeneratingDemo(true)
     try {
-      const response = await fetch("/api/chat", {
+      const response = await fetch("/api/opportunities/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [
-            {
-              role: "user",
-              content: `Create a Coffee Date Demo script for "${selectedNiche.niche_name}" showcasing Aether Revive's dead lead revival features.`,
-            },
-          ],
+          type: "demo_script",
+          nicheName: selectedNiche.niche_name,
         }),
       })
 
-      const data = await response.json()
-      await updateNicheState({
-        demo_script: data.message,
-        demo_script_created: true,
-        status: "Coffee Date Demo",
-      })
+      if (!response.ok) {
+        throw new Error("Failed to generate demo script")
+      }
+
+      const result = await response.json()
+
+      if (result.success && result.data) {
+        await updateNicheState({
+          demo_script: result.data,
+          demo_script_created: true,
+        })
+      } else {
+        throw new Error("Invalid response format")
+      }
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" })
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate demo script",
+        variant: "destructive",
+      })
     } finally {
       setGeneratingDemo(false)
     }
+  }
+
+  // Add toggleSection function
+  const toggleSection = (section: string) => {
+    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }))
   }
 
   if (loading) {
@@ -522,7 +562,7 @@ export default function OpportunitiesV2() {
             <h2 className="text-sm font-semibold text-white/60 px-2">
               {filteredNiches.length} {filteredNiches.length === 1 ? "Niche" : "Niches"}
             </h2>
-            <div className="space-y-2 max-h-[calc(100vh-180px)] overflow-y-auto pr-2">
+            <div className="space-y-2 max-h-[calc(100vh-180px)] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-white/20">
               {filteredNiches.map((niche) => (
                 <Card
                   key={niche.id}
@@ -571,7 +611,7 @@ export default function OpportunitiesV2() {
 
           <div className="col-span-7">
             {selectedNiche ? (
-              <Card className="border border-white/10 bg-white/5 p-6 space-y-6 max-h-[calc(100vh-180px)] overflow-y-auto">
+              <Card className="border border-white/10 bg-white/5 p-6 space-y-6 max-h-[calc(100vh-180px)] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-white/20">
                 {/* Header */}
                 <div className="flex items-start justify-between">
                   <div>
@@ -584,12 +624,12 @@ export default function OpportunitiesV2() {
                 </div>
 
                 {/* Status Pipeline */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   {STATUSES.map((status, idx) => (
                     <div key={status} className="flex items-center gap-2">
                       <div
                         className={cn(
-                          "px-3 py-1 rounded-full text-xs font-medium",
+                          "px-3 py-1 rounded-full text-xs font-medium transition-colors",
                           currentStatus === status
                             ? "bg-primary text-white"
                             : STATUSES.indexOf(currentStatus) > idx
@@ -604,366 +644,422 @@ export default function OpportunitiesV2() {
                   ))}
                 </div>
 
-                {currentStatus === "Research" && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                      <Calculator className="h-5 w-5 text-primary" />
-                      Research Phase
-                    </h3>
+                <div className="space-y-4">
+                  {/* Research Phase - Always Available */}
+                  <div className="border border-white/10 rounded-lg overflow-hidden">
+                    <button
+                      onClick={() => toggleSection("research")}
+                      className="w-full p-4 bg-white/5 hover:bg-white/8 transition-colors flex items-center justify-between"
+                    >
+                      <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <Calculator className="h-5 w-5 text-primary" />
+                        Research Phase
+                        {selectedNiche.user_state?.research_notes_added &&
+                          selectedNiche.user_state?.aov_calculator_completed &&
+                          selectedNiche.user_state?.customer_profile_generated && (
+                            <CheckCircle2 className="h-4 w-4 text-green-400 ml-2" />
+                          )}
+                      </h3>
+                      {expandedSections.research ? (
+                        <ChevronUp className="h-5 w-5 text-white/60" />
+                      ) : (
+                        <ChevronDown className="h-5 w-5 text-white/60" />
+                      )}
+                    </button>
 
-                    {/* Research Notes */}
-                    <div className="space-y-2">
-                      <Label className="text-white">Research Notes</Label>
-                      <Textarea
-                        value={selectedNiche.user_state?.research_notes || ""}
-                        onChange={(e) => updateNicheState({ research_notes: e.target.value })}
-                        placeholder="Add your research notes..."
-                        className="bg-white/5 border-white/10 text-white min-h-[100px]"
-                      />
-                      <Checkbox
-                        checked={selectedNiche.user_state?.research_notes_added || false}
-                        onCheckedChange={(checked) => updateNicheState({ research_notes_added: checked as boolean })}
-                        className="border-white/20"
-                      />
-                      <span className="text-sm text-white/70 ml-2">Notes Added</span>
+                    {expandedSections.research && (
+                      <div className="p-4 space-y-4">
+                        {/* Research Notes */}
+                        <div className="space-y-2">
+                          <Label className="text-white">Research Notes</Label>
+                          <Textarea
+                            value={selectedNiche.user_state?.research_notes || ""}
+                            onChange={(e) => updateNicheState({ research_notes: e.target.value })}
+                            onBlur={() => {
+                              if (selectedNiche.user_state?.research_notes) {
+                                updateNicheState({ research_notes_added: true })
+                              }
+                            }}
+                            placeholder="Add your research notes..."
+                            className="bg-white/5 border-white/10 text-white placeholder:text-white/40 min-h-[100px]"
+                          />
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              checked={selectedNiche.user_state?.research_notes_added || false}
+                              onCheckedChange={(checked) =>
+                                updateNicheState({ research_notes_added: checked as boolean })
+                              }
+                              className="border-white/20"
+                            />
+                            <span className="text-sm text-white/70">Notes Added</span>
+                          </div>
+                        </div>
+
+                        {/* AOV Calculator */}
+                        <div className="space-y-3 p-4 bg-black/20 rounded-lg border border-white/10">
+                          <h4 className="text-sm font-semibold text-white">AOV Calculator</h4>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs text-white/70">Average Order Value ($)</Label>
+                              <Input
+                                type="number"
+                                value={selectedNiche.user_state?.aov_input || ""}
+                                onChange={(e) => {
+                                  const aov = Number(e.target.value)
+                                  if (aov > 0) {
+                                    const calc = calculateAOV(aov)
+                                    updateNicheState({
+                                      aov_input: aov,
+                                      cpl_calculated: calc.cpl,
+                                      cpa_calculated: calc.cpa,
+                                      potential_retainer: calc.potentialRetainer,
+                                      profit_split_potential: calc.profitSplit,
+                                      aov_calculator_completed: true,
+                                    })
+                                  }
+                                }}
+                                placeholder="5000"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-white/70">Database Size (optional)</Label>
+                              <Input
+                                type="number"
+                                value={selectedNiche.user_state?.database_size_input || ""}
+                                onChange={(e) => updateNicheState({ database_size_input: Number(e.target.value) })}
+                                placeholder="1000"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
+                              />
+                            </div>
+                          </div>
+
+                          {selectedNiche.user_state?.aov_input && selectedNiche.user_state?.aov_input > 0 && (
+                            <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/10">
+                              <div>
+                                <p className="text-[10px] text-white/50 uppercase tracking-wider">Cost Per Lead</p>
+                                <p className="text-lg font-semibold text-white">
+                                  ${selectedNiche.user_state.cpl_calculated?.toFixed(2)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-white/50 uppercase tracking-wider">
+                                  Cost Per Acquisition
+                                </p>
+                                <p className="text-lg font-semibold text-white">
+                                  ${selectedNiche.user_state.cpa_calculated?.toFixed(2)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-white/50 uppercase tracking-wider">Potential Retainer</p>
+                                <p className="text-lg font-semibold text-primary">
+                                  ${selectedNiche.user_state.potential_retainer?.toFixed(0)}
+                                  <span className="text-xs text-white/60">/mo</span>
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-white/50 uppercase tracking-wider">50% Profit Split</p>
+                                <p className="text-lg font-semibold text-primary">
+                                  ${selectedNiche.user_state.profit_split_potential?.toFixed(0)}
+                                  <span className="text-xs text-white/60">/mo</span>
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-2 pt-2">
+                            <Checkbox
+                              checked={selectedNiche.user_state?.aov_calculator_completed || false}
+                              onCheckedChange={(checked) =>
+                                updateNicheState({ aov_calculator_completed: checked as boolean })
+                              }
+                              className="border-white/20"
+                            />
+                            <span className="text-sm text-white/70">AOV Calculator Completed</span>
+                          </div>
+                        </div>
+
+                        {/* Customer Profile Generator */}
+                        <div className="space-y-3 p-4 bg-black/20 rounded-lg border border-white/10">
+                          <h4 className="text-sm font-semibold text-white">Customer Profile Generator</h4>
+                          <Button
+                            onClick={generateCustomerProfile}
+                            disabled={generatingProfile}
+                            className="w-full bg-primary hover:bg-primary/90"
+                          >
+                            {generatingProfile ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Generating...
+                              </>
+                            ) : (
+                              "Generate Customer Profile"
+                            )}
+                          </Button>
+
+                          {selectedNiche.user_state?.customer_profile && (
+                            <div className="text-xs text-white/80 space-y-2 p-3 bg-white/5 rounded border border-white/5">
+                              <p>
+                                <strong className="text-white">Decision Maker:</strong>{" "}
+                                {selectedNiche.user_state.customer_profile.decision_maker}
+                              </p>
+                              <p>
+                                <strong className="text-white">Pain Points:</strong>{" "}
+                                {selectedNiche.user_state.customer_profile.pain_points}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              checked={selectedNiche.user_state?.customer_profile_generated || false}
+                              onCheckedChange={(checked) =>
+                                updateNicheState({ customer_profile_generated: checked as boolean })
+                              }
+                              className="border-white/20"
+                            />
+                            <span className="text-sm text-white/70">Customer Profile Generated</span>
+                          </div>
+                        </div>
+
+                        {/* Advance Button - Only show in Research status */}
+                        {currentStatus === "Research" && canAdvanceFromResearch() && (
+                          <Button
+                            onClick={() => advanceStatus("Shortlisted")}
+                            className="w-full bg-primary hover:bg-primary/90"
+                          >
+                            Move to Shortlisted <ChevronRight className="ml-2 h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Shortlisted Phase */}
+                  {(currentStatus === "Shortlisted" ||
+                    STATUSES.indexOf(currentStatus) > STATUSES.indexOf("Shortlisted")) && (
+                    <div className="space-y-4 p-4 bg-white/5 rounded-lg border border-white/10">
+                      <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <MessageSquare className="h-5 w-5 text-primary" />
+                        Messaging Preparation
+                        {selectedNiche.user_state?.messaging_prepared && (
+                          <CheckCircle2 className="h-4 w-4 text-green-400 ml-2" />
+                        )}
+                      </h3>
+
+                      <Button
+                        onClick={generateMessaging}
+                        disabled={generatingMessaging}
+                        className="w-full bg-primary hover:bg-primary/90"
+                      >
+                        {generatingMessaging ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Generating Messaging...
+                          </>
+                        ) : (
+                          "Generate Outreach Scripts"
+                        )}
+                      </Button>
+
+                      {selectedNiche.user_state?.messaging_scripts && (
+                        <div className="p-4 bg-black/20 rounded-lg border border-white/10 text-xs text-white/80 space-y-3">
+                          <div>
+                            <strong className="text-white block mb-1">LinkedIn:</strong>
+                            <p className="text-white/70">{selectedNiche.user_state.messaging_scripts.linkedin}</p>
+                          </div>
+                          <div>
+                            <strong className="text-white block mb-1">Email:</strong>
+                            <p className="text-white/70">{selectedNiche.user_state.messaging_scripts.email}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={selectedNiche.user_state?.messaging_prepared || false}
+                          onCheckedChange={(checked) => updateNicheState({ messaging_prepared: checked as boolean })}
+                          className="border-white/20"
+                        />
+                        <span className="text-sm text-white/70">Messaging Prepared</span>
+                      </div>
+
+                      {currentStatus === "Shortlisted" && canAdvanceFromShortlisted() && (
+                        <Button
+                          onClick={() => advanceStatus("Outreach in Progress")}
+                          className="w-full bg-primary hover:bg-primary/90"
+                        >
+                          Begin Outreach <ChevronRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
+                  )}
 
-                    {/* AOV Calculator */}
-                    <div className="space-y-3 p-4 bg-white/5 rounded-lg border border-white/10">
-                      <h4 className="text-sm font-semibold text-white">AOV Calculator</h4>
+                  {/* Outreach Phase */}
+                  {(currentStatus === "Outreach in Progress" ||
+                    STATUSES.indexOf(currentStatus) > STATUSES.indexOf("Outreach in Progress")) && (
+                    <div className="space-y-4 p-4 bg-white/5 rounded-lg border border-white/10">
+                      <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <Calendar className="h-5 w-5 text-primary" />
+                        Outreach Tracker
+                        {canAdvanceFromOutreach() && <CheckCircle2 className="h-4 w-4 text-green-400 ml-2" />}
+                      </h3>
+
+                      <div className="space-y-3">
+                        <div>
+                          <Label className="text-white">Outreach Start Date</Label>
+                          <Input
+                            type="date"
+                            value={selectedNiche.user_state?.outreach_start_date || ""}
+                            onChange={(e) => updateNicheState({ outreach_start_date: e.target.value })}
+                            className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
+                          />
+                        </div>
+
+                        <div>
+                          <Label className="text-white">Messages Sent</Label>
+                          <Input
+                            type="number"
+                            value={selectedNiche.user_state?.outreach_messages_sent || 0}
+                            onChange={(e) => updateNicheState({ outreach_messages_sent: Number(e.target.value) })}
+                            className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
+                          />
+                        </div>
+
+                        <div>
+                          <Label className="text-white">Outreach Notes</Label>
+                          <Textarea
+                            value={selectedNiche.user_state?.outreach_notes || ""}
+                            onChange={(e) => updateNicheState({ outreach_notes: e.target.value })}
+                            placeholder="Track responses, scheduling, etc..."
+                            className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                          />
+                        </div>
+                      </div>
+
+                      {currentStatus === "Outreach in Progress" && canAdvanceFromOutreach() && (
+                        <Button
+                          onClick={generateDemoScript}
+                          disabled={generatingDemo}
+                          className="w-full bg-primary hover:bg-primary/90"
+                        >
+                          {generatingDemo ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              Creating Demo Script...
+                            </>
+                          ) : (
+                            "Create Coffee Date Demo Script"
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Coffee Date Demo Phase */}
+                  {(currentStatus === "Coffee Date Demo" ||
+                    STATUSES.indexOf(currentStatus) > STATUSES.indexOf("Coffee Date Demo")) && (
+                    <div className="space-y-4 p-4 bg-white/5 rounded-lg border border-white/10">
+                      <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary" />
+                        Coffee Date Demo
+                        {selectedNiche.user_state?.coffee_date_completed && (
+                          <CheckCircle2 className="h-4 w-4 text-green-400 ml-2" />
+                        )}
+                      </h3>
+
+                      {selectedNiche.user_state?.demo_script && (
+                        <div className="p-4 bg-black/20 rounded-lg border border-white/10">
+                          <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
+                            {selectedNiche.user_state.demo_script}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={selectedNiche.user_state?.coffee_date_completed || false}
+                          onCheckedChange={(checked) => updateNicheState({ coffee_date_completed: checked as boolean })}
+                          className="border-white/20"
+                        />
+                        <span className="text-sm text-white/70">Coffee Date Completed</span>
+                      </div>
+
+                      {currentStatus === "Coffee Date Demo" && selectedNiche.user_state?.coffee_date_completed && (
+                        <div className="space-y-2">
+                          <Label className="text-white">GHL Sub-Account ID (triggers Win status)</Label>
+                          <Input
+                            value={selectedNiche.user_state?.ghl_sub_account_id || ""}
+                            onChange={(e) => {
+                              const ghlId = e.target.value
+                              if (ghlId) {
+                                updateNicheState({
+                                  ghl_sub_account_id: ghlId,
+                                  status: "Win",
+                                  win_completed: true,
+                                })
+                              }
+                            }}
+                            placeholder="Enter GHL Sub-Account ID"
+                            className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Win Phase */}
+                  {currentStatus === "Win" && (
+                    <div className="space-y-4 p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+                      <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <Trophy className="h-5 w-5 text-green-400" />
+                        Win - Active Client 🎉
+                      </h3>
+
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <Label className="text-xs text-white/70">Average Order Value</Label>
+                          <Label className="text-white">Active Monthly Retainer ($)</Label>
                           <Input
                             type="number"
-                            value={selectedNiche.user_state?.aov_input || ""}
-                            onChange={(e) => {
-                              const aov = Number(e.target.value)
-                              const calc = calculateAOV(aov)
-                              updateNicheState({
-                                aov_input: aov,
-                                cpl_calculated: calc.cpl,
-                                cpa_calculated: calc.cpa,
-                                potential_retainer: calc.potentialRetainer,
-                                profit_split_potential: calc.profitSplit,
-                              })
-                            }}
+                            value={selectedNiche.user_state?.active_monthly_retainer || ""}
+                            onChange={(e) => updateNicheState({ active_monthly_retainer: Number(e.target.value) })}
                             placeholder="5000"
-                            className="bg-white/5 border-white/10 text-white mt-1"
+                            className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
                           />
                         </div>
                         <div>
-                          <Label className="text-xs text-white/70">Database Size (optional)</Label>
+                          <Label className="text-white">Monthly Profit Split ($)</Label>
                           <Input
                             type="number"
-                            value={selectedNiche.user_state?.database_size_input || ""}
-                            onChange={(e) => updateNicheState({ database_size_input: Number(e.target.value) })}
-                            placeholder="1000"
-                            className="bg-white/5 border-white/10 text-white mt-1"
+                            value={selectedNiche.user_state?.monthly_profit_split || ""}
+                            onChange={(e) => updateNicheState({ monthly_profit_split: Number(e.target.value) })}
+                            placeholder="2500"
+                            className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
                           />
                         </div>
                       </div>
 
-                      {selectedNiche.user_state?.aov_input && (
-                        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/10">
-                          <div>
-                            <p className="text-[10px] text-white/50">CPL</p>
-                            <p className="text-sm font-semibold text-white">
-                              ${selectedNiche.user_state.cpl_calculated?.toFixed(2)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-white/50">CPA</p>
-                            <p className="text-sm font-semibold text-white">
-                              ${selectedNiche.user_state.cpa_calculated?.toFixed(2)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-white/50">Potential Retainer</p>
-                            <p className="text-sm font-semibold text-primary">
-                              ${selectedNiche.user_state.potential_retainer?.toFixed(0)}/mo
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-white/50">50% Profit Split</p>
-                            <p className="text-sm font-semibold text-primary">
-                              ${selectedNiche.user_state.profit_split_potential?.toFixed(0)}/mo
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          checked={selectedNiche.user_state?.aov_calculator_completed || false}
-                          onCheckedChange={(checked) =>
-                            updateNicheState({ aov_calculator_completed: checked as boolean })
-                          }
-                          className="border-white/20"
+                      <div>
+                        <Label className="text-white">Target Monthly Recurring Revenue ($)</Label>
+                        <Input
+                          type="number"
+                          value={selectedNiche.user_state?.target_monthly_recurring || ""}
+                          onChange={(e) => updateNicheState({ target_monthly_recurring: Number(e.target.value) })}
+                          placeholder="10000"
+                          className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
                         />
-                        <span className="text-sm text-white/70">AOV Calculator Completed</span>
                       </div>
-                    </div>
 
-                    {/* Customer Profile Generator */}
-                    <div className="space-y-3 p-4 bg-white/5 rounded-lg border border-white/10">
-                      <h4 className="text-sm font-semibold text-white">Customer Profile Generator</h4>
-                      <Button
-                        onClick={generateCustomerProfile}
-                        disabled={generatingProfile}
-                        className="w-full bg-primary hover:bg-primary/90"
-                      >
-                        {generatingProfile ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Generating...
-                          </>
-                        ) : (
-                          "Generate Customer Profile"
-                        )}
-                      </Button>
-
-                      {selectedNiche.user_state?.customer_profile && (
-                        <div className="text-xs text-white/80 space-y-1">
-                          <p>
-                            <strong>Decision Maker:</strong> {selectedNiche.user_state.customer_profile.decision_maker}
-                          </p>
-                          <p>
-                            <strong>Pain Points:</strong> {selectedNiche.user_state.customer_profile.pain_points}
+                      {selectedNiche.user_state?.ghl_sub_account_id && (
+                        <div className="p-3 bg-green-500/10 rounded border border-green-500/20">
+                          <p className="text-xs text-green-400 font-mono">
+                            GHL Sub-Account: {selectedNiche.user_state.ghl_sub_account_id}
                           </p>
                         </div>
                       )}
-
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          checked={selectedNiche.user_state?.customer_profile_generated || false}
-                          onCheckedChange={(checked) =>
-                            updateNicheState({ customer_profile_generated: checked as boolean })
-                          }
-                          className="border-white/20"
-                        />
-                        <span className="text-sm text-white/70">Customer Profile Generated</span>
-                      </div>
                     </div>
-
-                    {/* Advance Button */}
-                    {canAdvanceFromResearch() && (
-                      <Button
-                        onClick={() => advanceStatus("Shortlisted")}
-                        className="w-full bg-primary hover:bg-primary/90"
-                      >
-                        Move to Shortlisted <ChevronRight className="ml-2 h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                {currentStatus === "Shortlisted" && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                      <MessageSquare className="h-5 w-5 text-primary" />
-                      Messaging Preparation
-                    </h3>
-
-                    <Button
-                      onClick={generateMessaging}
-                      disabled={generatingMessaging}
-                      className="w-full bg-primary hover:bg-primary/90"
-                    >
-                      {generatingMessaging ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          Generating Messaging...
-                        </>
-                      ) : (
-                        "Generate Outreach Scripts"
-                      )}
-                    </Button>
-
-                    {selectedNiche.user_state?.messaging_scripts && (
-                      <div className="p-4 bg-white/5 rounded-lg border border-white/10 text-xs text-white/80 space-y-2">
-                        <p>
-                          <strong>LinkedIn:</strong> {selectedNiche.user_state.messaging_scripts.linkedin}
-                        </p>
-                        <p>
-                          <strong>Email:</strong> {selectedNiche.user_state.messaging_scripts.email}
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        checked={selectedNiche.user_state?.messaging_prepared || false}
-                        onCheckedChange={(checked) => updateNicheState({ messaging_prepared: checked as boolean })}
-                        className="border-white/20"
-                      />
-                      <span className="text-sm text-white/70">Messaging Prepared</span>
-                    </div>
-
-                    {canAdvanceFromShortlisted() && (
-                      <Button
-                        onClick={() => advanceStatus("Outreach in Progress")}
-                        className="w-full bg-primary hover:bg-primary/90"
-                      >
-                        Begin Outreach <ChevronRight className="ml-2 h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                {currentStatus === "Outreach in Progress" && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                      <Calendar className="h-5 w-5 text-primary" />
-                      Outreach Tracker
-                    </h3>
-
-                    <div className="space-y-3">
-                      <div>
-                        <Label className="text-white">Outreach Start Date</Label>
-                        <Input
-                          type="date"
-                          value={selectedNiche.user_state?.outreach_start_date || ""}
-                          onChange={(e) => updateNicheState({ outreach_start_date: e.target.value })}
-                          className="bg-white/5 border-white/10 text-white mt-1"
-                        />
-                      </div>
-
-                      <div>
-                        <Label className="text-white">Messages Sent</Label>
-                        <Input
-                          type="number"
-                          value={selectedNiche.user_state?.outreach_messages_sent || 0}
-                          onChange={(e) => updateNicheState({ outreach_messages_sent: Number(e.target.value) })}
-                          className="bg-white/5 border-white/10 text-white mt-1"
-                        />
-                      </div>
-
-                      <div>
-                        <Label className="text-white">Outreach Notes</Label>
-                        <Textarea
-                          value={selectedNiche.user_state?.outreach_notes || ""}
-                          onChange={(e) => updateNicheState({ outreach_notes: e.target.value })}
-                          className="bg-white/5 border-white/10 text-white"
-                        />
-                      </div>
-                    </div>
-
-                    {canAdvanceFromOutreach() && (
-                      <Button
-                        onClick={generateDemoScript}
-                        disabled={generatingDemo}
-                        className="w-full bg-primary hover:bg-primary/90"
-                      >
-                        {generatingDemo ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Creating Demo Script...
-                          </>
-                        ) : (
-                          "Create Coffee Date Demo Prompt"
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                {currentStatus === "Coffee Date Demo" && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                      <CheckCircle2 className="h-5 w-5 text-primary" />
-                      Coffee Date Demo
-                    </h3>
-
-                    {selectedNiche.user_state?.demo_script && (
-                      <div className="p-4 bg-white/5 rounded-lg border border-white/10">
-                        <p className="text-sm text-white/80 whitespace-pre-wrap">
-                          {selectedNiche.user_state.demo_script}
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        checked={selectedNiche.user_state?.coffee_date_completed || false}
-                        onCheckedChange={(checked) => updateNicheState({ coffee_date_completed: checked as boolean })}
-                        className="border-white/20"
-                      />
-                      <span className="text-sm text-white/70">Coffee Date Completed</span>
-                    </div>
-
-                    {selectedNiche.user_state?.coffee_date_completed && (
-                      <div className="space-y-2">
-                        <Label className="text-white">GHL Sub-Account ID (triggers Win status)</Label>
-                        <Input
-                          value={selectedNiche.user_state?.ghl_sub_account_id || ""}
-                          onChange={(e) => {
-                            const ghlId = e.target.value
-                            if (ghlId) {
-                              updateNicheState({
-                                ghl_sub_account_id: ghlId,
-                                status: "Win",
-                                win_completed: true,
-                              })
-                            }
-                          }}
-                          placeholder="Enter GHL Sub-Account ID"
-                          className="bg-white/5 border-white/10 text-white"
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {currentStatus === "Win" && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                      <Trophy className="h-5 w-5 text-primary" />
-                      Win - Active Client
-                    </h3>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-white">Active Monthly Retainer</Label>
-                        <Input
-                          type="number"
-                          value={selectedNiche.user_state?.active_monthly_retainer || ""}
-                          onChange={(e) => updateNicheState({ active_monthly_retainer: Number(e.target.value) })}
-                          placeholder="5000"
-                          className="bg-white/5 border-white/10 text-white mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-white">Monthly Profit Split</Label>
-                        <Input
-                          type="number"
-                          value={selectedNiche.user_state?.monthly_profit_split || ""}
-                          onChange={(e) => updateNicheState({ monthly_profit_split: Number(e.target.value) })}
-                          placeholder="2500"
-                          className="bg-white/5 border-white/10 text-white mt-1"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label className="text-white">Target Monthly Recurring Revenue</Label>
-                      <Input
-                        type="number"
-                        value={selectedNiche.user_state?.target_monthly_recurring || ""}
-                        onChange={(e) => updateNicheState({ target_monthly_recurring: Number(e.target.value) })}
-                        placeholder="10000"
-                        className="bg-white/5 border-white/10 text-white mt-1"
-                      />
-                    </div>
-
-                    <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
-                      <p className="text-sm text-green-400 font-semibold">This opportunity is now a Win! 🎉</p>
-                      <p className="text-xs text-white/60 mt-1">
-                        GHL Sub-Account: {selectedNiche.user_state?.ghl_sub_account_id}
-                      </p>
-                    </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </Card>
             ) : (
               <Card className="border border-white/10 bg-white/5 p-12 text-center h-full flex items-center justify-center">
