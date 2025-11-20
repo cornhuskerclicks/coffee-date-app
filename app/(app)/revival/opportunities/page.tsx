@@ -51,6 +51,9 @@ type Niche = {
     research_notes: string | null
     aov_input: number | null
     database_size_input: number | null
+    revival_rate: number | null
+    retainer_pct: number | null
+    profit_pct: number | null
     cpl_calculated: number | null
     cpa_calculated: number | null
     potential_retainer: number | null
@@ -96,12 +99,10 @@ export default function OpportunitiesV2() {
     researchNotes: "",
     aovInput: "",
     databaseSizeInput: "",
+    revivalRate: "0.5",
+    retainerPct: "20",
+    profitPct: "50",
     outreachNotes: "",
-    // Calculator fields
-    cplCalculated: "",
-    cpaCalculated: "",
-    potentialRetainer: "",
-    profitSplitPotential: "",
   })
 
   // AI generation states
@@ -139,12 +140,10 @@ export default function OpportunitiesV2() {
         researchNotes: selectedNiche.user_state?.research_notes || "",
         aovInput: selectedNiche.user_state?.aov_input?.toString() || "",
         databaseSizeInput: selectedNiche.user_state?.database_size_input?.toString() || "",
+        revivalRate: selectedNiche.user_state?.revival_rate?.toString() || "0.5",
+        retainerPct: selectedNiche.user_state?.retainer_pct?.toString() || "20",
+        profitPct: selectedNiche.user_state?.profit_pct?.toString() || "50",
         outreachNotes: selectedNiche.user_state?.outreach_notes || "",
-        // Populate calculator fields from selected niche
-        cplCalculated: selectedNiche.user_state?.cpl_calculated?.toString() || "",
-        cpaCalculated: selectedNiche.user_state?.cpa_calculated?.toString() || "",
-        potentialRetainer: selectedNiche.user_state?.potential_retainer?.toString() || "",
-        profitSplitPotential: selectedNiche.user_state?.profit_split_potential?.toString() || "",
       })
     }
   }, [selectedNiche])
@@ -185,6 +184,10 @@ export default function OpportunitiesV2() {
           research_notes: null,
           aov_input: null,
           database_size_input: null,
+          // Add default values for new fields
+          revival_rate: null,
+          retainer_pct: null,
+          profit_pct: null,
           cpl_calculated: null,
           cpa_calculated: null,
           potential_retainer: null,
@@ -303,38 +306,65 @@ export default function OpportunitiesV2() {
     }
   }
 
-  const handleCalculatorChange = (field: string, value: string) => {
-    const numValue = value === "" ? null : Number(value)
-    setLocalInputs((prev) => ({ ...prev, [field]: value }))
+  const calculateAOVOutputs = () => {
+    const aov = Number.parseFloat(localInputs.aovInput) || 0
+    const db = Number.parseFloat(localInputs.databaseSizeInput) || 0
+    const revivalRate = Number.parseFloat(localInputs.revivalRate) / 100 || 0 // Convert % to decimal
+    const retainerPct = Number.parseFloat(localInputs.retainerPct) / 100 || 0
+    const profitPct = Number.parseFloat(localInputs.profitPct) / 100 || 0
 
-    // Auto-calculate other fields if AOV changes
-    if (field === "aovInput" && numValue && numValue > 0) {
-      const cpl = numValue * 0.05
-      const cpa = numValue / 3
-      const retainer = cpl * 100
-      const profitSplit = retainer * 0.5
+    // Formula: CPA = AOV / 3
+    const cpa = aov > 0 ? aov / 3 : 0
 
-      setLocalInputs((prev) => ({
-        ...prev,
-        cplCalculated: cpl.toFixed(2),
-        cpaCalculated: cpa.toFixed(2),
-        potentialRetainer: retainer.toFixed(0),
-        profitSplitPotential: profitSplit.toFixed(0),
-      }))
+    // Formula: CPL = CPA * 0.05 (5% of CPA, NOT 5% of AOV)
+    const cpl = cpa * 0.05
+
+    // Formula: Expected Revived = DB * RevivalRate
+    const expectedRevived = db * revivalRate
+
+    // Formula: Client Revenue = ExpectedRevived * AOV
+    const clientRevenue = expectedRevived * aov
+
+    // Formula: Suggested Retainer = ClientRevenue * RetainerPct
+    const suggestedRetainer = clientRevenue * retainerPct
+
+    // Formula: Potential Profit Split = ClientRevenue * ProfitPct
+    const potentialProfitSplit = clientRevenue * profitPct
+
+    return {
+      cpl: cpl.toFixed(2),
+      cpa: cpa.toFixed(2),
+      expectedRevived: expectedRevived.toFixed(0),
+      clientRevenue: clientRevenue.toFixed(2),
+      suggestedRetainer: suggestedRetainer.toFixed(2),
+      potentialProfitSplit: potentialProfitSplit.toFixed(2),
     }
   }
 
-  const saveCalculatorData = () => {
-    const updates: any = {}
-    if (localInputs.aovInput) updates.aov_input = Number(localInputs.aovInput)
-    if (localInputs.cplCalculated) updates.cpl_calculated = Number(localInputs.cplCalculated)
-    if (localInputs.cpaCalculated) updates.cpa_calculated = Number(localInputs.cpaCalculated)
-    if (localInputs.potentialRetainer) updates.potential_retainer = Number(localInputs.potentialRetainer)
-    if (localInputs.profitSplitPotential) updates.profit_split_potential = Number(localInputs.profitSplitPotential)
+  const aovOutputs = calculateAOVOutputs()
 
-    if (Object.keys(updates).length > 0) {
-      updateNicheState(updates)
-    }
+  const handleAOVInputChange = (field: string, value: string) => {
+    setLocalInputs((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const saveCalculatorData = async () => {
+    if (!selectedNiche) return
+
+    const updates: any = {}
+    if (localInputs.aovInput) updates.aov_input = Number.parseFloat(localInputs.aovInput)
+    if (localInputs.databaseSizeInput) updates.database_size_input = Number.parseFloat(localInputs.databaseSizeInput)
+    updates.revival_rate = Number.parseFloat(localInputs.revivalRate) || 0.5
+    updates.retainer_pct = Number.parseFloat(localInputs.retainerPct) || 20
+    updates.profit_pct = Number.parseFloat(localInputs.profitPct) || 50
+
+    // Store calculated values
+    updates.cpl_calculated = Number.parseFloat(aovOutputs.cpl)
+    updates.cpa_calculated = Number.parseFloat(aovOutputs.cpa)
+    updates.potential_retainer = Number.parseFloat(aovOutputs.suggestedRetainer)
+    updates.profit_split_potential = Number.parseFloat(aovOutputs.potentialProfitSplit)
+
+    console.log("[v0] Saving calculator data:", updates)
+    await updateNicheState(updates)
   }
 
   const updateNicheState = async (updates: Partial<Niche["user_state"]>) => {
@@ -559,7 +589,7 @@ export default function OpportunitiesV2() {
       const response = await fetch("/api/opportunities/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: JSON.JSON.stringify({
           messages: updatedMessages,
           nicheName: selectedNiche.niche_name,
         }),
@@ -859,13 +889,14 @@ export default function OpportunitiesV2() {
                         {/* AOV Calculator */}
                         <div className="space-y-3 p-4 bg-black/20 rounded-lg border border-white/10">
                           <h4 className="text-sm font-semibold text-white">AOV Calculator</h4>
-                          <div className="grid grid-cols-2 gap-3">
+
+                          <div className="space-y-3 pb-3 border-b border-white/10">
                             <div>
                               <Label className="text-xs text-white/70">Average Order Value ($)</Label>
                               <Input
                                 type="number"
                                 value={localInputs.aovInput}
-                                onChange={(e) => handleCalculatorChange("aovInput", e.target.value)}
+                                onChange={(e) => handleAOVInputChange("aovInput", e.target.value)}
                                 onBlur={saveCalculatorData}
                                 placeholder="5000"
                                 min="0"
@@ -878,77 +909,121 @@ export default function OpportunitiesV2() {
                               <Input
                                 type="number"
                                 value={localInputs.databaseSizeInput}
-                                onChange={(e) =>
-                                  setLocalInputs((prev) => ({ ...prev, databaseSizeInput: e.target.value }))
-                                }
-                                onBlur={() => {
-                                  if (localInputs.databaseSizeInput) {
-                                    updateNicheState({ database_size_input: Number(localInputs.databaseSizeInput) })
-                                  }
-                                }}
+                                onChange={(e) => handleAOVInputChange("databaseSizeInput", e.target.value)}
+                                onBlur={saveCalculatorData}
                                 placeholder="1000"
                                 min="0"
                                 step="100"
                                 className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
                               />
+                              <p className="text-[10px] text-white/40 mt-1">Number of contacts in database</p>
+                            </div>
+                            <div>
+                              <Label className="text-xs text-white/70">Expected Revival Rate (%)</Label>
+                              <Input
+                                type="number"
+                                value={localInputs.revivalRate}
+                                onChange={(e) => handleAOVInputChange("revivalRate", e.target.value)}
+                                onBlur={saveCalculatorData}
+                                placeholder="0.5"
+                                min="0"
+                                max="100"
+                                step="0.1"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
+                              />
+                              <p className="text-[10px] text-white/40 mt-1">
+                                What % of database you expect to reactivate each month (e.g. 0.5–3%)
+                              </p>
+                            </div>
+                            <div>
+                              <Label className="text-xs text-white/70">Agency Retainer % of Revived Revenue</Label>
+                              <Input
+                                type="number"
+                                value={localInputs.retainerPct}
+                                onChange={(e) => handleAOVInputChange("retainerPct", e.target.value)}
+                                onBlur={saveCalculatorData}
+                                placeholder="20"
+                                min="0"
+                                max="100"
+                                step="1"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
+                              />
+                              <p className="text-[10px] text-white/40 mt-1">
+                                Percent of revived revenue you charge as a retainer
+                              </p>
+                            </div>
+                            <div>
+                              <Label className="text-xs text-white/70">Agency Profit Split %</Label>
+                              <Input
+                                type="number"
+                                value={localInputs.profitPct}
+                                onChange={(e) => handleAOVInputChange("profitPct", e.target.value)}
+                                onBlur={saveCalculatorData}
+                                placeholder="50"
+                                min="0"
+                                max="100"
+                                step="1"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
+                              />
+                              <p className="text-[10px] text-white/40 mt-1">
+                                Percent of revived revenue you take on a profit-share deal
+                              </p>
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/10">
+                          <div className="space-y-2">
                             <div>
                               <Label className="text-xs text-white/70">Cost Per Lead ($)</Label>
                               <Input
-                                type="number"
-                                value={localInputs.cplCalculated}
-                                onChange={(e) => setLocalInputs((prev) => ({ ...prev, cplCalculated: e.target.value }))}
-                                onBlur={saveCalculatorData}
-                                placeholder="250"
-                                min="0"
-                                step="10"
-                                className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
+                                type="text"
+                                value={aovOutputs.cpl}
+                                disabled
+                                className="bg-white/5 border-white/10 text-white mt-1 opacity-60"
                               />
                             </div>
                             <div>
                               <Label className="text-xs text-white/70">Cost Per Acquisition ($)</Label>
                               <Input
-                                type="number"
-                                value={localInputs.cpaCalculated}
-                                onChange={(e) => setLocalInputs((prev) => ({ ...prev, cpaCalculated: e.target.value }))}
-                                onBlur={saveCalculatorData}
-                                placeholder="1666"
-                                min="0"
-                                step="10"
-                                className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
+                                type="text"
+                                value={aovOutputs.cpa}
+                                disabled
+                                className="bg-white/5 border-white/10 text-white mt-1 opacity-60"
                               />
                             </div>
                             <div>
-                              <Label className="text-xs text-white/70">Potential Retainer ($/mo)</Label>
+                              <Label className="text-xs text-white/70">Expected Revived Customers (/mo)</Label>
                               <Input
-                                type="number"
-                                value={localInputs.potentialRetainer}
-                                onChange={(e) =>
-                                  setLocalInputs((prev) => ({ ...prev, potentialRetainer: e.target.value }))
-                                }
-                                onBlur={saveCalculatorData}
-                                placeholder="25000"
-                                min="0"
-                                step="1000"
-                                className="bg-white/5 border-primary/30 text-primary placeholder:text-primary/40 mt-1 font-semibold"
+                                type="text"
+                                value={aovOutputs.expectedRevived}
+                                disabled
+                                className="bg-white/5 border-white/10 text-white mt-1 opacity-60"
                               />
                             </div>
                             <div>
-                              <Label className="text-xs text-white/70">50% Profit Split ($/mo)</Label>
+                              <Label className="text-xs text-white/70">Expected Client Revenue (/mo)</Label>
                               <Input
-                                type="number"
-                                value={localInputs.profitSplitPotential}
-                                onChange={(e) =>
-                                  setLocalInputs((prev) => ({ ...prev, profitSplitPotential: e.target.value }))
-                                }
-                                onBlur={saveCalculatorData}
-                                placeholder="12500"
-                                min="0"
-                                step="500"
-                                className="bg-white/5 border-primary/30 text-primary placeholder:text-primary/40 mt-1 font-semibold"
+                                type="text"
+                                value={aovOutputs.clientRevenue}
+                                disabled
+                                className="bg-white/5 border-white/10 text-white mt-1 opacity-60"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-white/70">Suggested Retainer ($/mo)</Label>
+                              <Input
+                                type="text"
+                                value={aovOutputs.suggestedRetainer}
+                                disabled
+                                className="bg-white/5 border-primary/30 text-primary mt-1 opacity-80 font-semibold"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-white/70">Potential Profit Split ($/mo)</Label>
+                              <Input
+                                type="text"
+                                value={aovOutputs.potentialProfitSplit}
+                                disabled
+                                className="bg-white/5 border-primary/30 text-primary mt-1 opacity-80 font-semibold"
                               />
                             </div>
                           </div>
@@ -957,12 +1032,12 @@ export default function OpportunitiesV2() {
                             <Checkbox
                               checked={selectedNiche.user_state?.aov_calculator_completed || false}
                               disabled={
-                                !localInputs.cplCalculated ||
-                                !localInputs.cpaCalculated ||
-                                !localInputs.potentialRetainer ||
-                                !localInputs.profitSplitPotential
+                                !localInputs.aovInput ||
+                                Number.parseFloat(localInputs.aovInput) <= 0 ||
+                                Number.parseFloat(aovOutputs.cpl) <= 0
                               }
                               onCheckedChange={(checked) => {
+                                console.log("[v0] AOV checkbox toggled:", checked)
                                 updateNicheState({ aov_calculator_completed: checked as boolean })
                               }}
                               className="border-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
@@ -970,20 +1045,12 @@ export default function OpportunitiesV2() {
                             <span
                               className={cn(
                                 "text-sm",
-                                localInputs.cplCalculated &&
-                                  localInputs.cpaCalculated &&
-                                  localInputs.potentialRetainer &&
-                                  localInputs.profitSplitPotential
+                                localInputs.aovInput && Number.parseFloat(aovOutputs.cpl) > 0
                                   ? "text-white/70"
                                   : "text-white/40",
                               )}
                             >
-                              AOV Calculator Completed{" "}
-                              {(!localInputs.cplCalculated ||
-                                !localInputs.cpaCalculated ||
-                                !localInputs.potentialRetainer ||
-                                !localInputs.profitSplitPotential) &&
-                                "(fill all fields)"}
+                              AOV Calculator Completed
                             </span>
                           </div>
                         </div>
