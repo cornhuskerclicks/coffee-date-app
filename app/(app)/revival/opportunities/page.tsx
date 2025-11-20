@@ -909,9 +909,11 @@ export default function OpportunitiesV2() {
                                   "[v0] Disabled state:",
                                   !localInputs.researchNotes || localInputs.researchNotes.length < 200,
                                 )
-                                updateNicheState({ research_notes_added: checked as boolean })
+                                if (checked !== "indeterminate") {
+                                  updateNicheState({ research_notes_added: checked })
+                                }
                               }}
-                              className="border-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
+                              className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary disabled:opacity-30 disabled:cursor-not-allowed"
                             />
                             <span
                               className={cn(
@@ -1101,9 +1103,11 @@ export default function OpportunitiesV2() {
                               disabled={!localInputs.aovInput || Number.parseFloat(localInputs.aovInput) <= 0}
                               onCheckedChange={(checked) => {
                                 console.log("[v0] AOV checkbox toggled:", checked)
-                                updateNicheState({ aov_calculator_completed: checked as boolean })
+                                if (checked !== "indeterminate") {
+                                  updateNicheState({ aov_calculator_completed: checked })
+                                }
                               }}
-                              className="border-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
+                              className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary disabled:opacity-30 disabled:cursor-not-allowed"
                             />
                             <span
                               className={cn(
@@ -1238,9 +1242,11 @@ export default function OpportunitiesV2() {
                               onCheckedChange={(checked) => {
                                 console.log("[v0] Customer profile checkbox changed:", checked)
                                 console.log("[v0] Has customer profile:", !!selectedNiche.user_state?.customer_profile)
-                                updateNicheState({ customer_profile_generated: checked as boolean })
+                                if (checked !== "indeterminate") {
+                                  updateNicheState({ customer_profile_generated: checked })
+                                }
                               }}
-                              className="border-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
+                              className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary disabled:opacity-30 disabled:cursor-not-allowed"
                             />
                             <span
                               className={cn(
@@ -1320,7 +1326,7 @@ export default function OpportunitiesV2() {
                         <Checkbox
                           checked={selectedNiche.user_state?.messaging_prepared || false}
                           onCheckedChange={(checked) => updateNicheState({ messaging_prepared: checked as boolean })}
-                          className="border-white/20"
+                          className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                         />
                         <span className="text-sm text-white/70">Messaging Prepared</span>
                       </div>
@@ -1422,7 +1428,7 @@ export default function OpportunitiesV2() {
                         <Checkbox
                           checked={selectedNiche.user_state?.coffee_date_completed || false}
                           onCheckedChange={(checked) => updateNicheState({ coffee_date_completed: checked as boolean })}
-                          className="border-white/20"
+                          className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                         />
                         <span className="text-sm text-white/70">Coffee Date Completed</span>
                       </div>
