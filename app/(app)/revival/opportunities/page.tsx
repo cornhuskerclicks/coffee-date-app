@@ -125,7 +125,10 @@ export default function OpportunitiesPage() {
     }
 
     if (scaleFilter.length > 0) {
-      filtered = filtered.filter((n) => scaleFilter.includes(n.scale))
+      filtered = filtered.filter((n) => {
+        // Check if niche scale contains any of the selected filters
+        return scaleFilter.some((filter) => n.scale.includes(filter))
+      })
     }
 
     if (sizeFilter.length > 0) {
@@ -341,10 +344,16 @@ export default function OpportunitiesPage() {
                   <SelectTrigger className="bg-white/5 border-white/10 text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#111] border-white/10">
-                    <SelectItem value="all">All Industries</SelectItem>
+                  <SelectContent className="bg-[#111] border-white/10 max-h-[300px] overflow-y-auto">
+                    <SelectItem value="all" className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white">
+                      All Industries
+                    </SelectItem>
                     {industries.map((ind) => (
-                      <SelectItem key={ind.id} value={ind.id}>
+                      <SelectItem
+                        key={ind.id}
+                        value={ind.id}
+                        className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white"
+                      >
                         {ind.name}
                       </SelectItem>
                     ))}
@@ -487,7 +496,11 @@ export default function OpportunitiesPage() {
                                 </SelectTrigger>
                                 <SelectContent className="bg-[#111] border-white/10">
                                   {STATUSES.map((status) => (
-                                    <SelectItem key={status} value={status}>
+                                    <SelectItem
+                                      key={status}
+                                      value={status}
+                                      className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white"
+                                    >
                                       {status}
                                     </SelectItem>
                                   ))}
@@ -566,7 +579,11 @@ export default function OpportunitiesPage() {
                             </SelectTrigger>
                             <SelectContent className="bg-[#111] border-white/10">
                               {STATUSES.map((status) => (
-                                <SelectItem key={status} value={status}>
+                                <SelectItem
+                                  key={status}
+                                  value={status}
+                                  className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white"
+                                >
                                   {status}
                                 </SelectItem>
                               ))}
