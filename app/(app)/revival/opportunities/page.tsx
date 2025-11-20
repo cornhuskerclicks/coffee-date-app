@@ -26,6 +26,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
+import React from "react"
 
 const STATUSES = ["Research", "Shortlisted", "Outreach in Progress", "Coffee Date Demo", "Win"]
 
@@ -36,6 +37,7 @@ type Industry = {
 
 type Niche = {
   id: string
+  name: string
   industry_id: string
   niche_name: string
   scale: string
@@ -96,14 +98,15 @@ export default function OpportunitiesV2() {
   const [favouritesOnly, setFavouritesOnly] = useState(false)
   const [sortBy, setSortBy] = useState<string>("alphabetical")
 
-  const [localInputs, setLocalInputs] = useState({
+  const [localInputs, setLocalInputs] = React.useState({
     researchNotes: "",
     aovInput: "",
     databaseSizeInput: "",
-    conversationRate: "40", // Default 40%
-    salesConversion: "10", // Default 10%
-    profitPct: "50", // Default 50%
+    conversationRate: "",
+    salesConversion: "",
+    profitSplit: "",
     outreachNotes: "",
+    profileChatInput: "",
   })
 
   // AI generation states
@@ -112,7 +115,8 @@ export default function OpportunitiesV2() {
   const [generatingDemo, setGeneratingDemo] = useState(false)
 
   const [profileChatMessages, setProfileChatMessages] = useState<Array<{ role: string; content: string }>>([])
-  const [profileChatInput, setProfileChatInput] = useState("")
+  // Moved profileChatInput to localInputs
+  // const [profileChatInput, setProfileChatInput] = useState("")
   const [isProfileChatActive, setIsProfileChatActive] = useState(false)
   const [isProfileChatLoading, setIsProfileChatLoading] = useState(false)
 
@@ -128,7 +132,8 @@ export default function OpportunitiesV2() {
   const supabase = createClient()
 
   useEffect(() => {
-    loadData()
+    loadIndustries()
+    loadNiches()
   }, [])
 
   useEffect(() => {
@@ -136,15 +141,18 @@ export default function OpportunitiesV2() {
   }, [niches, searchTerm, industryFilter, statusFilter, favouritesOnly, sortBy])
 
   useEffect(() => {
+    console.log("[v0] Selected niche changed:", selectedNiche?.niche_name)
     if (selectedNiche) {
+      console.log("[v0] User state:", selectedNiche.user_state)
       setLocalInputs({
         researchNotes: selectedNiche.user_state?.research_notes || "",
         aovInput: selectedNiche.user_state?.aov_input?.toString() || "",
         databaseSizeInput: selectedNiche.user_state?.database_size_input?.toString() || "",
         conversationRate: selectedNiche.user_state?.conversation_rate?.toString() || "40",
         salesConversion: selectedNiche.user_state?.sales_conversion?.toString() || "10",
-        profitPct: selectedNiche.user_state?.profit_pct?.toString() || "50",
+        profitSplit: selectedNiche.user_state?.profit_pct?.toString() || "50", // Corrected field name
         outreachNotes: selectedNiche.user_state?.outreach_notes || "",
+        profileChatInput: "", // Reset chat input when niche changes
       })
     }
   }, [selectedNiche])
@@ -155,16 +163,26 @@ export default function OpportunitiesV2() {
     }
   }, [profileChatMessages, isProfileChatActive])
 
-  const loadData = async () => {
+  const loadIndustries = async () => {
+    try {
+      const { data: industriesData } = await supabase.from("industries").select("*").order("name")
+      setIndustries(industriesData || [])
+    } catch (error: any) {
+      toast({
+        title: "Error loading industries",
+        description: error.message,
+        variant: "destructive",
+      })
+    }
+  }
+
+  const loadNiches = async () => {
     try {
       setLoading(true)
       const {
         data: { user },
       } = await supabase.auth.getUser()
       if (!user) return
-
-      const { data: industriesData } = await supabase.from("industries").select("*").order("name")
-      setIndustries(industriesData || [])
 
       const { data: nichesData } = await supabase
         .from("niches")
@@ -318,7 +336,7 @@ export default function OpportunitiesV2() {
     const db = Number.parseFloat(localInputs.databaseSizeInput) || 0
     const convRate = Number.parseFloat(localInputs.conversationRate) || 40
     const salesFromConversations = Number.parseFloat(localInputs.salesConversion) || 10
-    const profitPct = Number.parseFloat(localInputs.profitPct) || 50
+    const profitPct = Number.parseFloat(localInputs.profitSplit) || 50 // Corrected field name
 
     // Constants
     const MAX_CAPACITY = 3000 // 100 SMS/day * 30 days
@@ -384,7 +402,7 @@ export default function OpportunitiesV2() {
     if (localInputs.databaseSizeInput) updates.database_size_input = Number.parseFloat(localInputs.databaseSizeInput)
     updates.conversation_rate = Number.parseFloat(localInputs.conversationRate) || 40
     updates.sales_conversion = Number.parseFloat(localInputs.salesConversion) || 10
-    updates.profit_pct = Number.parseFloat(localInputs.profitPct) || 50
+    updates.profit_pct = Number.parseFloat(localInputs.profitSplit) || 50 // Corrected field name
 
     // Store calculated values
     updates.cpl_calculated = Number.parseFloat(aovOutputs.cpl)
@@ -608,19 +626,21 @@ export default function OpportunitiesV2() {
   }
 
   const sendProfileChatMessage = async () => {
-    if (!profileChatInput.trim() || !selectedNiche) return
+    // Use localInputs for profileChatInput
+    if (!localInputs.profileChatInput.trim() || !selectedNiche) return
 
-    const userMessage = { role: "user", content: profileChatInput }
+    const userMessage = { role: "user", content: localInputs.profileChatInput }
     const updatedMessages = [...profileChatMessages, userMessage]
     setProfileChatMessages(updatedMessages)
-    setProfileChatInput("")
+    // Clear profileChatInput from localInputs
+    setLocalInputs((prev) => ({ ...prev, profileChatInput: "" }))
     setIsProfileChatLoading(true)
 
     try {
       const response = await fetch("/api/opportunities/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: JSON.JSON.stringify({
           messages: updatedMessages,
           nicheName: selectedNiche.niche_name,
         }),
@@ -899,18 +919,37 @@ export default function OpportunitiesV2() {
                             className="bg-white/5 border-white/10 text-white placeholder:text-white/40 min-h-[120px]"
                           />
                           <div className="flex items-center gap-2">
+                            {/* Improved checkbox handler with more logging */}
                             <Checkbox
+                              id="research-notes-checkbox"
                               checked={selectedNiche.user_state?.research_notes_added || false}
                               disabled={!localInputs.researchNotes || localInputs.researchNotes.length < 200}
                               onCheckedChange={(checked) => {
-                                console.log("[v0] Research notes checkbox changed:", checked)
-                                console.log("[v0] Current notes length:", localInputs.researchNotes.length)
+                                console.log("[v0] ========== CHECKBOX CLICKED ==========")
+                                console.log("[v0] Checked value:", checked)
+                                console.log("[v0] Checked type:", typeof checked)
+                                console.log("[v0] Current notes:", localInputs.researchNotes)
+                                console.log("[v0] Notes length:", localInputs.researchNotes?.length)
                                 console.log(
-                                  "[v0] Disabled state:",
+                                  "[v0] Is disabled:",
                                   !localInputs.researchNotes || localInputs.researchNotes.length < 200,
                                 )
+                                console.log(
+                                  "[v0] Current database state:",
+                                  selectedNiche.user_state?.research_notes_added,
+                                )
+
                                 if (checked !== "indeterminate") {
+                                  console.log("[v0] Calling updateNicheState with:", { research_notes_added: checked })
                                   updateNicheState({ research_notes_added: checked })
+                                    .then(() => {
+                                      console.log("[v0] updateNicheState completed successfully")
+                                      // Force a refresh of the niches data
+                                      loadNiches()
+                                    })
+                                    .catch((err) => {
+                                      console.error("[v0] updateNicheState failed:", err)
+                                    })
                                 }
                               }}
                               className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary disabled:opacity-30 disabled:cursor-not-allowed"
@@ -996,8 +1035,8 @@ export default function OpportunitiesV2() {
                               <Label className="text-xs text-white/70">Profit Split % (for revenue share deals)</Label>
                               <Input
                                 type="number"
-                                value={localInputs.profitPct}
-                                onChange={(e) => handleAOVInputChange("profitPct", e.target.value)}
+                                value={localInputs.profitSplit} // Corrected field name
+                                onChange={(e) => handleAOVInputChange("profitSplit", e.target.value)}
                                 onBlur={saveCalculatorData}
                                 placeholder="50"
                                 min="0"
@@ -1103,6 +1142,8 @@ export default function OpportunitiesV2() {
                               disabled={!localInputs.aovInput || Number.parseFloat(localInputs.aovInput) <= 0}
                               onCheckedChange={(checked) => {
                                 console.log("[v0] AOV checkbox toggled:", checked)
+                                console.log("[v0] Has AOV input:", !!localInputs.aovInput)
+                                console.log("[v0] AOV input value:", Number.parseFloat(localInputs.aovInput))
                                 if (checked !== "indeterminate") {
                                   updateNicheState({ aov_calculator_completed: checked })
                                 }
@@ -1169,8 +1210,11 @@ export default function OpportunitiesV2() {
 
                               <div className="flex gap-2">
                                 <Input
-                                  value={profileChatInput}
-                                  onChange={(e) => setProfileChatInput(e.target.value)}
+                                  // Use localInputs for profileChatInput
+                                  value={localInputs.profileChatInput}
+                                  onChange={(e) =>
+                                    setLocalInputs((prev) => ({ ...prev, profileChatInput: e.target.value }))
+                                  }
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter" && !e.shiftKey) {
                                       e.preventDefault()
@@ -1183,7 +1227,7 @@ export default function OpportunitiesV2() {
                                 />
                                 <Button
                                   onClick={sendProfileChatMessage}
-                                  disabled={isProfileChatLoading || !profileChatInput.trim()}
+                                  disabled={isProfileChatLoading || !localInputs.profileChatInput.trim()}
                                   size="icon"
                                   className="shrink-0 bg-primary hover:bg-primary/90 disabled:bg-primary/30 shadow-md"
                                   title="Send message"
