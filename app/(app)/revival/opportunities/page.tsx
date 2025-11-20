@@ -516,7 +516,7 @@ export default function OpportunitiesV2() {
       const response = await fetch("/api/opportunities/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.JSON.stringify({
+        body: JSON.stringify({
           messages: updatedMessages,
           nicheName: selectedNiche.niche_name,
         }),
@@ -990,7 +990,7 @@ export default function OpportunitiesV2() {
                                   onClick={sendProfileChatMessage}
                                   disabled={isProfileChatLoading || !profileChatInput.trim()}
                                   size="icon"
-                                  className="bg-primary hover:bg-primary/90 shrink-0 w-10 h-10 shadow-lg shadow-primary/20"
+                                  className="shrink-0 bg-primary hover:bg-primary/90 disabled:bg-primary/30 shadow-md"
                                   title="Send message"
                                 >
                                   <Send className="h-4 w-4" />
