@@ -45,6 +45,9 @@ type Niche = {
   default_priority: number
   industry?: Industry
   user_state?: {
+    id: string // Added to match Supabase response
+    niche_id: string // Added to match Supabase response
+    user_id: string // Added to match Supabase response
     is_favourite: boolean
     status: string
     notes: string | null
@@ -125,6 +128,32 @@ export default function OpportunitiesV2() {
     calculator: true,
     profile: true,
   })
+
+  // CHANGE: Simplified checkbox state management - only update local state, don't reload from DB
+  const handleCheckboxChange = async (
+    field: "research_notes_added" | "aov_calculator_completed" | "customer_profile_generated",
+    checked: boolean,
+  ) => {
+    console.log("[v0] Checkbox change:", field, checked)
+
+    // Update local state immediately
+    setCheckboxStates((prev) => ({ ...prev, [field]: checked }))
+
+    // Update database in background without reloading
+    if (!selectedNiche?.user_state) return
+
+    const supabase = createClient()
+    const { error } = await supabase
+      .from("niche_user_state")
+      .update({ [field]: checked })
+      .eq("id", selectedNiche.user_state.id)
+
+    if (error) {
+      console.error("[v0] Error updating checkbox:", error)
+      // Revert on error
+      setCheckboxStates((prev) => ({ ...prev, [field]: !checked }))
+    }
+  }
 
   const [checkboxStates, setCheckboxStates] = useState({
     research_notes_added: false,
@@ -207,6 +236,9 @@ export default function OpportunitiesV2() {
       const processedNiches = (nichesData || []).map((niche) => ({
         ...niche,
         user_state: niche.user_state?.[0] || {
+          id: "", // Default to empty string if no user_state exists
+          niche_id: niche.id,
+          user_id: user.id,
           is_favourite: false,
           status: "Research",
           notes: null,
@@ -428,7 +460,7 @@ export default function OpportunitiesV2() {
   }
 
   const updateNicheState = async (updates: Partial<Niche["user_state"]>) => {
-    if (!selectedNiche) return
+    if (!selectedNiche || !selectedNiche.user_state) return
 
     try {
       const {
@@ -440,13 +472,14 @@ export default function OpportunitiesV2() {
 
       const { error } = await supabase.from("niche_user_state").upsert(
         {
+          id: selectedNiche.user_state.id, // Use existing ID for upsert
           niche_id: selectedNiche.id,
           user_id: user.id,
           ...selectedNiche.user_state,
           ...updates,
         },
         {
-          onConflict: "niche_id,user_id",
+          onConflict: "id", // Assuming 'id' is the primary key for the user_state table
         },
       )
 
@@ -662,7 +695,7 @@ export default function OpportunitiesV2() {
       const response = await fetch("/api/opportunities/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.JSON.stringify({
+        body: JSON.stringify({
           messages: updatedMessages,
           nicheName: selectedNiche.niche_name,
         }),
@@ -947,10 +980,7 @@ export default function OpportunitiesV2() {
                               disabled={!localInputs.researchNotes || localInputs.researchNotes.length < 200}
                               onCheckedChange={(checked) => {
                                 if (checked !== "indeterminate") {
-                                  // Update local state immediately for instant feedback
-                                  setCheckboxStates((prev) => ({ ...prev, research_notes_added: checked }))
-                                  // Then update database
-                                  updateNicheState({ research_notes_added: checked })
+                                  handleCheckboxChange("research_notes_added", checked as boolean)
                                 }
                               }}
                               className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary disabled:opacity-30 disabled:cursor-not-allowed"
@@ -962,7 +992,8 @@ export default function OpportunitiesV2() {
                               )}
                             >
                               Notes Added{" "}
-                              {localInputs.researchNotes.length < 200 && "(minimum 200 characters required)"}
+                              {!localInputs.researchNotes ||
+                                (localInputs.researchNotes.length < 200 && "(minimum 200 characters required)")}
                             </span>
                           </div>
                         </div>
@@ -1143,10 +1174,7 @@ export default function OpportunitiesV2() {
                               disabled={!localInputs.aovInput || Number.parseFloat(localInputs.aovInput) <= 0}
                               onCheckedChange={(checked) => {
                                 if (checked !== "indeterminate") {
-                                  // Update local state immediately for instant feedback
-                                  setCheckboxStates((prev) => ({ ...prev, aov_calculator_completed: checked }))
-                                  // Then update database
-                                  updateNicheState({ aov_calculator_completed: checked })
+                                  handleCheckboxChange("aov_calculator_completed", checked as boolean)
                                 }
                               }}
                               className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary disabled:opacity-30 disabled:cursor-not-allowed"
@@ -1169,17 +1197,17 @@ export default function OpportunitiesV2() {
 
                           {!isProfileChatActive && !selectedNiche.user_state?.customer_profile && (
                             <Button
-                              onClick={startProfileChat}
+                              onClick={generateCustomerProfile} // Changed from startProfileChat to generateCustomerProfile
                               disabled={generatingProfile}
                               className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 shadow-lg shadow-primary/20 transition-all"
                             >
                               {generatingProfile ? (
                                 <span className="flex items-center gap-2">
                                   <Loader2 className="h-4 w-4 animate-spin" />
-                                  Starting Interview...
+                                  Generating Profile...
                                 </span>
                               ) : (
-                                "Start ICP Interview"
+                                "Generate ICP"
                               )}
                             </Button>
                           )}
@@ -1270,7 +1298,17 @@ export default function OpportunitiesV2() {
                                 )}
                               </div>
                               <Button
-                                onClick={startProfileChat}
+                                onClick={() => {
+                                  // Corrected action to start interview/refine ICP
+                                  setIsProfileChatActive(true)
+                                  setProfileChatMessages([
+                                    {
+                                      role: "assistant",
+                                      content:
+                                        "Let's refine your Ideal Customer Profile. What specific challenges are they facing that your service can solve?",
+                                    },
+                                  ])
+                                }}
                                 variant="outline"
                                 size="sm"
                                 className="w-full border-white/10 text-white/60 hover:text-white hover:bg-white/5 bg-transparent"
@@ -1286,10 +1324,7 @@ export default function OpportunitiesV2() {
                               disabled={!selectedNiche.user_state?.customer_profile}
                               onCheckedChange={(checked) => {
                                 if (checked !== "indeterminate") {
-                                  // Update local state immediately for instant feedback
-                                  setCheckboxStates((prev) => ({ ...prev, customer_profile_generated: checked }))
-                                  // Then update database
-                                  updateNicheState({ customer_profile_generated: checked })
+                                  handleCheckboxChange("customer_profile_generated", checked as boolean)
                                 }
                               }}
                               className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary disabled:opacity-30 disabled:cursor-not-allowed"
