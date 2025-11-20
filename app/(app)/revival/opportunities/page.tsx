@@ -51,8 +51,9 @@ type Niche = {
     research_notes: string | null
     aov_input: number | null
     database_size_input: number | null
-    revival_rate: number | null
-    retainer_pct: number | null
+    conversation_rate: number | null
+    sales_conversion: number | null
+    retainer_pct: number | null // Kept for reference but not used in new calc
     profit_pct: number | null
     cpl_calculated: number | null
     cpa_calculated: number | null
@@ -99,9 +100,9 @@ export default function OpportunitiesV2() {
     researchNotes: "",
     aovInput: "",
     databaseSizeInput: "",
-    revivalRate: "0.5",
-    retainerPct: "20",
-    profitPct: "50",
+    conversationRate: "40", // Default 40%
+    salesConversion: "10", // Default 10%
+    profitPct: "50", // Default 50%
     outreachNotes: "",
   })
 
@@ -140,8 +141,8 @@ export default function OpportunitiesV2() {
         researchNotes: selectedNiche.user_state?.research_notes || "",
         aovInput: selectedNiche.user_state?.aov_input?.toString() || "",
         databaseSizeInput: selectedNiche.user_state?.database_size_input?.toString() || "",
-        revivalRate: selectedNiche.user_state?.revival_rate?.toString() || "0.5",
-        retainerPct: selectedNiche.user_state?.retainer_pct?.toString() || "20",
+        conversationRate: selectedNiche.user_state?.conversation_rate?.toString() || "40",
+        salesConversion: selectedNiche.user_state?.sales_conversion?.toString() || "10",
         profitPct: selectedNiche.user_state?.profit_pct?.toString() || "50",
         outreachNotes: selectedNiche.user_state?.outreach_notes || "",
       })
@@ -185,8 +186,9 @@ export default function OpportunitiesV2() {
           aov_input: null,
           database_size_input: null,
           // Add default values for new fields
-          revival_rate: null,
-          retainer_pct: null,
+          conversation_rate: null,
+          sales_conversion: null,
+          retainer_pct: null, // Kept for reference
           profit_pct: null,
           cpl_calculated: null,
           cpa_calculated: null,
@@ -259,7 +261,12 @@ export default function OpportunitiesV2() {
         return statusOrder[aStatus as keyof typeof statusOrder] - statusOrder[bStatus as keyof typeof statusOrder]
       })
     } else if (sortBy === "potential") {
-      filtered.sort((a, b) => (b.user_state?.potential_retainer || 0) - (a.user_state?.potential_retainer || 0))
+      // Sorting by potential retainer, which is now tiered based on DB size
+      filtered.sort((a, b) => {
+        const aPotential = a.user_state?.potential_retainer || 0
+        const bPotential = b.user_state?.potential_retainer || 0
+        return bPotential - aPotential
+      })
     }
 
     setFilteredNiches(filtered)
@@ -309,34 +316,56 @@ export default function OpportunitiesV2() {
   const calculateAOVOutputs = () => {
     const aov = Number.parseFloat(localInputs.aovInput) || 0
     const db = Number.parseFloat(localInputs.databaseSizeInput) || 0
-    const revivalRate = Number.parseFloat(localInputs.revivalRate) / 100 || 0 // Convert % to decimal
-    const retainerPct = Number.parseFloat(localInputs.retainerPct) / 100 || 0
-    const profitPct = Number.parseFloat(localInputs.profitPct) / 100 || 0
+    const convRate = Number.parseFloat(localInputs.conversationRate) || 40
+    const salesFromConversations = Number.parseFloat(localInputs.salesConversion) || 10
+    const profitPct = Number.parseFloat(localInputs.profitPct) || 50
 
-    // Formula: CPA = AOV / 3
+    // Constants
+    const MAX_CAPACITY = 3000 // 100 SMS/day * 30 days
+
+    // Formula: CPA = AOV / 3 (no ceiling limit)
     const cpa = aov > 0 ? aov / 3 : 0
 
-    // Formula: CPL = CPA * 0.05 (5% of CPA, NOT 5% of AOV)
+    // Formula: CPL = CPA * 0.05 (5% of CPA, NOT AOV)
     const cpl = cpa * 0.05
 
-    // Formula: Expected Revived = DB * RevivalRate
-    const expectedRevived = db * revivalRate
+    // Formula: Max Reachable Contacts = min(DB, 3000)
+    const maxReachable = db > 0 ? Math.min(db, MAX_CAPACITY) : 0
 
-    // Formula: Client Revenue = ExpectedRevived * AOV
-    const clientRevenue = expectedRevived * aov
+    // Formula: Months Needed = ceil(DB / 3000)
+    const monthsNeeded = db > 0 ? Math.ceil(db / MAX_CAPACITY) : 0
 
-    // Formula: Suggested Retainer = ClientRevenue * RetainerPct
-    const suggestedRetainer = clientRevenue * retainerPct
+    // Formula: Conversations = Reachable * (ConvRate / 100)
+    const conversations = maxReachable * (convRate / 100)
 
-    // Formula: Potential Profit Split = ClientRevenue * ProfitPct
-    const potentialProfitSplit = clientRevenue * profitPct
+    // Formula: Sales = Conversations * (SalesFromConversations / 100)
+    const sales = conversations * (salesFromConversations / 100)
+
+    // Formula: Client Revenue = Sales * AOV
+    const clientRevenue = sales * aov
+
+    // Formula: Tiered Retainer based on DB size
+    let suggestedRetainer = 0
+    if (db < 1000) {
+      suggestedRetainer = 0 // Not eligible
+    } else if (db >= 1000 && db <= 2000) {
+      suggestedRetainer = 2000
+    } else if (db >= 2001) {
+      suggestedRetainer = 3000
+    }
+
+    // Formula: Profit Split = ClientRevenue * (ProfitPct / 100)
+    const potentialProfitSplit = clientRevenue * (profitPct / 100)
 
     return {
       cpl: cpl.toFixed(2),
       cpa: cpa.toFixed(2),
-      expectedRevived: expectedRevived.toFixed(0),
+      maxReachable: maxReachable.toFixed(0),
+      monthsNeeded: monthsNeeded.toString(),
+      conversations: conversations.toFixed(0),
+      sales: sales.toFixed(0),
       clientRevenue: clientRevenue.toFixed(2),
-      suggestedRetainer: suggestedRetainer.toFixed(2),
+      suggestedRetainer: db < 1000 ? "Not eligible" : suggestedRetainer.toFixed(2),
       potentialProfitSplit: potentialProfitSplit.toFixed(2),
     }
   }
@@ -353,14 +382,16 @@ export default function OpportunitiesV2() {
     const updates: any = {}
     if (localInputs.aovInput) updates.aov_input = Number.parseFloat(localInputs.aovInput)
     if (localInputs.databaseSizeInput) updates.database_size_input = Number.parseFloat(localInputs.databaseSizeInput)
-    updates.revival_rate = Number.parseFloat(localInputs.revivalRate) || 0.5
-    updates.retainer_pct = Number.parseFloat(localInputs.retainerPct) || 20
+    updates.conversation_rate = Number.parseFloat(localInputs.conversationRate) || 40
+    updates.sales_conversion = Number.parseFloat(localInputs.salesConversion) || 10
     updates.profit_pct = Number.parseFloat(localInputs.profitPct) || 50
 
     // Store calculated values
     updates.cpl_calculated = Number.parseFloat(aovOutputs.cpl)
     updates.cpa_calculated = Number.parseFloat(aovOutputs.cpa)
-    updates.potential_retainer = Number.parseFloat(aovOutputs.suggestedRetainer)
+    // Handle "Not eligible" case for potential retainer
+    updates.potential_retainer =
+      aovOutputs.suggestedRetainer === "Not eligible" ? 0 : Number.parseFloat(aovOutputs.suggestedRetainer)
     updates.profit_split_potential = Number.parseFloat(aovOutputs.potentialProfitSplit)
 
     console.log("[v0] Saving calculator data:", updates)
@@ -589,7 +620,7 @@ export default function OpportunitiesV2() {
       const response = await fetch("/api/opportunities/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.JSON.stringify({
+        body: JSON.stringify({
           messages: updatedMessages,
           nicheName: selectedNiche.niche_name,
         }),
@@ -750,11 +781,19 @@ export default function OpportunitiesV2() {
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/70">
                           {niche.user_state?.status || "Research"}
                         </span>
-                        {niche.user_state?.potential_retainer && (
+                        {/* Display new tiered retainer value */}
+                        {niche.user_state?.potential_retainer && niche.user_state.potential_retainer > 0 && (
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary">
                             ${Math.round(niche.user_state.potential_retainer)}/mo
                           </span>
                         )}
+                        {niche.user_state?.potential_retainer === 0 &&
+                          niche.user_state?.database_size_input &&
+                          niche.user_state.database_size_input >= 1000 && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">
+                              Needs Review
+                            </span>
+                          )}
                       </div>
                     </div>
                     <button
@@ -898,62 +937,61 @@ export default function OpportunitiesV2() {
                                 value={localInputs.aovInput}
                                 onChange={(e) => handleAOVInputChange("aovInput", e.target.value)}
                                 onBlur={saveCalculatorData}
-                                placeholder="5000"
+                                placeholder="e.g. 5000"
                                 min="0"
                                 step="100"
                                 className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
                               />
                             </div>
                             <div>
-                              <Label className="text-xs text-white/70">Database Size (optional)</Label>
+                              <Label className="text-xs text-white/70">Database Size (contacts)</Label>
                               <Input
                                 type="number"
                                 value={localInputs.databaseSizeInput}
                                 onChange={(e) => handleAOVInputChange("databaseSizeInput", e.target.value)}
                                 onBlur={saveCalculatorData}
-                                placeholder="1000"
+                                placeholder="e.g. 5000"
                                 min="0"
                                 step="100"
                                 className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
                               />
-                              <p className="text-[10px] text-white/40 mt-1">Number of contacts in database</p>
                             </div>
                             <div>
-                              <Label className="text-xs text-white/70">Expected Revival Rate (%)</Label>
+                              <Label className="text-xs text-white/70">Expected Conversation Rate (%)</Label>
                               <Input
                                 type="number"
-                                value={localInputs.revivalRate}
-                                onChange={(e) => handleAOVInputChange("revivalRate", e.target.value)}
+                                value={localInputs.conversationRate}
+                                onChange={(e) => handleAOVInputChange("conversationRate", e.target.value)}
                                 onBlur={saveCalculatorData}
-                                placeholder="0.5"
-                                min="0"
-                                max="100"
-                                step="0.1"
-                                className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
-                              />
-                              <p className="text-[10px] text-white/40 mt-1">
-                                What % of database you expect to reactivate each month (e.g. 0.5–3%)
-                              </p>
-                            </div>
-                            <div>
-                              <Label className="text-xs text-white/70">Agency Retainer % of Revived Revenue</Label>
-                              <Input
-                                type="number"
-                                value={localInputs.retainerPct}
-                                onChange={(e) => handleAOVInputChange("retainerPct", e.target.value)}
-                                onBlur={saveCalculatorData}
-                                placeholder="20"
+                                placeholder="40"
                                 min="0"
                                 max="100"
                                 step="1"
                                 className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
                               />
                               <p className="text-[10px] text-white/40 mt-1">
-                                Percent of revived revenue you charge as a retainer
+                                % of reachable contacts who reply or engage (default: 40%)
                               </p>
                             </div>
                             <div>
-                              <Label className="text-xs text-white/70">Agency Profit Split %</Label>
+                              <Label className="text-xs text-white/70">Sales Conversion From Conversations (%)</Label>
+                              <Input
+                                type="number"
+                                value={localInputs.salesConversion}
+                                onChange={(e) => handleAOVInputChange("salesConversion", e.target.value)}
+                                onBlur={saveCalculatorData}
+                                placeholder="10"
+                                min="0"
+                                max="100"
+                                step="1"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
+                              />
+                              <p className="text-[10px] text-white/40 mt-1">
+                                % of conversations that turn into sales (default: 10%)
+                              </p>
+                            </div>
+                            <div>
+                              <Label className="text-xs text-white/70">Profit Split % (for revenue share deals)</Label>
                               <Input
                                 type="number"
                                 value={localInputs.profitPct}
@@ -965,22 +1003,11 @@ export default function OpportunitiesV2() {
                                 step="1"
                                 className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
                               />
-                              <p className="text-[10px] text-white/40 mt-1">
-                                Percent of revived revenue you take on a profit-share deal
-                              </p>
+                              <p className="text-[10px] text-white/40 mt-1">Default: 50%</p>
                             </div>
                           </div>
 
                           <div className="space-y-2">
-                            <div>
-                              <Label className="text-xs text-white/70">Cost Per Lead ($)</Label>
-                              <Input
-                                type="text"
-                                value={aovOutputs.cpl}
-                                disabled
-                                className="bg-white/5 border-white/10 text-white mt-1 opacity-60"
-                              />
-                            </div>
                             <div>
                               <Label className="text-xs text-white/70">Cost Per Acquisition ($)</Label>
                               <Input
@@ -991,16 +1018,53 @@ export default function OpportunitiesV2() {
                               />
                             </div>
                             <div>
-                              <Label className="text-xs text-white/70">Expected Revived Customers (/mo)</Label>
+                              <Label className="text-xs text-white/70">Cost Per Lead ($)</Label>
                               <Input
                                 type="text"
-                                value={aovOutputs.expectedRevived}
+                                value={aovOutputs.cpl}
                                 disabled
                                 className="bg-white/5 border-white/10 text-white mt-1 opacity-60"
                               />
                             </div>
                             <div>
-                              <Label className="text-xs text-white/70">Expected Client Revenue (/mo)</Label>
+                              <Label className="text-xs text-white/70">Max Reachable Contacts Per Month</Label>
+                              <Input
+                                type="text"
+                                value={aovOutputs.maxReachable}
+                                disabled
+                                className="bg-white/5 border-white/10 text-white mt-1 opacity-60"
+                              />
+                              <p className="text-[10px] text-white/40 mt-1">Limited to 3,000/month (100 SMS/day)</p>
+                            </div>
+                            <div>
+                              <Label className="text-xs text-white/70">Months Needed To Reach Entire Database</Label>
+                              <Input
+                                type="text"
+                                value={aovOutputs.monthsNeeded}
+                                disabled
+                                className="bg-white/5 border-white/10 text-white mt-1 opacity-60"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-white/70">Conversations Per Month</Label>
+                              <Input
+                                type="text"
+                                value={aovOutputs.conversations}
+                                disabled
+                                className="bg-white/5 border-white/10 text-white mt-1 opacity-60"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-white/70">Sales Per Month</Label>
+                              <Input
+                                type="text"
+                                value={aovOutputs.sales}
+                                disabled
+                                className="bg-white/5 border-white/10 text-white mt-1 opacity-60"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-white/70">Client Revenue Per Month ($)</Label>
                               <Input
                                 type="text"
                                 value={aovOutputs.clientRevenue}
@@ -1016,6 +1080,9 @@ export default function OpportunitiesV2() {
                                 disabled
                                 className="bg-white/5 border-primary/30 text-primary mt-1 opacity-80 font-semibold"
                               />
+                              <p className="text-[10px] text-white/40 mt-1">
+                                Tiered: $0 (&lt;1k), $2k (1k-2k), $3k (2k+)
+                              </p>
                             </div>
                             <div>
                               <Label className="text-xs text-white/70">Potential Profit Split ($/mo)</Label>
@@ -1031,11 +1098,7 @@ export default function OpportunitiesV2() {
                           <div className="flex items-center gap-2 pt-2">
                             <Checkbox
                               checked={selectedNiche.user_state?.aov_calculator_completed || false}
-                              disabled={
-                                !localInputs.aovInput ||
-                                Number.parseFloat(localInputs.aovInput) <= 0 ||
-                                Number.parseFloat(aovOutputs.cpl) <= 0
-                              }
+                              disabled={!localInputs.aovInput || Number.parseFloat(localInputs.aovInput) <= 0}
                               onCheckedChange={(checked) => {
                                 console.log("[v0] AOV checkbox toggled:", checked)
                                 updateNicheState({ aov_calculator_completed: checked as boolean })
@@ -1045,7 +1108,7 @@ export default function OpportunitiesV2() {
                             <span
                               className={cn(
                                 "text-sm",
-                                localInputs.aovInput && Number.parseFloat(aovOutputs.cpl) > 0
+                                localInputs.aovInput && Number.parseFloat(localInputs.aovInput) > 0
                                   ? "text-white/70"
                                   : "text-white/40",
                               )}
