@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,6 +21,7 @@ import {
   X,
   ChevronDown,
   ChevronUp,
+  Send,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -114,6 +115,8 @@ export default function OpportunitiesV2() {
     profile: true,
   })
 
+  const chatEndRef = useRef<HTMLDivElement>(null)
+
   const { toast } = useToast()
   const supabase = createClient()
 
@@ -135,6 +138,12 @@ export default function OpportunitiesV2() {
       })
     }
   }, [selectedNiche])
+
+  useEffect(() => {
+    if (chatEndRef.current && isProfileChatActive) {
+      chatEndRef.current.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [profileChatMessages, isProfileChatActive])
 
   const loadData = async () => {
     try {
@@ -505,7 +514,7 @@ export default function OpportunitiesV2() {
       const response = await fetch("/api/opportunities/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: JSON.JSON.stringify({
           messages: updatedMessages,
           nicheName: selectedNiche.niche_name,
         }),
@@ -755,32 +764,39 @@ export default function OpportunitiesV2() {
                       <div className="p-4 space-y-4">
                         {/* Research Notes */}
                         <div className="space-y-2">
-                          <Label className="text-white">Research Notes</Label>
+                          <Label className="text-white">
+                            Research Notes{" "}
+                            {localInputs.researchNotes.length < 200 &&
+                              `(${localInputs.researchNotes.length}/200 characters minimum)`}
+                          </Label>
                           <Textarea
                             value={localInputs.researchNotes}
                             onChange={(e) => setLocalInputs({ ...localInputs, researchNotes: e.target.value })}
                             onBlur={() => {
                               updateNicheState({
                                 research_notes: localInputs.researchNotes,
-                                research_notes_added: !!localInputs.researchNotes,
                               })
                             }}
-                            placeholder="Add your research notes..."
-                            className="bg-white/5 border-white/10 text-white placeholder:text-white/40 min-h-[100px]"
+                            placeholder="Add detailed research notes (minimum 200 characters)..."
+                            className="bg-white/5 border-white/10 text-white placeholder:text-white/40 min-h-[120px]"
                           />
                           <div className="flex items-center gap-2">
                             <Checkbox
                               checked={selectedNiche.user_state?.research_notes_added || false}
-                              disabled={!localInputs.researchNotes}
+                              disabled={!localInputs.researchNotes || localInputs.researchNotes.length < 200}
                               onCheckedChange={(checked) =>
                                 updateNicheState({ research_notes_added: checked as boolean })
                               }
                               className="border-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
                             />
                             <span
-                              className={cn("text-sm", localInputs.researchNotes ? "text-white/70" : "text-white/40")}
+                              className={cn(
+                                "text-sm",
+                                localInputs.researchNotes.length >= 200 ? "text-white/70" : "text-white/40",
+                              )}
                             >
-                              Notes Added {!localInputs.researchNotes && "(add notes first)"}
+                              Notes Added{" "}
+                              {localInputs.researchNotes.length < 200 && "(minimum 200 characters required)"}
                             </span>
                           </div>
                         </div>
@@ -794,10 +810,11 @@ export default function OpportunitiesV2() {
                               <Input
                                 type="number"
                                 value={localInputs.aovInput}
-                                onChange={(e) => setLocalInputs({ ...localInputs, aovInput: e.target.value })}
-                                onBlur={() => {
-                                  const aov = localInputs.aovInput === "" ? 0 : Number(localInputs.aovInput)
+                                onChange={(e) => {
+                                  const newValue = e.target.value
+                                  setLocalInputs({ ...localInputs, aovInput: newValue })
 
+                                  const aov = newValue === "" ? 0 : Number(newValue)
                                   if (aov > 0) {
                                     const calc = calculateAOV(aov)
                                     updateNicheState({
@@ -807,11 +824,6 @@ export default function OpportunitiesV2() {
                                       potential_retainer: calc.potentialRetainer,
                                       profit_split_potential: calc.profitSplit,
                                       aov_calculator_completed: true,
-                                    })
-                                  } else if (localInputs.aovInput === "") {
-                                    updateNicheState({
-                                      aov_input: null,
-                                      aov_calculator_completed: false, // Reset if cleared
                                     })
                                   }
                                 }}
@@ -913,25 +925,27 @@ export default function OpportunitiesV2() {
 
                           {isProfileChatActive && (
                             <div className="space-y-3">
-                              <div className="max-h-[300px] overflow-y-auto space-y-3 p-3 bg-black/40 rounded border border-white/5 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full">
+                              <div className="max-h-[400px] overflow-y-auto space-y-3 p-4 bg-gradient-to-b from-black/40 to-black/60 rounded-lg border border-white/10 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-white/30">
                                 {profileChatMessages.map((msg, idx) => (
                                   <div
                                     key={idx}
                                     className={cn(
-                                      "p-3 rounded-lg text-sm",
+                                      "p-4 rounded-xl text-sm leading-relaxed transition-all",
                                       msg.role === "assistant"
-                                        ? "bg-primary/10 text-white/90 border border-primary/20"
-                                        : "bg-white/5 text-white/80 ml-8",
+                                        ? "bg-gradient-to-br from-primary/20 to-primary/10 text-white border border-primary/30 shadow-lg"
+                                        : "bg-white/10 text-white/90 ml-8 border border-white/20",
                                     )}
                                   >
                                     {msg.content}
                                   </div>
                                 ))}
                                 {isProfileChatLoading && (
-                                  <div className="p-3 rounded-lg text-sm bg-primary/10 text-white/90 border border-primary/20">
+                                  <div className="p-4 rounded-xl text-sm bg-gradient-to-br from-primary/20 to-primary/10 text-white border border-primary/30 flex items-center gap-2">
                                     <Loader2 className="h-4 w-4 animate-spin" />
+                                    <span>Thinking...</span>
                                   </div>
                                 )}
+                                <div ref={chatEndRef} />
                               </div>
 
                               <div className="flex gap-2">
@@ -944,17 +958,17 @@ export default function OpportunitiesV2() {
                                       sendProfileChatMessage()
                                     }
                                   }}
-                                  placeholder="Type your answer..."
+                                  placeholder="Type your answer and press Enter..."
                                   disabled={isProfileChatLoading}
-                                  className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                                  className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-primary/50 transition-colors"
                                 />
                                 <Button
                                   onClick={sendProfileChatMessage}
                                   disabled={isProfileChatLoading || !profileChatInput.trim()}
-                                  size="sm"
-                                  className="bg-primary hover:bg-primary/90"
+                                  size="icon"
+                                  className="bg-primary hover:bg-primary/90 shrink-0"
                                 >
-                                  Send
+                                  <Send className="h-4 w-4" />
                                 </Button>
                               </div>
 
