@@ -12,8 +12,9 @@ CREATE TABLE IF NOT EXISTS public.niches (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   industry_id UUID NOT NULL REFERENCES industries(id) ON DELETE CASCADE,
   niche_name TEXT NOT NULL,
-  scale TEXT NOT NULL CHECK (scale IN ('Local', 'National', 'Global', 'National/Loca')),
-  database_size TEXT NOT NULL CHECK (database_size IN ('Small', 'Big', 'Medium')),
+  -- Fixed scale constraint to include 'National/Local' instead of truncated 'National/Loca'
+  scale TEXT NOT NULL CHECK (scale IN ('Local', 'National', 'Global', 'National/Local')),
+  database_size TEXT NOT NULL CHECK (database_size IN ('Small', 'Medium', 'Big')),
   default_priority INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
