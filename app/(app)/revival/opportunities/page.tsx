@@ -97,6 +97,11 @@ export default function OpportunitiesV2() {
     aovInput: "",
     databaseSizeInput: "",
     outreachNotes: "",
+    // Calculator fields
+    cplCalculated: "",
+    cpaCalculated: "",
+    potentialRetainer: "",
+    profitSplitPotential: "",
   })
 
   // AI generation states
@@ -135,6 +140,11 @@ export default function OpportunitiesV2() {
         aovInput: selectedNiche.user_state?.aov_input?.toString() || "",
         databaseSizeInput: selectedNiche.user_state?.database_size_input?.toString() || "",
         outreachNotes: selectedNiche.user_state?.outreach_notes || "",
+        // Populate calculator fields from selected niche
+        cplCalculated: selectedNiche.user_state?.cpl_calculated?.toString() || "",
+        cpaCalculated: selectedNiche.user_state?.cpa_calculated?.toString() || "",
+        potentialRetainer: selectedNiche.user_state?.potential_retainer?.toString() || "",
+        profitSplitPotential: selectedNiche.user_state?.profit_split_potential?.toString() || "",
       })
     }
   }, [selectedNiche])
@@ -293,15 +303,38 @@ export default function OpportunitiesV2() {
     }
   }
 
-  const calculateAOV = (aov: number) => {
-    console.log("[v0] Calculating AOV with value:", aov)
-    const cpl = aov * 0.05 // 5% of AOV for cost per lead
-    const cpa = aov / 3 // Customer acquisition cost is 1/3 of AOV
-    const potentialRetainer = cpl * 100 // Estimate for 100 leads/month
-    const profitSplit = potentialRetainer * 0.5
+  const handleCalculatorChange = (field: string, value: string) => {
+    const numValue = value === "" ? null : Number(value)
+    setLocalInputs((prev) => ({ ...prev, [field]: value }))
 
-    console.log("[v0] Calculation results:", { cpl, cpa, potentialRetainer, profitSplit })
-    return { cpl, cpa, potentialRetainer, profitSplit }
+    // Auto-calculate other fields if AOV changes
+    if (field === "aovInput" && numValue && numValue > 0) {
+      const cpl = numValue * 0.05
+      const cpa = numValue / 3
+      const retainer = cpl * 100
+      const profitSplit = retainer * 0.5
+
+      setLocalInputs((prev) => ({
+        ...prev,
+        cplCalculated: cpl.toFixed(2),
+        cpaCalculated: cpa.toFixed(2),
+        potentialRetainer: retainer.toFixed(0),
+        profitSplitPotential: profitSplit.toFixed(0),
+      }))
+    }
+  }
+
+  const saveCalculatorData = () => {
+    const updates: any = {}
+    if (localInputs.aovInput) updates.aov_input = Number(localInputs.aovInput)
+    if (localInputs.cplCalculated) updates.cpl_calculated = Number(localInputs.cplCalculated)
+    if (localInputs.cpaCalculated) updates.cpa_calculated = Number(localInputs.cpaCalculated)
+    if (localInputs.potentialRetainer) updates.potential_retainer = Number(localInputs.potentialRetainer)
+    if (localInputs.profitSplitPotential) updates.profit_split_potential = Number(localInputs.profitSplitPotential)
+
+    if (Object.keys(updates).length > 0) {
+      updateNicheState(updates)
+    }
   }
 
   const updateNicheState = async (updates: Partial<Niche["user_state"]>) => {
@@ -832,27 +865,8 @@ export default function OpportunitiesV2() {
                               <Input
                                 type="number"
                                 value={localInputs.aovInput}
-                                onChange={(e) => {
-                                  const newValue = e.target.value
-                                  console.log("[v0] AOV input changed to:", newValue)
-                                  setLocalInputs((prev) => ({ ...prev, aovInput: newValue }))
-
-                                  if (newValue && newValue !== "" && Number(newValue) > 0) {
-                                    const aov = Number(newValue)
-                                    console.log("[v0] Calculating for AOV:", aov)
-                                    const calc = calculateAOV(aov)
-                                    console.log("[v0] Calculator results:", calc)
-
-                                    updateNicheState({
-                                      aov_input: aov,
-                                      cpl_calculated: calc.cpl,
-                                      cpa_calculated: calc.cpa,
-                                      potential_retainer: calc.potentialRetainer,
-                                      profit_split_potential: calc.profitSplit,
-                                      aov_calculator_completed: true,
-                                    })
-                                  }
-                                }}
+                                onChange={(e) => handleCalculatorChange("aovInput", e.target.value)}
+                                onBlur={saveCalculatorData}
                                 placeholder="5000"
                                 min="0"
                                 step="100"
@@ -864,15 +878,12 @@ export default function OpportunitiesV2() {
                               <Input
                                 type="number"
                                 value={localInputs.databaseSizeInput}
-                                onChange={(e) => {
-                                  const newValue = e.target.value
-                                  setLocalInputs((prev) => ({ ...prev, databaseSizeInput: newValue }))
-                                }}
+                                onChange={(e) =>
+                                  setLocalInputs((prev) => ({ ...prev, databaseSizeInput: e.target.value }))
+                                }
                                 onBlur={() => {
                                   if (localInputs.databaseSizeInput) {
-                                    updateNicheState({
-                                      database_size_input: Number(localInputs.databaseSizeInput),
-                                    })
+                                    updateNicheState({ database_size_input: Number(localInputs.databaseSizeInput) })
                                   }
                                 }}
                                 placeholder="1000"
@@ -883,48 +894,75 @@ export default function OpportunitiesV2() {
                             </div>
                           </div>
 
-                          {selectedNiche.user_state?.cpl_calculated && selectedNiche.user_state.cpl_calculated > 0 && (
-                            <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/10">
-                              <div>
-                                <p className="text-[10px] text-white/50 uppercase tracking-wider">Cost Per Lead</p>
-                                <p className="text-lg font-semibold text-white">
-                                  ${selectedNiche.user_state.cpl_calculated.toFixed(2)}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] text-white/50 uppercase tracking-wider">
-                                  Cost Per Acquisition
-                                </p>
-                                <p className="text-lg font-semibold text-white">
-                                  ${selectedNiche.user_state.cpa_calculated?.toFixed(2)}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] text-white/50 uppercase tracking-wider">Potential Retainer</p>
-                                <p className="text-lg font-semibold text-primary">
-                                  ${selectedNiche.user_state.potential_retainer?.toFixed(0)}
-                                  <span className="text-xs text-white/60">/mo</span>
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] text-white/50 uppercase tracking-wider">50% Profit Split</p>
-                                <p className="text-lg font-semibold text-primary">
-                                  ${selectedNiche.user_state.profit_split_potential?.toFixed(0)}
-                                  <span className="text-xs text-white/60">/mo</span>
-                                </p>
-                              </div>
+                          <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/10">
+                            <div>
+                              <Label className="text-xs text-white/70">Cost Per Lead ($)</Label>
+                              <Input
+                                type="number"
+                                value={localInputs.cplCalculated}
+                                onChange={(e) => setLocalInputs((prev) => ({ ...prev, cplCalculated: e.target.value }))}
+                                onBlur={saveCalculatorData}
+                                placeholder="250"
+                                min="0"
+                                step="10"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
+                              />
                             </div>
-                          )}
+                            <div>
+                              <Label className="text-xs text-white/70">Cost Per Acquisition ($)</Label>
+                              <Input
+                                type="number"
+                                value={localInputs.cpaCalculated}
+                                onChange={(e) => setLocalInputs((prev) => ({ ...prev, cpaCalculated: e.target.value }))}
+                                onBlur={saveCalculatorData}
+                                placeholder="1666"
+                                min="0"
+                                step="10"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-white/70">Potential Retainer ($/mo)</Label>
+                              <Input
+                                type="number"
+                                value={localInputs.potentialRetainer}
+                                onChange={(e) =>
+                                  setLocalInputs((prev) => ({ ...prev, potentialRetainer: e.target.value }))
+                                }
+                                onBlur={saveCalculatorData}
+                                placeholder="25000"
+                                min="0"
+                                step="1000"
+                                className="bg-white/5 border-primary/30 text-primary placeholder:text-primary/40 mt-1 font-semibold"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-white/70">50% Profit Split ($/mo)</Label>
+                              <Input
+                                type="number"
+                                value={localInputs.profitSplitPotential}
+                                onChange={(e) =>
+                                  setLocalInputs((prev) => ({ ...prev, profitSplitPotential: e.target.value }))
+                                }
+                                onBlur={saveCalculatorData}
+                                placeholder="12500"
+                                min="0"
+                                step="500"
+                                className="bg-white/5 border-primary/30 text-primary placeholder:text-primary/40 mt-1 font-semibold"
+                              />
+                            </div>
+                          </div>
 
                           <div className="flex items-center gap-2 pt-2">
                             <Checkbox
                               checked={selectedNiche.user_state?.aov_calculator_completed || false}
                               disabled={
-                                !selectedNiche.user_state?.cpl_calculated ||
-                                selectedNiche.user_state.cpl_calculated <= 0
+                                !localInputs.cplCalculated ||
+                                !localInputs.cpaCalculated ||
+                                !localInputs.potentialRetainer ||
+                                !localInputs.profitSplitPotential
                               }
                               onCheckedChange={(checked) => {
-                                console.log("[v0] Checkbox changed to:", checked)
                                 updateNicheState({ aov_calculator_completed: checked as boolean })
                               }}
                               className="border-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
@@ -932,15 +970,20 @@ export default function OpportunitiesV2() {
                             <span
                               className={cn(
                                 "text-sm",
-                                selectedNiche.user_state?.cpl_calculated && selectedNiche.user_state.cpl_calculated > 0
+                                localInputs.cplCalculated &&
+                                  localInputs.cpaCalculated &&
+                                  localInputs.potentialRetainer &&
+                                  localInputs.profitSplitPotential
                                   ? "text-white/70"
                                   : "text-white/40",
                               )}
                             >
                               AOV Calculator Completed{" "}
-                              {(!selectedNiche.user_state?.cpl_calculated ||
-                                selectedNiche.user_state.cpl_calculated <= 0) &&
-                                "(enter AOV first)"}
+                              {(!localInputs.cplCalculated ||
+                                !localInputs.cpaCalculated ||
+                                !localInputs.potentialRetainer ||
+                                !localInputs.profitSplitPotential) &&
+                                "(fill all fields)"}
                             </span>
                           </div>
                         </div>
@@ -1133,15 +1176,13 @@ export default function OpportunitiesV2() {
                       </Button>
 
                       {selectedNiche.user_state?.messaging_scripts && (
-                        <div className="p-4 bg-black/20 rounded-lg border border-white/10 text-xs text-white/80 space-y-3">
-                          <div>
-                            <strong className="text-white block mb-1">LinkedIn:</strong>
-                            <p className="text-white/70">{selectedNiche.user_state.messaging_scripts.linkedin}</p>
-                          </div>
-                          <div>
-                            <strong className="text-white block mb-1">Email:</strong>
-                            <p className="text-white/70">{selectedNiche.user_state.messaging_scripts.email}</p>
-                          </div>
+                        <div className="p-4 bg-black/20 rounded-lg border border-white/10">
+                          <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
+                            {selectedNiche.user_state.messaging_scripts.linkedin}
+                          </p>
+                          <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
+                            {selectedNiche.user_state.messaging_scripts.email}
+                          </p>
                         </div>
                       )}
 
