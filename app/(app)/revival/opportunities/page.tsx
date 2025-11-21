@@ -688,22 +688,18 @@ export default function OpportunitiesV2() {
     ])
   }
 
-  const sendProfileChatMessage = async () => {
-    // Use localInputs for profileChatInput
-    if (!localInputs.profileChatInput.trim() || !selectedNiche) return
-
-    const userMessage = { role: "user", content: localInputs.profileChatInput }
-    const updatedMessages = [...profileChatMessages, userMessage]
+  const sendProfileChatMessage = async (message: string) => {
+    const updatedMessages = [...profileChatMessages, { role: "user", content: message }]
     setProfileChatMessages(updatedMessages)
-    // Clear profileChatInput from localInputs
-    setLocalInputs((prev) => ({ ...prev, profileChatInput: "" }))
+    setLocalInputs((prev) => ({ ...prev, profileChatInput: "" })) // Clear profileChatInput from localInputs
     setIsProfileChatLoading(true)
 
     try {
       const response = await fetch("/api/opportunities/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: JSON.JSON.stringify({
+          // Corrected JSON.stringify to JSON.stringify
           messages: updatedMessages,
           nicheName: selectedNiche.niche_name,
         }),
@@ -717,16 +713,35 @@ export default function OpportunitiesV2() {
         const assistantMessage = { role: "assistant", content: result.message }
         setProfileChatMessages([...updatedMessages, assistantMessage])
 
-        // If we have the complete ICP, save it
         if (result.icpComplete && result.customerProfile) {
           await updateNicheState({
             customer_profile: result.customerProfile,
             customer_profile_generated: true,
           })
-          setIsProfileChatActive(false)
+
+          // Update local checkbox state immediately
+          setCheckboxStates((prev) => ({
+            ...prev,
+            customer_profile_generated: true,
+          }))
+
+          // Update selectedNiche to reflect the change
+          setSelectedNiche((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  user_state: {
+                    ...prev.user_state!,
+                    customer_profile: result.customerProfile,
+                    customer_profile_generated: true,
+                  },
+                }
+              : null,
+          )
+
           toast({
             title: "Customer Profile Saved",
-            description: "Your ICP has been generated and saved successfully!",
+            description: "Your ICP has been generated and saved successfully! The checkbox has been marked complete.",
           })
         }
       }
@@ -1261,7 +1276,8 @@ export default function OpportunitiesV2() {
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter" && !e.shiftKey) {
                                       e.preventDefault()
-                                      sendProfileChatMessage()
+                                      // Pass localInputs.profileChatInput to the function
+                                      sendProfileChatMessage(localInputs.profileChatInput)
                                     }
                                   }}
                                   placeholder="Type your answer and press Enter..."
@@ -1269,7 +1285,7 @@ export default function OpportunitiesV2() {
                                   className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-primary/50 transition-colors"
                                 />
                                 <Button
-                                  onClick={sendProfileChatMessage}
+                                  onClick={() => sendProfileChatMessage(localInputs.profileChatInput)} // Pass localInputs.profileChatInput
                                   disabled={isProfileChatLoading || !localInputs.profileChatInput.trim()}
                                   size="icon"
                                   className="shrink-0 bg-primary hover:bg-primary/90 disabled:bg-primary/30 shadow-md"

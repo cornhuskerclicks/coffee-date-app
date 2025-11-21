@@ -51,7 +51,14 @@ IMPORTANT:
         const icpData = JSON.parse(jsonMatch[0])
         return Response.json({
           success: true,
-          message: "Perfect! I've compiled your complete ICP. It's been saved to your niche profile.",
+          message:
+            "Perfect! I've compiled your complete Ideal Customer Profile:\n\n✅ Decision Maker: " +
+            icpData.decision_maker +
+            "\n✅ Pain Points: " +
+            icpData.pain_points +
+            "\n✅ Where to Find Them: " +
+            icpData.gathering_places +
+            "\n\nYour ICP has been saved! You can close this interview now or continue refining it.",
           icpComplete: true,
           customerProfile: icpData,
         })
