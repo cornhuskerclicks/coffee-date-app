@@ -129,19 +129,31 @@ export default function OpportunitiesV2() {
     profile: true,
   })
 
-  // CHANGE: Simplified checkbox state management - only update local state, don't reload from DB
+  // CHANGE: Update checkbox change handler to also update selectedNiche state locally
   const handleCheckboxChange = async (
     field: "research_notes_added" | "aov_calculator_completed" | "customer_profile_generated",
     checked: boolean,
   ) => {
     console.log("[v0] Checkbox change:", field, checked)
 
+    if (!selectedNiche?.user_state) return
+
     // Update local state immediately
     setCheckboxStates((prev) => ({ ...prev, [field]: checked }))
 
-    // Update database in background without reloading
-    if (!selectedNiche?.user_state) return
+    // Also update the selectedNiche state to prevent useEffect from resetting
+    setSelectedNiche((prev) => {
+      if (!prev?.user_state) return prev
+      return {
+        ...prev,
+        user_state: {
+          ...prev.user_state,
+          [field]: checked,
+        },
+      }
+    })
 
+    // Update database in background
     const supabase = createClient()
     const { error } = await supabase
       .from("niche_user_state")
@@ -150,8 +162,18 @@ export default function OpportunitiesV2() {
 
     if (error) {
       console.error("[v0] Error updating checkbox:", error)
-      // Revert on error
+      // Revert both states on error
       setCheckboxStates((prev) => ({ ...prev, [field]: !checked }))
+      setSelectedNiche((prev) => {
+        if (!prev?.user_state) return prev
+        return {
+          ...prev,
+          user_state: {
+            ...prev.user_state,
+            [field]: !checked,
+          },
+        }
+      })
     }
   }
 
