@@ -101,6 +101,9 @@ export default function OpportunitiesV2() {
   const [favouritesOnly, setFavouritesOnly] = useState(false)
   const [sortBy, setSortBy] = useState<string>("alphabetical")
 
+  // CHANGE: Track which fields are being actively edited to prevent state reset
+  const [activelyEditing, setActivelyEditing] = React.useState<Set<string>>(new Set())
+
   const [localInputs, setLocalInputs] = React.useState({
     researchNotes: "",
     aovInput: "",
@@ -129,55 +132,8 @@ export default function OpportunitiesV2() {
     profile: true,
   })
 
-  // CHANGE: Update checkbox change handler to also update selectedNiche state locally
-  const handleCheckboxChange = async (
-    field: "research_notes_added" | "aov_calculator_completed" | "customer_profile_generated",
-    checked: boolean,
-  ) => {
-    console.log("[v0] Checkbox change:", field, checked)
-
-    if (!selectedNiche?.user_state) return
-
-    // Update local state immediately
-    setCheckboxStates((prev) => ({ ...prev, [field]: checked }))
-
-    // Also update the selectedNiche state to prevent useEffect from resetting
-    setSelectedNiche((prev) => {
-      if (!prev?.user_state) return prev
-      return {
-        ...prev,
-        user_state: {
-          ...prev.user_state,
-          [field]: checked,
-        },
-      }
-    })
-
-    // Update database in background
-    const supabase = createClient()
-    const { error } = await supabase
-      .from("niche_user_state")
-      .update({ [field]: checked })
-      .eq("id", selectedNiche.user_state.id)
-
-    if (error) {
-      console.error("[v0] Error updating checkbox:", error)
-      // Revert both states on error
-      setCheckboxStates((prev) => ({ ...prev, [field]: !checked }))
-      setSelectedNiche((prev) => {
-        if (!prev?.user_state) return prev
-        return {
-          ...prev,
-          user_state: {
-            ...prev.user_state,
-            [field]: !checked,
-          },
-        }
-      })
-    }
-  }
-
-  const [checkboxStates, setCheckboxStates] = useState({
+  // CHANGE: Initialize checkbox states from selectedNiche
+  const [checkboxStates, setCheckboxStates] = React.useState({
     research_notes_added: false,
     aov_calculator_completed: false,
     customer_profile_generated: false,
@@ -197,25 +153,41 @@ export default function OpportunitiesV2() {
     applyFilters()
   }, [niches, searchTerm, industryFilter, statusFilter, favouritesOnly, sortBy])
 
+  // CHANGE: Only sync local inputs when selectedNiche changes AND field is not being edited
   useEffect(() => {
     if (selectedNiche?.user_state) {
       setCheckboxStates({
-        research_notes_added: selectedNiche.user_state.research_notes_added || false,
-        aov_calculator_completed: selectedNiche.user_state.aov_calculator_completed || false,
-        customer_profile_generated: selectedNiche.user_state.customer_profile_generated || false,
+        research_notes_added: selectedNiche.user_state.research_notes_added ?? false,
+        aov_calculator_completed: selectedNiche.user_state.aov_calculator_completed ?? false,
+        customer_profile_generated: selectedNiche.user_state.customer_profile_generated ?? false,
       })
       console.log("[v0] Selected niche changed:", selectedNiche?.niche_name)
       console.log("[v0] User state:", selectedNiche.user_state)
-      setLocalInputs({
-        researchNotes: selectedNiche.user_state?.research_notes || "",
-        aovInput: selectedNiche.user_state?.aov_input?.toString() || "",
-        databaseSizeInput: selectedNiche.user_state?.database_size_input?.toString() || "",
-        conversationRate: selectedNiche.user_state?.conversation_rate?.toString() || "40",
-        salesConversion: selectedNiche.user_state?.sales_conversion?.toString() || "10",
-        profitSplit: selectedNiche.user_state?.profit_pct?.toString() || "50", // Corrected field name
-        outreachNotes: selectedNiche.user_state?.outreach_notes || "",
-        profileChatInput: "", // Reset chat input when niche changes
-      })
+      // Only update fields that aren't being actively edited
+      setLocalInputs((prev) => ({
+        researchNotes: activelyEditing.has("researchNotes")
+          ? prev.researchNotes
+          : selectedNiche.user_state.research_notes || "",
+        aovInput: activelyEditing.has("aovInput")
+          ? prev.aovInput
+          : selectedNiche.user_state.aov_input?.toString() || "",
+        databaseSizeInput: activelyEditing.has("databaseSizeInput")
+          ? prev.databaseSizeInput
+          : selectedNiche.user_state.database_size_input?.toString() || "",
+        conversationRate: activelyEditing.has("conversationRate")
+          ? prev.conversationRate
+          : selectedNiche.user_state.conversation_rate?.toString() || "40",
+        salesConversion: activelyEditing.has("salesConversion")
+          ? prev.salesConversion
+          : selectedNiche.user_state.sales_conversion?.toString() || "10",
+        profitSplit: activelyEditing.has("profitSplit")
+          ? prev.profitSplit
+          : selectedNiche.user_state.profit_split?.toString() || "50", // Corrected field name
+        outreachNotes: activelyEditing.has("outreachNotes")
+          ? prev.outreachNotes
+          : selectedNiche.user_state.outreach_notes || "",
+        profileChatInput: prev.profileChatInput, // Never reset chat input
+      }))
     }
   }, [selectedNiche])
 
@@ -457,6 +429,8 @@ export default function OpportunitiesV2() {
 
   const handleAOVInputChange = (field: string, value: string) => {
     setLocalInputs((prev) => ({ ...prev, [field]: value }))
+    // Mark the field as being edited
+    setActivelyEditing((prev) => new Set(prev).add(field))
   }
 
   const saveCalculatorData = async () => {
@@ -545,6 +519,12 @@ export default function OpportunitiesV2() {
         variant: "destructive",
       })
     }
+  }
+
+  // Fix: Declare handleCheckboxChange function
+  const handleCheckboxChange = (key: keyof typeof checkboxStates, value: boolean) => {
+    setCheckboxStates((prev) => ({ ...prev, [key]: value }))
+    updateNicheState({ [key]: value } as Partial<Niche["user_state"]>)
   }
 
   const canAdvanceFromResearch = () => {
@@ -717,7 +697,7 @@ export default function OpportunitiesV2() {
       const response = await fetch("/api/opportunities/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: JSON.JSON.stringify({
           messages: updatedMessages,
           nicheName: selectedNiche.niche_name,
         }),
@@ -982,12 +962,18 @@ export default function OpportunitiesV2() {
                           </Label>
                           <Textarea
                             value={localInputs.researchNotes}
+                            onFocus={() => {
+                              setActivelyEditing((prev) => new Set(prev).add("researchNotes"))
+                            }}
                             onChange={(e) => {
-                              console.log("[v0] Research notes changed, length:", e.target.value.length)
                               setLocalInputs({ ...localInputs, researchNotes: e.target.value })
                             }}
                             onBlur={() => {
-                              console.log("[v0] Research notes blur, saving:", localInputs.researchNotes.length)
+                              setActivelyEditing((prev) => {
+                                const next = new Set(prev)
+                                next.delete("researchNotes")
+                                return next
+                              })
                               updateNicheState({
                                 research_notes: localInputs.researchNotes,
                               })
@@ -1333,7 +1319,7 @@ export default function OpportunitiesV2() {
                                 }}
                                 variant="outline"
                                 size="sm"
-                                className="w-full border-white/10 text-white/60 hover:text-white hover:bg-white/5 bg-transparent"
+                                className="w-full border-white/10 text-white/60 hover:text-white hover:bg-white/5"
                               >
                                 Refine ICP
                               </Button>
@@ -1480,8 +1466,18 @@ export default function OpportunitiesV2() {
                           <Label className="text-white">Outreach Notes</Label>
                           <Textarea
                             value={localInputs.outreachNotes}
+                            onFocus={() => {
+                              setActivelyEditing((prev) => new Set(prev).add("outreachNotes"))
+                            }}
                             onChange={(e) => setLocalInputs({ ...localInputs, outreachNotes: e.target.value })}
-                            onBlur={() => updateNicheState({ outreach_notes: localInputs.outreachNotes })}
+                            onBlur={() => {
+                              setActivelyEditing((prev) => {
+                                const next = new Set(prev)
+                                next.delete("outreachNotes")
+                                return next
+                              })
+                              updateNicheState({ outreach_notes: localInputs.outreachNotes })
+                            }}
                             placeholder="Track responses, scheduling, etc..."
                             className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                           />
