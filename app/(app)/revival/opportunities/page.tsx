@@ -120,9 +120,9 @@ export default function OpportunitiesV2() {
   const [generatingMessaging, setGeneratingMessaging] = useState(false)
   const [generatingDemo, setGeneratingDemo] = useState(false)
 
-  const [profileChatMessages, setProfileChatMessages] = useState<Array<{ role: string; content: string }>>([])
-  // Moved profileChatInput to localInputs
-  // const [profileChatInput, setProfileChatInput] = useState("")
+  const [profileChatMessagesByNiche, setProfileChatMessagesByNiche] = useState<
+    Record<string, Array<{ role: string; content: string }>>
+  >({}) // Use string for niche ID
   const [isProfileChatActive, setIsProfileChatActive] = useState(false)
   const [isProfileChatLoading, setIsProfileChatLoading] = useState(false)
 
@@ -154,6 +154,8 @@ export default function OpportunitiesV2() {
     applyFilters()
   }, [niches, searchTerm, industryFilter, statusFilter, favouritesOnly, sortBy])
 
+  const profileChatMessages = selectedNiche?.id ? profileChatMessagesByNiche[selectedNiche.id] || [] : []
+
   // CHANGE: Only sync local inputs when selectedNiche changes AND field is not being edited
   useEffect(() => {
     if (selectedNiche?.user_state) {
@@ -166,7 +168,9 @@ export default function OpportunitiesV2() {
       }))
       console.log("[v0] Selected niche changed:", selectedNiche?.niche_name)
       console.log("[v0] User state:", selectedNiche.user_state)
-      // Only update fields that aren't being actively edited
+
+      setIsProfileChatActive(false)
+
       setLocalInputs((prev) => ({
         researchNotes: activelyEditing.has("researchNotes")
           ? prev.researchNotes
@@ -189,7 +193,7 @@ export default function OpportunitiesV2() {
         outreachNotes: activelyEditing.has("outreachNotes")
           ? prev.outreachNotes
           : selectedNiche.user_state.outreach_notes || "",
-        profileChatInput: prev.profileChatInput, // Never reset chat input
+        profileChatInput: "", // Reset chat input when switching niches
       }))
     }
   }, [selectedNiche])
@@ -678,19 +682,32 @@ export default function OpportunitiesV2() {
   }
 
   const startProfileChat = async () => {
+    if (!selectedNiche?.id) return
+
     setIsProfileChatActive(true)
-    setProfileChatMessages([
-      {
-        role: "assistant",
-        content:
-          "Hi! I'm here to help you define your Ideal Customer Profile for this niche. Let's start with your business - who do you currently serve in this space?",
-      },
-    ])
+    setProfileChatMessagesByNiche((prev) => ({
+      ...prev,
+      [selectedNiche.id]: [
+        {
+          role: "assistant",
+          content:
+            "Hi! I'm here to help you define your Ideal Customer Profile for this niche. Let's start with your business - who do you currently serve in this space?",
+        },
+      ],
+    }))
   }
 
   const sendProfileChatMessage = async (message: string) => {
-    const updatedMessages = [...profileChatMessages, { role: "user", content: message }]
-    setProfileChatMessages(updatedMessages)
+    if (!selectedNiche?.id) return
+
+    const currentMessages = profileChatMessagesByNiche[selectedNiche.id] || []
+    const updatedMessages = [...currentMessages, { role: "user", content: message }]
+
+    setProfileChatMessagesByNiche((prev) => ({
+      ...prev,
+      [selectedNiche.id]: updatedMessages,
+    }))
+
     setLocalInputs((prev) => ({ ...prev, profileChatInput: "" })) // Clear profileChatInput from localInputs
     setIsProfileChatLoading(true)
 
@@ -698,8 +715,7 @@ export default function OpportunitiesV2() {
       const response = await fetch("/api/opportunities/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.JSON.stringify({
-          // Corrected JSON.stringify to JSON.stringify
+        body: JSON.stringify({
           messages: updatedMessages,
           nicheName: selectedNiche.niche_name,
         }),
@@ -711,7 +727,11 @@ export default function OpportunitiesV2() {
 
       if (result.success) {
         const assistantMessage = { role: "assistant", content: result.message }
-        setProfileChatMessages([...updatedMessages, assistantMessage])
+
+        setProfileChatMessagesByNiche((prev) => ({
+          ...prev,
+          [selectedNiche.id]: [...updatedMessages, assistantMessage],
+        }))
 
         if (result.icpComplete && result.customerProfile) {
           await updateNicheState({
@@ -719,36 +739,30 @@ export default function OpportunitiesV2() {
             customer_profile_generated: true,
           })
 
-          // Update local checkbox state immediately
           setCheckboxStates((prev) => ({
             ...prev,
             customer_profile_generated: true,
           }))
 
-          // Update selectedNiche to reflect the change
-          setSelectedNiche((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  user_state: {
-                    ...prev.user_state!,
-                    customer_profile: result.customerProfile,
-                    customer_profile_generated: true,
-                  },
-                }
-              : null,
-          )
-
-          toast({
-            title: "Customer Profile Saved",
-            description: "Your ICP has been generated and saved successfully! The checkbox has been marked complete.",
+          setSelectedNiche((prevNiche) => {
+            if (!prevNiche) return prevNiche
+            return {
+              ...prevNiche,
+              user_state: {
+                ...prevNiche.user_state,
+                customer_profile: result.customerProfile,
+                customer_profile_generated: true,
+              },
+            }
           })
         }
       }
-    } catch (error: any) {
+    } catch (error) {
+      // Changed error type to 'any' to match original code's implicit typing or use specific type if known
+      console.error("Error sending chat message:", error)
       toast({
         title: "Error",
-        description: error.message || "Failed to send message",
+        description: "Failed to send message", // Use a generic error message for toast
         variant: "destructive",
       })
     } finally {
@@ -1298,7 +1312,11 @@ export default function OpportunitiesV2() {
                               <Button
                                 onClick={() => {
                                   setIsProfileChatActive(false)
-                                  setProfileChatMessages([])
+                                  setProfileChatMessagesByNiche((prev) => {
+                                    // Clear messages for this niche
+                                    const { [selectedNiche.id]: _, ...rest } = prev
+                                    return rest
+                                  })
                                 }}
                                 variant="outline"
                                 size="sm"
@@ -1331,13 +1349,17 @@ export default function OpportunitiesV2() {
                                 onClick={() => {
                                   // Corrected action to start interview/refine ICP
                                   setIsProfileChatActive(true)
-                                  setProfileChatMessages([
-                                    {
-                                      role: "assistant",
-                                      content:
-                                        "Let's refine your Ideal Customer Profile. What specific challenges are they facing that your service can solve?",
-                                    },
-                                  ])
+                                  setProfileChatMessagesByNiche((prev) => ({
+                                    // Initialize chat for refinement
+                                    ...prev,
+                                    [selectedNiche.id]: [
+                                      {
+                                        role: "assistant",
+                                        content:
+                                          "Let's refine your Ideal Customer Profile. What specific challenges are they facing that your service can solve?",
+                                      },
+                                    ],
+                                  }))
                                 }}
                                 variant="outline"
                                 size="sm"
