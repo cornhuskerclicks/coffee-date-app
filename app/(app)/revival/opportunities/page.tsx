@@ -550,11 +550,20 @@ export default function OpportunitiesV2() {
     })
 
     if (selectedNiche) {
+      // Update selectedNiche with CURRENT localInputs to prevent useEffect reset
       const updatedNiche = {
         ...selectedNiche,
         user_state: {
           ...selectedNiche.user_state!,
           [key]: value,
+          // Preserve current input values
+          research_notes: localInputs.researchNotes,
+          aov_input: Number.parseFloat(localInputs.aovInput) || null,
+          database_size_input: Number.parseFloat(localInputs.databaseSizeInput) || null,
+          conversation_rate: Number.parseFloat(localInputs.conversationRate) || null,
+          sales_conversion: Number.parseFloat(localInputs.salesConversion) || null,
+          profit_pct: Number.parseFloat(localInputs.profitSplit) || null,
+          outreach_notes: localInputs.outreachNotes,
         },
       }
       setSelectedNiche(updatedNiche)
@@ -804,6 +813,54 @@ export default function OpportunitiesV2() {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }))
   }
 
+  // CHANGE: Add function to save current inputs before switching niches
+  const saveCurrentNicheData = async () => {
+    if (!selectedNiche) return
+
+    const updates: Record<string, any> = {}
+
+    // Save all local inputs if they differ from database values
+    if (localInputs.researchNotes !== (selectedNiche.user_state?.research_notes || "")) {
+      updates.research_notes = localInputs.researchNotes
+    }
+    if (localInputs.aovInput !== (selectedNiche.user_state?.aov_input?.toString() || "")) {
+      updates.aov_input = Number.parseFloat(localInputs.aovInput) || null
+    }
+    if (localInputs.databaseSizeInput !== (selectedNiche.user_state?.database_size_input?.toString() || "")) {
+      updates.database_size_input = Number.parseFloat(localInputs.databaseSizeInput) || null
+    }
+    if (localInputs.conversationRate !== (selectedNiche.user_state?.conversation_rate?.toString() || "40")) {
+      updates.conversation_rate = Number.parseFloat(localInputs.conversationRate) || 40
+    }
+    if (localInputs.salesConversion !== (selectedNiche.user_state?.sales_conversion?.toString() || "10")) {
+      updates.sales_conversion = Number.parseFloat(localInputs.salesConversion) || 10
+    }
+    if (localInputs.profitSplit !== (selectedNiche.user_state?.profit_pct?.toString() || "50")) {
+      updates.profit_pct = Number.parseFloat(localInputs.profitSplit) || 50
+    }
+    if (localInputs.outreachNotes !== (selectedNiche.user_state?.outreach_notes || "")) {
+      updates.outreach_notes = localInputs.outreachNotes
+    }
+
+    // Only save if there are changes
+    if (Object.keys(updates).length > 0) {
+      console.log("[v0] Auto-saving data before niche switch:", updates)
+      await updateNicheState(updates)
+    }
+  }
+
+  // CHANGE: Handle niche selection with auto-save
+  const handleNicheSelect = async (niche: any) => {
+    // Save current niche data before switching
+    await saveCurrentNicheData()
+
+    // Clear actively editing state
+    setActivelyEditing(new Set())
+
+    // Switch to new niche
+    setSelectedNiche(niche)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -906,7 +963,7 @@ export default function OpportunitiesV2() {
               {filteredNiches.map((niche) => (
                 <Card
                   key={niche.id}
-                  onClick={() => setSelectedNiche(niche)}
+                  onClick={() => handleNicheSelect(niche)}
                   className={cn(
                     "p-4 cursor-pointer transition-all border",
                     selectedNiche?.id === niche.id
