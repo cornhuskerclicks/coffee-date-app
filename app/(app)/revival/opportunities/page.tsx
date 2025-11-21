@@ -1211,17 +1211,17 @@ export default function OpportunitiesV2() {
 
                           {!isProfileChatActive && !selectedNiche.user_state?.customer_profile && (
                             <Button
-                              onClick={generateCustomerProfile} // Changed from startProfileChat to generateCustomerProfile
-                              disabled={generatingProfile}
+                              onClick={startProfileChat}
+                              disabled={isProfileChatLoading}
                               className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 shadow-lg shadow-primary/20 transition-all"
                             >
-                              {generatingProfile ? (
+                              {isProfileChatLoading ? (
                                 <span className="flex items-center gap-2">
                                   <Loader2 className="h-4 w-4 animate-spin" />
-                                  Generating Profile...
+                                  Starting Interview...
                                 </span>
                               ) : (
-                                "Generate ICP"
+                                "Start ICP Interview"
                               )}
                             </Button>
                           )}
