@@ -101,7 +101,10 @@ export default function OpportunitiesV2() {
   const [favouritesOnly, setFavouritesOnly] = useState(false)
   const [sortBy, setSortBy] = useState<string>("alphabetical")
 
-  // CHANGE: Track which fields are being actively edited to prevent state reset
+  // CHANGE: Add saving state to prevent useEffect resets during save operations
+  const [isSaving, setIsSaving] = React.useState(false)
+
+  // CHANGE: Initialize activelyEditing set
   const [activelyEditing, setActivelyEditing] = React.useState<Set<string>>(new Set())
 
   const [localInputs, setLocalInputs] = React.useState({
@@ -156,15 +159,15 @@ export default function OpportunitiesV2() {
 
   const profileChatMessages = selectedNiche?.id ? profileChatMessagesByNiche[selectedNiche.id] || [] : []
 
-  // CHANGE: Only sync local inputs when selectedNiche changes AND field is not being edited
+  // CHANGE: Only sync local inputs when selectedNiche changes AND field is not being edited AND not currently saving
   useEffect(() => {
-    if (selectedNiche?.user_state) {
+    if (selectedNiche?.user_state && !isSaving) {
       setCheckboxStates((prev) => ({
         ...prev,
         research_notes_added: selectedNiche.user_state.research_notes_added ?? false,
         aov_calculator_completed: selectedNiche.user_state.aov_calculator_completed ?? false,
         customer_profile_generated: selectedNiche.user_state.customer_profile_generated ?? false,
-        messaging_prepared: selectedNiche.user_state.messaging_prepared ?? false, // Sync messaging_prepared
+        messaging_prepared: selectedNiche.user_state.messaging_prepared ?? false,
       }))
       console.log("[v0] Selected niche changed:", selectedNiche?.niche_name)
       console.log("[v0] User state:", selectedNiche.user_state)
@@ -196,7 +199,7 @@ export default function OpportunitiesV2() {
         profileChatInput: "", // Reset chat input when switching niches
       }))
     }
-  }, [selectedNiche])
+  }, [selectedNiche, isSaving])
 
   useEffect(() => {
     if (chatEndRef.current && isProfileChatActive) {
@@ -462,76 +465,81 @@ export default function OpportunitiesV2() {
     await updateNicheState(updates)
   }
 
+  // CHANGE: Modified to set saving state during database updates
   const updateNicheState = async (updates: Partial<Niche["user_state"]>) => {
-    if (!selectedNiche || !selectedNiche.user_state) return
+    if (!selectedNiche) return
+
+    console.log("[v0] Updating niche state:", updates)
+    setIsSaving(true)
 
     try {
+      const supabase = createClient()
       const {
         data: { user },
       } = await supabase.auth.getUser()
-      if (!user) return
 
-      console.log("[v0] Updating niche state with:", updates)
+      if (!user) {
+        console.error("[v0] No authenticated user")
+        return
+      }
 
-      const { error } = await supabase.from("niche_user_state").upsert(
-        {
-          id: selectedNiche.user_state.id, // Use existing ID for upsert
-          niche_id: selectedNiche.id,
-          user_id: user.id,
-          ...selectedNiche.user_state,
-          ...updates,
-        },
-        {
-          onConflict: "id", // Assuming 'id' is the primary key for the user_state table
-        },
-      )
+      const { error } = await supabase
+        .from("niche_user_state")
+        .upsert(
+          {
+            user_id: user.id,
+            niche_id: selectedNiche.id,
+            ...updates,
+          },
+          {
+            onConflict: "user_id,niche_id",
+          },
+        )
+        .select()
+        .single()
 
       if (error) {
         console.error("[v0] Error updating niche state:", error)
-        throw error
-      }
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        })
+      } else {
+        console.log("[v0] Successfully updated niche state")
+        setSelectedNiche({
+          ...selectedNiche,
+          user_state: {
+            ...selectedNiche.user_state!,
+            ...updates,
+          },
+        })
 
-      console.log("[v0] Successfully updated database")
+        // Sync local checkbox states after successful DB update
+        if (updates.research_notes_added !== undefined) {
+          setCheckboxStates((prev) => ({ ...prev, research_notes_added: updates.research_notes_added! }))
+        }
+        if (updates.aov_calculator_completed !== undefined) {
+          setCheckboxStates((prev) => ({ ...prev, aov_calculator_completed: updates.aov_calculator_completed! }))
+        }
+        if (updates.customer_profile_generated !== undefined) {
+          setCheckboxStates((prev) => ({ ...prev, customer_profile_generated: updates.customer_profile_generated! }))
+        }
+        if (updates.messaging_prepared !== undefined) {
+          setCheckboxStates((prev) => ({ ...prev, messaging_prepared: updates.messaging_prepared! }))
+        }
 
-      const updatedNiche = {
-        ...selectedNiche,
-        user_state: { ...selectedNiche.user_state!, ...updates },
+        toast({
+          title: "Saved",
+          description: "Changes saved successfully",
+        })
       }
-
-      console.log("[v0] Setting updated niche:", updatedNiche)
-
-      setSelectedNiche(updatedNiche)
-      setNiches(niches.map((n) => (n.id === selectedNiche.id ? updatedNiche : n)))
-
-      // Sync local checkbox states after successful DB update
-      if (updates.research_notes_added !== undefined) {
-        setCheckboxStates((prev) => ({ ...prev, research_notes_added: updates.research_notes_added! }))
-      }
-      if (updates.aov_calculator_completed !== undefined) {
-        setCheckboxStates((prev) => ({ ...prev, aov_calculator_completed: updates.aov_calculator_completed! }))
-      }
-      if (updates.customer_profile_generated !== undefined) {
-        setCheckboxStates((prev) => ({ ...prev, customer_profile_generated: updates.customer_profile_generated! }))
-      }
-      if (updates.messaging_prepared !== undefined) {
-        setCheckboxStates((prev) => ({ ...prev, messaging_prepared: updates.messaging_prepared! }))
-      }
-
-      toast({
-        title: "Saved",
-        description: "Changes saved successfully",
-      })
-    } catch (error: any) {
-      console.error("[v0] Failed to save:", error)
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      })
+    } finally {
+      setTimeout(() => setIsSaving(false), 100)
     }
   }
 
-  // CHANGE: Handle checkbox changes and update relevant states
+  // CHANGE: Handle checkbox changes without causing data loss
   const handleCheckboxChange = (key: keyof typeof checkboxStates, value: boolean) => {
     console.log("[v0] Checkbox changed:", key, "=", value)
 
@@ -542,16 +550,18 @@ export default function OpportunitiesV2() {
     })
 
     if (selectedNiche) {
-      setSelectedNiche({
+      const updatedNiche = {
         ...selectedNiche,
         user_state: {
           ...selectedNiche.user_state!,
           [key]: value,
         },
-      })
-    }
+      }
+      setSelectedNiche(updatedNiche)
 
-    updateNicheState({ [key]: value } as Partial<Niche["user_state"]>)
+      // Save to database
+      updateNicheState({ [key]: value } as Partial<Niche["user_state"]>)
+    }
   }
 
   // CHANGE: Changed to check checkboxStates instead of database values for instant feedback
@@ -1023,13 +1033,16 @@ export default function OpportunitiesV2() {
                               setLocalInputs({ ...localInputs, researchNotes: e.target.value })
                             }}
                             onBlur={() => {
-                              setActivelyEditing((prev) => {
-                                const next = new Set(prev)
-                                next.delete("researchNotes")
-                                return next
-                              })
+                              const notesToSave = localInputs.researchNotes
                               updateNicheState({
-                                research_notes: localInputs.researchNotes,
+                                research_notes: notesToSave,
+                              }).then(() => {
+                                // Only remove from activelyEditing after save completes
+                                setActivelyEditing((prev) => {
+                                  const next = new Set(prev)
+                                  next.delete("researchNotes")
+                                  return next
+                                })
                               })
                             }}
                             placeholder="Add detailed research notes (minimum 200 characters)..."
