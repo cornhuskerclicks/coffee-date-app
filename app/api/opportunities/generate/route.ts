@@ -6,7 +6,9 @@ export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("[v0] Generate API called")
     const { type, nicheName, context } = await request.json()
+    console.log("[v0] Type:", type, "Niche:", nicheName)
 
     let systemPrompt = ""
     let userPrompt = ""
@@ -33,10 +35,10 @@ Return ONLY the JSON object, no other text.`
 
 Include the following in your response as a JSON object:
 - linkedin: A compelling LinkedIn connection message (max 300 chars)
-- email: A cold email subject and body
+- email: A cold email subject and body (include both subject and body in the string)
 - facebook: A Facebook group post angle
 - forum: A forum post approach
-- lead_magnet: 3 lead magnet ideas
+- lead_magnet: 3 lead magnet ideas (as a string or array)
 
 Return ONLY the JSON object, no other text.`
         break
@@ -59,11 +61,13 @@ Make it conversational and consultative, not pushy. Include specific questions t
         return Response.json({ error: "Invalid generation type" }, { status: 400 })
     }
 
+    console.log("[v0] Generating text with AI...")
     const { text } = await generateText({
       model: "openai/gpt-4o-mini",
       system: systemPrompt,
       prompt: userPrompt,
     })
+    console.log("[v0] AI response received, length:", text.length)
 
     // For JSON responses, try to parse them
     if (type === "customer_profile" || type === "messaging") {
@@ -71,16 +75,22 @@ Make it conversational and consultative, not pushy. Include specific questions t
         const jsonMatch = text.match(/\{[\s\S]*\}/)
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0])
+          console.log("[v0] Successfully parsed JSON response")
           return Response.json({ success: true, data: parsed })
         }
+        console.log("[v0] No JSON found in response, returning as text")
       } catch (e) {
+        console.error("[v0] JSON parsing error:", e)
         // If parsing fails, return as text
       }
     }
 
     return Response.json({ success: true, data: text })
   } catch (error) {
-    console.error("Generate API error:", error)
-    return Response.json({ error: "Failed to generate content" }, { status: 500 })
+    console.error("[v0] Generate API error:", error)
+    return Response.json(
+      { error: "Failed to generate content", details: error instanceof Error ? error.message : String(error) },
+      { status: 500 },
+    )
   }
 }

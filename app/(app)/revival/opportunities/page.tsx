@@ -591,8 +591,11 @@ export default function OpportunitiesV2() {
   const generateMessaging = async () => {
     if (!selectedNiche) return
 
+    console.log("[v0] Generating messaging scripts for:", selectedNiche.niche_name)
     setGeneratingMessaging(true)
+
     try {
+      console.log("[v0] Sending request to /api/opportunities/generate")
       const response = await fetch("/api/opportunities/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -602,21 +605,46 @@ export default function OpportunitiesV2() {
         }),
       })
 
+      console.log("[v0] Response status:", response.status)
+
       if (!response.ok) {
-        throw new Error("Failed to generate messaging scripts")
+        const errorText = await response.text()
+        console.error("[v0] Response error:", errorText)
+        throw new Error(`Failed to generate messaging scripts: ${response.status}`)
       }
 
       const result = await response.json()
+      console.log("[v0] Result:", result)
 
       if (result.success && result.data) {
+        console.log("[v0] Saving messaging scripts to database")
         await updateNicheState({
           messaging_scripts: result.data,
           messaging_prepared: true,
         })
+
+        setSelectedNiche((prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            user_state: {
+              ...prev.user_state,
+              messaging_scripts: result.data,
+              messaging_prepared: true,
+            },
+          }
+        })
+
+        toast({
+          title: "Success",
+          description: "Messaging scripts generated successfully!",
+        })
       } else {
+        console.error("[v0] Invalid response format:", result)
         throw new Error("Invalid response format")
       }
     } catch (error: any) {
+      console.error("[v0] Error generating messaging scripts:", error)
       toast({
         title: "Error",
         description: error.message || "Failed to generate messaging scripts",
