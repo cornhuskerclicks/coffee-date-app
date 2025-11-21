@@ -703,7 +703,7 @@ export default function OpportunitiesV2() {
       const response = await fetch("/api/opportunities/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.JSON.stringify({
+        body: JSON.stringify({
           messages: updatedMessages,
           nicheName: selectedNiche.niche_name,
         }),
