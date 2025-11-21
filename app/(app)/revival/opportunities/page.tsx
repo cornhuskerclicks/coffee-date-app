@@ -182,7 +182,7 @@ export default function OpportunitiesV2() {
           : selectedNiche.user_state.sales_conversion?.toString() || "10",
         profitSplit: activelyEditing.has("profitSplit")
           ? prev.profitSplit
-          : selectedNiche.user_state.profit_split?.toString() || "50", // Corrected field name
+          : selectedNiche.user_state.profit_pct?.toString() || "50", // Corrected field name to profit_pct
         outreachNotes: activelyEditing.has("outreachNotes")
           ? prev.outreachNotes
           : selectedNiche.user_state.outreach_notes || "",
@@ -991,7 +991,7 @@ export default function OpportunitiesV2() {
                                   handleCheckboxChange("research_notes_added", checked as boolean)
                                 }
                               }}
-                              className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary disabled:opacity-30 disabled:cursor-not-allowed"
+                              className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-white disabled:opacity-30 disabled:cursor-not-allowed"
                             />
                             <span
                               className={cn(
@@ -1185,7 +1185,7 @@ export default function OpportunitiesV2() {
                                   handleCheckboxChange("aov_calculator_completed", checked as boolean)
                                 }
                               }}
-                              className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary disabled:opacity-30 disabled:cursor-not-allowed"
+                              className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-white disabled:opacity-30 disabled:cursor-not-allowed"
                             />
                             <span
                               className={cn(
@@ -1335,7 +1335,7 @@ export default function OpportunitiesV2() {
                                   handleCheckboxChange("customer_profile_generated", checked as boolean)
                                 }
                               }}
-                              className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary disabled:opacity-30 disabled:cursor-not-allowed"
+                              className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-white disabled:opacity-30 disabled:cursor-not-allowed"
                             />
                             <span
                               className={cn(
@@ -1415,7 +1415,7 @@ export default function OpportunitiesV2() {
                         <Checkbox
                           checked={selectedNiche.user_state?.messaging_prepared || false}
                           onCheckedChange={(checked) => updateNicheState({ messaging_prepared: checked as boolean })}
-                          className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                          className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-white"
                         />
                         <span className="text-sm text-white/70">Messaging Prepared</span>
                       </div>
@@ -1527,7 +1527,7 @@ export default function OpportunitiesV2() {
                         <Checkbox
                           checked={selectedNiche.user_state?.coffee_date_completed || false}
                           onCheckedChange={(checked) => updateNicheState({ coffee_date_completed: checked as boolean })}
-                          className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                          className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-white"
                         />
                         <span className="text-sm text-white/70">Coffee Date Completed</span>
                       </div>
