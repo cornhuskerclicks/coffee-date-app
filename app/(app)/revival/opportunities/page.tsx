@@ -531,19 +531,38 @@ export default function OpportunitiesV2() {
     }
   }
 
-  // Fix: Declare handleCheckboxChange function
+  // CHANGE: Handle checkbox changes and update relevant states
   const handleCheckboxChange = (key: keyof typeof checkboxStates, value: boolean) => {
-    setCheckboxStates((prev) => ({ ...prev, [key]: value }))
+    console.log("[v0] Checkbox changed:", key, "=", value)
+
+    setCheckboxStates((prev) => {
+      const newState = { ...prev, [key]: value }
+      console.log("[v0] New checkbox states:", newState)
+      return newState
+    })
+
+    if (selectedNiche) {
+      setSelectedNiche({
+        ...selectedNiche,
+        user_state: {
+          ...selectedNiche.user_state!,
+          [key]: value,
+        },
+      })
+    }
+
     updateNicheState({ [key]: value } as Partial<Niche["user_state"]>)
   }
 
+  // CHANGE: Changed to check checkboxStates instead of database values for instant feedback
   const canAdvanceFromResearch = () => {
-    if (!selectedNiche?.user_state) return false
-    return (
-      selectedNiche.user_state.research_notes_added &&
-      selectedNiche.user_state.aov_calculator_completed &&
-      selectedNiche.user_state.customer_profile_generated
-    )
+    const canAdvance =
+      checkboxStates.research_notes_added &&
+      checkboxStates.aov_calculator_completed &&
+      checkboxStates.customer_profile_generated
+
+    console.log("[v0] Can advance from research?", canAdvance, checkboxStates)
+    return canAdvance
   }
 
   const canAdvanceFromShortlisted = () => {
