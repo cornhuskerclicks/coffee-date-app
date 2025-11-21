@@ -137,6 +137,7 @@ export default function OpportunitiesV2() {
     research_notes_added: false,
     aov_calculator_completed: false,
     customer_profile_generated: false,
+    messaging_prepared: false, // Added for messaging_prepared
   })
 
   const chatEndRef = useRef<HTMLDivElement>(null)
@@ -156,11 +157,13 @@ export default function OpportunitiesV2() {
   // CHANGE: Only sync local inputs when selectedNiche changes AND field is not being edited
   useEffect(() => {
     if (selectedNiche?.user_state) {
-      setCheckboxStates({
+      setCheckboxStates((prev) => ({
+        ...prev,
         research_notes_added: selectedNiche.user_state.research_notes_added ?? false,
         aov_calculator_completed: selectedNiche.user_state.aov_calculator_completed ?? false,
         customer_profile_generated: selectedNiche.user_state.customer_profile_generated ?? false,
-      })
+        messaging_prepared: selectedNiche.user_state.messaging_prepared ?? false, // Sync messaging_prepared
+      }))
       console.log("[v0] Selected niche changed:", selectedNiche?.niche_name)
       console.log("[v0] User state:", selectedNiche.user_state)
       // Only update fields that aren't being actively edited
@@ -505,6 +508,9 @@ export default function OpportunitiesV2() {
       }
       if (updates.customer_profile_generated !== undefined) {
         setCheckboxStates((prev) => ({ ...prev, customer_profile_generated: updates.customer_profile_generated! }))
+      }
+      if (updates.messaging_prepared !== undefined) {
+        setCheckboxStates((prev) => ({ ...prev, messaging_prepared: updates.messaging_prepared! }))
       }
 
       toast({
@@ -1401,31 +1407,79 @@ export default function OpportunitiesV2() {
                       </Button>
 
                       {selectedNiche.user_state?.messaging_scripts && (
-                        <div className="p-4 bg-black/20 rounded-lg border border-white/10">
-                          <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
-                            {selectedNiche.user_state.messaging_scripts.linkedin}
-                          </p>
-                          <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
-                            {selectedNiche.user_state.messaging_scripts.email}
-                          </p>
+                        <div className="space-y-4 p-4 bg-black/20 rounded-lg border border-white/10">
+                          {typeof selectedNiche.user_state.messaging_scripts === "object" ? (
+                            <>
+                              {selectedNiche.user_state.messaging_scripts.linkedin && (
+                                <div>
+                                  <h4 className="text-sm font-semibold text-primary mb-2">LinkedIn Message:</h4>
+                                  <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
+                                    {selectedNiche.user_state.messaging_scripts.linkedin}
+                                  </p>
+                                </div>
+                              )}
+                              {selectedNiche.user_state.messaging_scripts.email && (
+                                <div>
+                                  <h4 className="text-sm font-semibold text-primary mb-2">Email Script:</h4>
+                                  <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
+                                    {selectedNiche.user_state.messaging_scripts.email}
+                                  </p>
+                                </div>
+                              )}
+                              {selectedNiche.user_state.messaging_scripts.facebook && (
+                                <div>
+                                  <h4 className="text-sm font-semibold text-primary mb-2">Facebook Approach:</h4>
+                                  <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
+                                    {selectedNiche.user_state.messaging_scripts.facebook}
+                                  </p>
+                                </div>
+                              )}
+                              {selectedNiche.user_state.messaging_scripts.forum && (
+                                <div>
+                                  <h4 className="text-sm font-semibold text-primary mb-2">Forum Post:</h4>
+                                  <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
+                                    {selectedNiche.user_state.messaging_scripts.forum}
+                                  </p>
+                                </div>
+                              )}
+                              {selectedNiche.user_state.messaging_scripts.lead_magnet && (
+                                <div>
+                                  <h4 className="text-sm font-semibold text-primary mb-2">Lead Magnet Ideas:</h4>
+                                  <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
+                                    {Array.isArray(selectedNiche.user_state.messaging_scripts.lead_magnet)
+                                      ? selectedNiche.user_state.messaging_scripts.lead_magnet.join("\n")
+                                      : selectedNiche.user_state.messaging_scripts.lead_magnet}
+                                  </p>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
+                              {selectedNiche.user_state.messaging_scripts}
+                            </p>
+                          )}
                         </div>
                       )}
 
                       <div className="flex items-center gap-2">
                         <Checkbox
-                          checked={selectedNiche.user_state?.messaging_prepared || false}
-                          onCheckedChange={(checked) => updateNicheState({ messaging_prepared: checked as boolean })}
+                          checked={checkboxStates.messaging_prepared}
+                          onCheckedChange={(checked) => handleCheckboxChange("messaging_prepared", checked as boolean)}
+                          disabled={!selectedNiche.user_state?.messaging_scripts}
                           className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-white"
                         />
-                        <span className="text-sm text-white/70">Messaging Prepared</span>
+                        <span className="text-sm text-white/70">
+                          Messaging Prepared
+                          {!selectedNiche.user_state?.messaging_scripts && " (Generate scripts first)"}
+                        </span>
                       </div>
 
                       {currentStatus === "Shortlisted" && canAdvanceFromShortlisted() && (
                         <Button
                           onClick={() => advanceStatus("Outreach in Progress")}
-                          className="w-full bg-primary hover:bg-primary/90"
+                          className="w-full bg-green-600 hover:bg-green-700"
                         >
-                          Begin Outreach <ChevronRight className="ml-2 h-4 w-4" />
+                          Complete Shortlisted & Move to Outreach
                         </Button>
                       )}
                     </div>
