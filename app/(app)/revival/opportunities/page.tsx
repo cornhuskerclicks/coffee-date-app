@@ -693,14 +693,14 @@ export default function OpportunitiesV2() {
       [selectedNiche.id]: updatedMessages,
     }))
 
-    setLocalInputs((prev) => ({ ...prev, profileChatInput: "" })) // Clear profileChatInput from localInputs
+    setLocalInputs((prev) => ({ ...prev, profileChatInput: "" }))
     setIsProfileChatLoading(true)
 
     try {
       const response = await fetch("/api/opportunities/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.JSON.stringify({
+        body: JSON.stringify({
           messages: updatedMessages,
           nicheName: selectedNiche.niche_name,
         }),
@@ -724,30 +724,35 @@ export default function OpportunitiesV2() {
             customer_profile_generated: true,
           })
 
+          // Update local checkbox state
           setCheckboxStates((prev) => ({
             ...prev,
             customer_profile_generated: true,
           }))
 
-          setSelectedNiche((prevNiche) => {
-            if (!prevNiche) return prevNiche
+          setSelectedNiche((prev) => {
+            if (!prev) return prev
             return {
-              ...prevNiche,
+              ...prev,
               user_state: {
-                ...prevNiche.user_state,
+                ...prev.user_state,
                 customer_profile: result.customerProfile,
                 customer_profile_generated: true,
               },
             }
           })
+
+          toast({
+            title: "ICP Complete",
+            description: "Your Ideal Customer Profile has been generated and saved.",
+          })
         }
       }
     } catch (error) {
-      // Changed error type to 'any' to match original code's implicit typing or use specific type if known
-      console.error("Error sending chat message:", error)
+      console.error("[v0] Error in ICP chat:", error)
       toast({
-        title: "Error",
-        description: "Failed to send message", // Use a generic error message for toast
+        title: "Chat Error",
+        description: "Failed to send message. Please try again.",
         variant: "destructive",
       })
     } finally {
