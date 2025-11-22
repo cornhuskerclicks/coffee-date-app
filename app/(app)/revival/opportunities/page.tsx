@@ -509,7 +509,7 @@ export default function OpportunitiesV2() {
     }
   }
 
-  // CHANGE: Handle checkbox changes without causing data loss
+  // CHANGE: Fix handleCheckboxChange to only save valid numeric values
   const handleCheckboxChange = async (key: keyof typeof checkboxStates, value: boolean) => {
     console.log("[v0] Checkbox changed:", key, "=", value)
 
@@ -519,31 +519,63 @@ export default function OpportunitiesV2() {
     // CRITICAL: Save ALL current inputs + checkbox state to prevent data loss
     const updates: any = { [key]: value }
 
-    // Always include current notes
-    if (localInputs.researchNotes) {
+    // Always include current notes if not empty
+    if (localInputs.researchNotes && localInputs.researchNotes.trim()) {
       updates.research_notes = localInputs.researchNotes
     }
 
-    // Always include calculator values
-    if (localInputs.aovInput) {
-      updates.aov_input = Number.parseFloat(localInputs.aovInput)
-    }
-    if (localInputs.databaseSizeInput) {
-      updates.database_size_input = Number.parseFloat(localInputs.databaseSizeInput)
-    }
-    updates.conversation_rate = Number.parseFloat(localInputs.conversationRate) || 40
-    updates.sales_conversion = Number.parseFloat(localInputs.salesConversion) || 10
-    updates.profit_pct = Number.parseFloat(localInputs.profitSplit) || 50
+    // Only include calculator values if they're valid numbers
+    const aovNum = localInputs.aovInput ? Number.parseFloat(localInputs.aovInput) : null
+    const dbSizeNum = localInputs.databaseSizeInput ? Number.parseFloat(localInputs.databaseSizeInput) : null
+    const convRateNum = localInputs.conversationRate ? Number.parseFloat(localInputs.conversationRate) : 40
+    const salesConvNum = localInputs.salesConversion ? Number.parseFloat(localInputs.salesConversion) : 10
+    const profitPctNum = localInputs.profitSplit ? Number.parseFloat(localInputs.profitSplit) : 50
 
-    // Store calculated values
-    updates.cpl_calculated = Number.parseFloat(aovOutputs.cpl)
-    updates.cpa_calculated = Number.parseFloat(aovOutputs.cpa)
-    updates.potential_retainer =
-      aovOutputs.suggestedRetainer === "Not eligible" ? 0 : Number.parseFloat(aovOutputs.suggestedRetainer)
-    updates.profit_split_potential = Number.parseFloat(aovOutputs.potentialProfitSplit)
+    if (aovNum !== null && !isNaN(aovNum)) updates.aov_input = aovNum
+    if (dbSizeNum !== null && !isNaN(dbSizeNum)) updates.database_size_input = dbSizeNum
+    if (!isNaN(convRateNum)) updates.conversation_rate = convRateNum
+    if (!isNaN(salesConvNum)) updates.sales_conversion = salesConvNum
+    if (!isNaN(profitPctNum)) updates.profit_pct = profitPctNum
+
+    // Store calculated values only if valid
+    const cplNum = Number.parseFloat(aovOutputs.cpl)
+    const cpaNum = Number.parseFloat(aovOutputs.cpa)
+    const profitSplitNum = Number.parseFloat(aovOutputs.potentialProfitSplit)
+
+    if (!isNaN(cplNum)) updates.cpl_calculated = cplNum
+    if (!isNaN(cpaNum)) updates.cpa_calculated = cpaNum
+    if (!isNaN(profitSplitNum)) updates.profit_split_potential = profitSplitNum
+
+    // Handle retainer (can be "Not eligible" or a number)
+    if (aovOutputs.suggestedRetainer === "Not eligible") {
+      updates.potential_retainer = 0
+    } else {
+      const retainerNum = Number.parseFloat(aovOutputs.suggestedRetainer)
+      if (!isNaN(retainerNum)) updates.potential_retainer = retainerNum
+    }
 
     console.log("[v0] Saving all data with checkbox:", updates)
     await updateNicheState(updates)
+  }
+
+  // CHANGE: Save before switching niches to prevent data loss
+  const handleNicheSelect = async (niche: Niche) => {
+    if (selectedNiche) {
+      console.log("[v0] Saving current niche before switch")
+
+      // Save all current inputs
+      await updateNicheState({
+        research_notes: localInputs.researchNotes,
+        aov_input: Number.parseFloat(localInputs.aovInput) || null,
+        database_size_input: Number.parseFloat(localInputs.databaseSizeInput) || null,
+        conversation_rate: Number.parseFloat(localInputs.conversationRate) || null,
+        sales_conversion: Number.parseFloat(localInputs.salesConversion) || null,
+        profit_pct: Number.parseFloat(localInputs.profitSplit) || null,
+        outreach_notes: localInputs.outreachNotes,
+      })
+    }
+
+    setSelectedNiche(niche)
   }
 
   // CHANGE: Changed to check checkboxStates instead of database values for instant feedback
@@ -789,26 +821,6 @@ export default function OpportunitiesV2() {
   // Add toggleSection function
   const toggleSection = (section: string) => {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }))
-  }
-
-  // CHANGE: Save before switching niches to prevent data loss
-  const handleNicheSelect = async (niche: Niche) => {
-    if (selectedNiche) {
-      console.log("[v0] Saving current niche before switch")
-
-      // Save all current inputs
-      await updateNicheState({
-        research_notes: localInputs.researchNotes,
-        aov_input: Number.parseFloat(localInputs.aovInput) || null,
-        database_size_input: Number.parseFloat(localInputs.databaseSizeInput) || null,
-        conversation_rate: Number.parseFloat(localInputs.conversationRate) || null,
-        sales_conversion: Number.parseFloat(localInputs.salesConversion) || null,
-        profit_pct: Number.parseFloat(localInputs.profitSplit) || null,
-        outreach_notes: localInputs.outreachNotes,
-      })
-    }
-
-    setSelectedNiche(niche)
   }
 
   if (loading) {
@@ -1368,7 +1380,7 @@ export default function OpportunitiesV2() {
 
                           {selectedNiche.user_state?.customer_profile && (
                             <div className="space-y-2">
-                              <div className="text-xs text-white/80 space-y-2 p-3 bg-white/5 rounded border border-white/5">
+                              <div className="text-sm text-white/80 space-y-2 p-3 bg-white/5 rounded border border-white/5">
                                 <p>
                                   <strong className="text-white">Decision Maker:</strong>{" "}
                                   {selectedNiche.user_state.customer_profile.decision_maker}
@@ -1439,8 +1451,8 @@ export default function OpportunitiesV2() {
                             className={cn(
                               "w-full",
                               canAdvanceFromResearch()
-                                ? "bg-primary hover:bg-primary/90"
-                                : "bg-white/5 text-white/40 cursor-not-allowed",
+                                ? "bg-primary hover:bg-primary/90 text-white"
+                                : "bg-white/10 text-white/60 border border-white/20 hover:bg-white/15 cursor-not-allowed",
                             )}
                           >
                             {canAdvanceFromResearch() ? (
@@ -1448,7 +1460,20 @@ export default function OpportunitiesV2() {
                                 Complete Research & Move to Shortlisted <ChevronRight className="ml-2 h-4 w-4" />
                               </>
                             ) : (
-                              <>Complete All Research Tasks First</>
+                              <>
+                                Complete All Research Tasks First
+                                <span className="ml-2 text-xs">
+                                  (
+                                  {[
+                                    !checkboxStates.research_notes_added && "Notes",
+                                    !checkboxStates.aov_calculator_completed && "AOV",
+                                    !checkboxStates.customer_profile_generated && "ICP",
+                                  ]
+                                    .filter(Boolean)
+                                    .join(", ")}{" "}
+                                  needed)
+                                </span>
+                              </>
                             )}
                           </Button>
                         )}
