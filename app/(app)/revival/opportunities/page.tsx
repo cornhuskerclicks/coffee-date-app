@@ -37,54 +37,58 @@ type Industry = {
 
 type Niche = {
   id: string
-  name: string
   niche_name: string
-  scale: string
-  database_size: string
-  default_priority: number
-  industry?: Industry
-  user_state?: {
+  industry_id: string | null
+  scale: string | null
+  database_size: string | null
+  default_priority: number | null
+  industry?: Industry // Kept for display
+  user_state: {
     id: string // Added to match Supabase response
     niche_id: string // Added to match Supabase response
     user_id: string // Added to match Supabase response
     is_favourite: boolean
-    status: string
+    status: string | null
     notes: string | null
     expected_monthly_value: number | null
     // Research phase
     research_notes: string | null
     aov_input: number | null
     database_size_input: number | null
-    conversation_rate: number | null
-    sales_conversion: number | null
-    retainer_pct: number | null // Kept for reference but not used in new calc
-    profit_pct: number | null
+    // REMOVED: conversation_rate: number | null
+    // REMOVED: sales_conversion: number | null
+    // REMOVED: retainer_pct: number | null // Kept for reference but not used in new calc
+    // REMOVED: profit_pct: number | null
     cpl_calculated: number | null
     cpa_calculated: number | null
     potential_retainer: number | null
     profit_split_potential: number | null
-    customer_profile: any | null
-    research_notes_added: boolean
-    aov_calculator_completed: boolean
-    customer_profile_generated: boolean
+    customer_profile: {
+      decision_maker?: string
+      pain_points?: string
+      gathering_places?: string
+    } | null
+    research_notes_added: boolean | null
+    aov_calculator_completed: boolean | null
+    customer_profile_generated: boolean | null
     // Shortlisted phase
     messaging_scripts: any | null
-    messaging_prepared: boolean
+    messaging_prepared: boolean | null
     // Outreach phase
     outreach_start_date: string | null
     outreach_channels: any | null
     outreach_messages_sent: number
     outreach_notes: string | null
-    demo_script_created: boolean
+    demo_script_created: boolean | null
     demo_script: string | null
-    coffee_date_completed: boolean
+    coffee_date_completed: boolean | null
     ghl_sub_account_id: string | null
     // Win phase
     active_monthly_retainer: number | null
     monthly_profit_split: number | null
     target_monthly_recurring: number | null
-    win_completed: boolean
-  }
+    win_completed: boolean | null
+  } | null
 }
 
 export default function OpportunitiesV2() {
@@ -100,14 +104,13 @@ export default function OpportunitiesV2() {
   const [favouritesOnly, setFavouritesOnly] = useState(false)
   const [sortBy, setSortBy] = useState<string>("alphabetical")
 
-  // CHANGE: Removed complex state tracking - simplified to just localInputs
-  const [localInputs, setLocalInputs] = React.useState({
+  const [localInputs, setLocalInputs] = useState({
     researchNotes: "",
     aovInput: "",
     databaseSizeInput: "",
-    conversationRate: "",
-    salesConversion: "",
-    profitSplit: "",
+    conversationRate: "40", // Local only, not stored in DB
+    salesConversion: "10", // Local only, not stored in DB
+    profitSplit: "50", // Local only, not stored in DB
     outreachNotes: "",
     profileChatInput: "",
   })
@@ -171,12 +174,31 @@ export default function OpportunitiesV2() {
         researchNotes: selectedNiche.user_state.research_notes || "",
         aovInput: selectedNiche.user_state.aov_input?.toString() || "",
         databaseSizeInput: selectedNiche.user_state.database_size_input?.toString() || "",
-        conversationRate: selectedNiche.user_state.conversation_rate?.toString() || "40",
-        salesConversion: selectedNiche.user_state.sales_conversion?.toString() || "10",
-        profitSplit: selectedNiche.user_state.profit_pct?.toString() || "50",
+        conversationRate: "40", // Always use default
+        salesConversion: "10", // Always use default
+        profitSplit: "50", // Always use default
         outreachNotes: selectedNiche.user_state.outreach_notes || "",
         profileChatInput: "",
       })
+    } else {
+      // Reset local inputs and checkboxes when no niche is selected or user_state is null
+      setLocalInputs({
+        researchNotes: "",
+        aovInput: "",
+        databaseSizeInput: "",
+        conversationRate: "40",
+        salesConversion: "10",
+        profitSplit: "50",
+        outreachNotes: "",
+        profileChatInput: "",
+      })
+      setCheckboxStates({
+        research_notes_added: false,
+        aov_calculator_completed: false,
+        customer_profile_generated: false,
+        messaging_prepared: false,
+      })
+      setIsProfileChatActive(false)
     }
   }, [selectedNiche?.id]) // Only trigger when niche ID changes, not on every selectedNiche update
 
@@ -218,6 +240,7 @@ export default function OpportunitiesV2() {
 
       const processedNiches = (nichesData || []).map((niche) => ({
         ...niche,
+        industry: niche.industry?.[0] || null, // Ensure industry is correctly assigned
         user_state: niche.user_state?.[0] || {
           id: "", // Default to empty string if no user_state exists
           niche_id: niche.id,
@@ -230,10 +253,10 @@ export default function OpportunitiesV2() {
           aov_input: null,
           database_size_input: null,
           // Add default values for new fields
-          conversation_rate: null,
-          sales_conversion: null,
-          retainer_pct: null, // Kept for reference
-          profit_pct: null,
+          // REMOVED: conversation_rate: null,
+          // REMOVED: sales_conversion: null,
+          // REMOVED: retainer_pct: null, // Kept for reference
+          // REMOVED: profit_pct: null,
           cpl_calculated: null,
           cpa_calculated: null,
           potential_retainer: null,
@@ -331,6 +354,13 @@ export default function OpportunitiesV2() {
           user_id: user.id,
           is_favourite: newFavState,
           status: niche.user_state?.status || "Research",
+          // Ensure other fields are preserved if they exist, or set to null if not
+          research_notes: niche.user_state?.research_notes ?? null,
+          aov_input: niche.user_state?.aov_input ?? null,
+          database_size_input: niche.user_state?.database_size_input ?? null,
+          outreach_notes: niche.user_state?.outreach_notes ?? null,
+          // Add other relevant fields that might be modified and should be preserved
+          // For example, if you toggle favorite while other fields are being edited
         },
         {
           onConflict: "niche_id,user_id",
@@ -426,19 +456,29 @@ export default function OpportunitiesV2() {
     if (!selectedNiche) return
 
     const updates: any = {}
-    if (localInputs.aovInput) updates.aov_input = Number.parseFloat(localInputs.aovInput)
-    if (localInputs.databaseSizeInput) updates.database_size_input = Number.parseFloat(localInputs.databaseSizeInput)
-    updates.conversation_rate = Number.parseFloat(localInputs.conversationRate) || 40
-    updates.sales_conversion = Number.parseFloat(localInputs.salesConversion) || 10
-    updates.profit_pct = Number.parseFloat(localInputs.profitSplit) || 50 // Corrected field name
 
-    // Store calculated values
-    updates.cpl_calculated = Number.parseFloat(aovOutputs.cpl)
-    updates.cpa_calculated = Number.parseFloat(aovOutputs.cpa)
-    // Handle "Not eligible" case for potential retainer
-    updates.potential_retainer =
-      aovOutputs.suggestedRetainer === "Not eligible" ? 0 : Number.parseFloat(aovOutputs.suggestedRetainer)
-    updates.profit_split_potential = Number.parseFloat(aovOutputs.potentialProfitSplit)
+    const aovInput = Number.parseFloat(localInputs.aovInput)
+    if (!isNaN(aovInput)) updates.aov_input = aovInput
+
+    const dbSize = Number.parseFloat(localInputs.databaseSizeInput)
+    if (!isNaN(dbSize)) updates.database_size_input = dbSize
+
+    // Store calculated values (these exist in DB)
+    const cpl = Number.parseFloat(aovOutputs.cpl)
+    if (!isNaN(cpl)) updates.cpl_calculated = cpl
+
+    const cpa = Number.parseFloat(aovOutputs.cpa)
+    if (!isNaN(cpa)) updates.cpa_calculated = cpa
+
+    if (aovOutputs.suggestedRetainer !== "Not eligible") {
+      const retainer = Number.parseFloat(aovOutputs.suggestedRetainer)
+      if (!isNaN(retainer)) updates.potential_retainer = retainer
+    } else {
+      updates.potential_retainer = 0
+    }
+
+    const profitSplit = Number.parseFloat(aovOutputs.potentialProfitSplit)
+    if (!isNaN(profitSplit)) updates.profit_split_potential = profitSplit
 
     console.log("[v0] Saving calculator data:", updates)
     await updateNicheState(updates)
@@ -491,17 +531,21 @@ export default function OpportunitiesV2() {
           user_state: data,
         })
 
+        // Update local checkbox state for instant feedback
         if (data.research_notes_added !== undefined) {
-          setCheckboxStates((prev) => ({ ...prev, research_notes_added: data.research_notes_added }))
+          setCheckboxStates((prev) => ({ ...prev, research_notes_added: data.research_notes_added ?? false }))
         }
         if (data.aov_calculator_completed !== undefined) {
-          setCheckboxStates((prev) => ({ ...prev, aov_calculator_completed: data.aov_calculator_completed }))
+          setCheckboxStates((prev) => ({ ...prev, aov_calculator_completed: data.aov_calculator_completed ?? false }))
         }
         if (data.customer_profile_generated !== undefined) {
-          setCheckboxStates((prev) => ({ ...prev, customer_profile_generated: data.customer_profile_generated }))
+          setCheckboxStates((prev) => ({
+            ...prev,
+            customer_profile_generated: data.customer_profile_generated ?? false,
+          }))
         }
         if (data.messaging_prepared !== undefined) {
-          setCheckboxStates((prev) => ({ ...prev, messaging_prepared: data.messaging_prepared }))
+          setCheckboxStates((prev) => ({ ...prev, messaging_prepared: data.messaging_prepared ?? false }))
         }
       }
     } catch (error: any) {
@@ -509,53 +553,52 @@ export default function OpportunitiesV2() {
     }
   }
 
-  // CHANGE: Fix handleCheckboxChange to only save valid numeric values
-  const handleCheckboxChange = async (key: keyof typeof checkboxStates, value: boolean) => {
-    console.log("[v0] Checkbox changed:", key, "=", value)
+  const handleCheckboxChange = async (field: string, checked: boolean) => {
+    console.log(`[v0] Checkbox changed: ${field} = ${checked}`)
 
     // Update local state immediately for instant UI feedback
-    setCheckboxStates((prev) => ({ ...prev, [key]: value }))
+    setCheckboxStates((prev) => ({ ...prev, [field]: checked }))
 
-    // CRITICAL: Save ALL current inputs + checkbox state to prevent data loss
-    const updates: any = { [key]: value }
+    if (!selectedNiche) return
 
-    // Always include current notes if not empty
-    if (localInputs.researchNotes && localInputs.researchNotes.trim()) {
-      updates.research_notes = localInputs.researchNotes
+    const updateData: any = {
+      [field]: checked,
+      research_notes: localInputs.researchNotes, // Include current research notes
     }
 
-    // Only include calculator values if they're valid numbers
-    const aovNum = localInputs.aovInput ? Number.parseFloat(localInputs.aovInput) : null
-    const dbSizeNum = localInputs.databaseSizeInput ? Number.parseFloat(localInputs.databaseSizeInput) : null
-    const convRateNum = localInputs.conversationRate ? Number.parseFloat(localInputs.conversationRate) : 40
-    const salesConvNum = localInputs.salesConversion ? Number.parseFloat(localInputs.salesConversion) : 10
-    const profitPctNum = localInputs.profitSplit ? Number.parseFloat(localInputs.profitSplit) : 50
+    // Only add numeric fields if they're valid
+    const aovInput = Number.parseFloat(localInputs.aovInput)
+    if (!isNaN(aovInput)) updateData.aov_input = aovInput
 
-    if (aovNum !== null && !isNaN(aovNum)) updates.aov_input = aovNum
-    if (dbSizeNum !== null && !isNaN(dbSizeNum)) updates.database_size_input = dbSizeNum
-    if (!isNaN(convRateNum)) updates.conversation_rate = convRateNum
-    if (!isNaN(salesConvNum)) updates.sales_conversion = salesConvNum
-    if (!isNaN(profitPctNum)) updates.profit_pct = profitPctNum
+    const dbSize = Number.parseFloat(localInputs.databaseSizeInput)
+    if (!isNaN(dbSize)) updateData.database_size_input = dbSize
 
-    // Store calculated values only if valid
-    const cplNum = Number.parseFloat(aovOutputs.cpl)
-    const cpaNum = Number.parseFloat(aovOutputs.cpa)
-    const profitSplitNum = Number.parseFloat(aovOutputs.potentialProfitSplit)
+    // Calculated outputs
+    const cpl = Number.parseFloat(aovOutputs.cpl)
+    if (!isNaN(cpl)) updateData.cpl_calculated = cpl
 
-    if (!isNaN(cplNum)) updates.cpl_calculated = cplNum
-    if (!isNaN(cpaNum)) updates.cpa_calculated = cpaNum
-    if (!isNaN(profitSplitNum)) updates.profit_split_potential = profitSplitNum
+    const cpa = Number.parseFloat(aovOutputs.cpa)
+    if (!isNaN(cpa)) updateData.cpa_calculated = cpa
 
-    // Handle retainer (can be "Not eligible" or a number)
-    if (aovOutputs.suggestedRetainer === "Not eligible") {
-      updates.potential_retainer = 0
+    if (aovOutputs.suggestedRetainer !== "Not eligible") {
+      const retainer = Number.parseFloat(aovOutputs.suggestedRetainer)
+      if (!isNaN(retainer)) updateData.potential_retainer = retainer
     } else {
-      const retainerNum = Number.parseFloat(aovOutputs.suggestedRetainer)
-      if (!isNaN(retainerNum)) updates.potential_retainer = retainerNum
+      updateData.potential_retainer = 0
     }
 
-    console.log("[v0] Saving all data with checkbox:", updates)
-    await updateNicheState(updates)
+    const profitSplit = Number.parseFloat(aovOutputs.potentialProfitSplit)
+    if (!isNaN(profitSplit)) updateData.profit_split_potential = profitSplit
+
+    console.log("[v0] Saving checkbox with data:", updateData)
+    await updateNicheState(updateData)
+  }
+
+  const saveFieldToDatabase = async (field: "researchNotes" | "outreachNotes") => {
+    if (!selectedNiche) return
+
+    const dbField = field === "researchNotes" ? "research_notes" : "outreach_notes"
+    await updateNicheState({ [dbField]: localInputs[field] })
   }
 
   // CHANGE: Save before switching niches to prevent data loss
@@ -563,16 +606,20 @@ export default function OpportunitiesV2() {
     if (selectedNiche) {
       console.log("[v0] Saving current niche before switch")
 
-      // Save all current inputs
-      await updateNicheState({
+      // Save all current inputs to DB
+      const updates: any = {
         research_notes: localInputs.researchNotes,
-        aov_input: Number.parseFloat(localInputs.aovInput) || null,
-        database_size_input: Number.parseFloat(localInputs.databaseSizeInput) || null,
-        conversation_rate: Number.parseFloat(localInputs.conversationRate) || null,
-        sales_conversion: Number.parseFloat(localInputs.salesConversion) || null,
-        profit_pct: Number.parseFloat(localInputs.profitSplit) || null,
         outreach_notes: localInputs.outreachNotes,
-      })
+      }
+
+      const aovInput = Number.parseFloat(localInputs.aovInput)
+      if (!isNaN(aovInput)) updates.aov_input = aovInput
+
+      const dbSize = Number.parseFloat(localInputs.databaseSizeInput)
+      if (!isNaN(dbSize)) updates.database_size_input = dbSize
+
+      // saveCalculatorData() will handle calculated fields
+      await updateNicheState(updates)
     }
 
     setSelectedNiche(niche)
@@ -609,25 +656,40 @@ export default function OpportunitiesV2() {
       // If advancing from Research to Shortlisted, save all research data first
       if (selectedNiche.user_state?.status === "Research" && newStatus === "Shortlisted") {
         console.log("[v0] Saving research data before advancing...")
-        await updateNicheState({
+
+        const updateData: any = {
           research_notes: localInputs.researchNotes,
-          aov_input: Number.parseFloat(localInputs.aovInput) || null,
-          database_size_input: Number.parseFloat(localInputs.databaseSizeInput) || null,
-          conversation_rate: Number.parseFloat(localInputs.conversationRate) || null,
-          sales_conversion: Number.parseFloat(localInputs.salesConversion) || null,
-          profit_pct: Number.parseFloat(localInputs.profitSplit) || null,
-          // Keeping calculations for now, but will be overwritten if inputs change
-          cpl_calculated: Number.parseFloat(aovOutputs.cpl),
-          cpa_calculated: Number.parseFloat(aovOutputs.cpa),
-          potential_retainer:
-            aovOutputs.suggestedRetainer === "Not eligible" ? 0 : Number.parseFloat(aovOutputs.suggestedRetainer),
-          profit_split_potential: Number.parseFloat(aovOutputs.potentialProfitSplit),
-          // Update checkboxes based on local state
           research_notes_added: checkboxStates.research_notes_added,
           aov_calculator_completed: checkboxStates.aov_calculator_completed,
           customer_profile_generated: checkboxStates.customer_profile_generated,
           status: newStatus,
-        })
+        }
+
+        // Only add numeric fields if they're valid
+        const aovInput = Number.parseFloat(localInputs.aovInput)
+        if (!isNaN(aovInput)) updateData.aov_input = aovInput
+
+        const dbSize = Number.parseFloat(localInputs.databaseSizeInput)
+        if (!isNaN(dbSize)) updateData.database_size_input = dbSize
+
+        // Calculated fields
+        const cpl = Number.parseFloat(aovOutputs.cpl)
+        if (!isNaN(cpl)) updateData.cpl_calculated = cpl
+
+        const cpa = Number.parseFloat(aovOutputs.cpa)
+        if (!isNaN(cpa)) updateData.cpa_calculated = cpa
+
+        if (aovOutputs.suggestedRetainer !== "Not eligible") {
+          const retainer = Number.parseFloat(aovOutputs.suggestedRetainer)
+          if (!isNaN(retainer)) updateData.potential_retainer = retainer
+        } else {
+          updateData.potential_retainer = 0
+        }
+
+        const profitSplit = Number.parseFloat(aovOutputs.potentialProfitSplit)
+        if (!isNaN(profitSplit)) updateData.profit_split_potential = profitSplit
+
+        await updateNicheState(updateData)
       } else {
         // For other status changes, just update the status
         await updateNicheState({ status: newStatus })
@@ -636,7 +698,7 @@ export default function OpportunitiesV2() {
       console.error("[v0] Error advancing status:", error)
       toast({
         title: "Error",
-        description: "Failed to change status. Please try again.",
+        description: "Failed to advance status. Please try again.",
         variant: "destructive",
       })
     }
@@ -696,6 +758,10 @@ export default function OpportunitiesV2() {
         body: JSON.stringify({
           type: "demo_script",
           nicheName: selectedNiche.niche_name,
+          // Pass relevant calculator outputs to the AI for context
+          aov: Number.parseFloat(localInputs.aovInput) || 0,
+          databaseSize: Number.parseFloat(localInputs.databaseSizeInput) || 0,
+          // Include other relevant data if needed for prompt engineering
         }),
       })
 
@@ -738,6 +804,8 @@ export default function OpportunitiesV2() {
         },
       ],
     }))
+    // Ensure profile chat input is clear
+    setLocalInputs((prev) => ({ ...prev, profileChatInput: "" }))
   }
 
   const sendProfileChatMessage = async (message: string) => {
@@ -788,6 +856,7 @@ export default function OpportunitiesV2() {
             customer_profile_generated: true,
           }))
 
+          // Also update selectedNiche state directly for UI consistency
           setSelectedNiche((prev) => {
             if (!prev) return prev
             return {
@@ -804,7 +873,16 @@ export default function OpportunitiesV2() {
             title: "ICP Complete",
             description: "Your Ideal Customer Profile has been generated and saved.",
           })
+
+          // Automatically close the chat after ICP is complete
+          setIsProfileChatActive(false)
+          setProfileChatMessagesByNiche((prev) => {
+            const { [selectedNiche.id]: _, ...rest } = prev
+            return rest
+          })
         }
+      } else {
+        throw new Error(result.message || "Failed to get chat response")
       }
     } catch (error) {
       console.error("[v0] Error in ICP chat:", error)
@@ -1052,15 +1130,13 @@ export default function OpportunitiesV2() {
                               console.log("[v0] Research notes changed")
                               setLocalInputs({ ...localInputs, researchNotes: e.target.value })
                             }}
-                            onBlur={async () => {
+                            onBlur={() => {
                               console.log(
                                 "[v0] Research notes blur - saving:",
                                 localInputs.researchNotes.length,
                                 "chars",
                               )
-                              await updateNicheState({
-                                research_notes: localInputs.researchNotes,
-                              })
+                              saveFieldToDatabase("researchNotes")
                               // Removed: .then(() => { ... setActivelyEditing(...) })
                             }}
                             placeholder="Add your research notes here (minimum 200 characters)..."
@@ -1411,6 +1487,8 @@ export default function OpportunitiesV2() {
                                       },
                                     ],
                                   }))
+                                  // Ensure profile chat input is clear
+                                  setLocalInputs((prev) => ({ ...prev, profileChatInput: "" }))
                                 }}
                                 variant="outline"
                                 size="sm"
@@ -1562,7 +1640,7 @@ export default function OpportunitiesV2() {
                             onChange={(e) => setLocalInputs({ ...localInputs, outreachNotes: e.target.value })}
                             onBlur={() => {
                               // Removed: setActivelyEditing(...)
-                              updateNicheState({ outreach_notes: localInputs.outreachNotes })
+                              saveFieldToDatabase("outreachNotes")
                             }}
                             placeholder="Track responses, scheduling, etc..."
                             className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
