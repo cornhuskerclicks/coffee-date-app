@@ -8,6 +8,7 @@ import Link from "next/link"
 import DeleteDemoButton from "@/components/delete-demo-button"
 import DeleteAndroidButton from "@/components/delete-android-button"
 import MarkDemoCompleteButton from "@/components/mark-demo-complete-button"
+import MarkAndroidCompleteButton from "@/components/mark-android-complete-button"
 
 export default async function DemoPage() {
   const supabase = await createClient()
@@ -124,7 +125,10 @@ export default async function DemoPage() {
                               {companyName} • {niche}
                             </CardDescription>
                           </div>
-                          <DeleteAndroidButton androidId={android.id} androidName={android.name} />
+                          <div className="flex items-center gap-1">
+                            <MarkAndroidCompleteButton androidId={android.id} androidName={android.name} />
+                            <DeleteAndroidButton androidId={android.id} androidName={android.name} />
+                          </div>
                         </div>
                       </CardHeader>
                       <CardContent>
