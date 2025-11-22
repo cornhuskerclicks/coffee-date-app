@@ -1,12 +1,13 @@
 import { createClient } from "@/lib/supabase/server"
-import { redirect } from 'next/navigation'
+import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Coffee, Sparkles, Plus, Trash2, Calendar } from 'lucide-react'
+import { Coffee, Sparkles, Plus, Calendar } from "lucide-react"
 import DemoStartButton from "@/components/demo-start-button"
 import Link from "next/link"
 import DeleteDemoButton from "@/components/delete-demo-button"
 import DeleteAndroidButton from "@/components/delete-android-button"
+import MarkDemoCompleteButton from "@/components/mark-demo-complete-button"
 
 export default async function DemoPage() {
   const supabase = await createClient()
@@ -52,12 +53,10 @@ export default async function DemoPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-[32px] font-bold text-white">Coffee Date Demo</h1>
-            <p className="text-white/60 text-[16px]">
-              Start an interactive AI demo session with your prospect
-            </p>
+            <p className="text-white/60 text-[16px]">Start an interactive AI demo session with your prospect</p>
           </div>
           <div className="flex gap-2">
-            <Button asChild variant="outline" className="border-white/10 text-white hover:bg-white/10">
+            <Button asChild variant="outline" className="border-white/10 text-white hover:bg-white/10 bg-transparent">
               <Link href="/prompt-generator">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Android
@@ -113,7 +112,10 @@ export default async function DemoPage() {
                   const niche = android.business_context?.niche || android.business_context?.industry || "General"
 
                   return (
-                    <Card key={android.id} className="border border-white/10 bg-white/5 hover:bg-white/10 hover:border-[#00A8FF]/50 transition-all">
+                    <Card
+                      key={android.id}
+                      className="border border-white/10 bg-white/5 hover:bg-white/10 hover:border-[#00A8FF]/50 transition-all"
+                    >
                       <CardHeader>
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
@@ -145,15 +147,18 @@ export default async function DemoPage() {
           <Card className="border border-white/10 bg-white/5">
             <CardHeader>
               <CardTitle className="text-white">Saved Demo Sessions</CardTitle>
-              <CardDescription className="text-white/60">View and manage your previous demo conversations</CardDescription>
+              <CardDescription className="text-white/60">
+                View and manage your previous demo conversations
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {sessions.map((session) => {
                   const android = session.androids as any
-                  const companyName = android?.business_context?.company_name || android?.business_context?.businessName || "Unknown"
+                  const companyName =
+                    android?.business_context?.company_name || android?.business_context?.businessName || "Unknown"
                   const androidName = android?.name || "Unknown Android"
-                  
+
                   return (
                     <div
                       key={session.id}
@@ -162,22 +167,22 @@ export default async function DemoPage() {
                       <div className="flex items-start gap-3 flex-1">
                         <Calendar className="h-5 w-5 text-[#00A8FF] mt-0.5" />
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-medium truncate text-white">
-                            {session.title || "Untitled Session"}
-                          </h4>
+                          <h4 className="font-medium truncate text-white">{session.title || "Untitled Session"}</h4>
                           <p className="text-sm text-white/60">
                             {androidName} — {companyName}
                           </p>
-                          <p className="text-xs text-white/50 mt-1">
-                            {new Date(session.created_at).toLocaleString()}
-                          </p>
+                          <p className="text-xs text-white/50 mt-1">{new Date(session.created_at).toLocaleString()}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button asChild size="sm" variant="outline" className="border-white/10 text-white hover:bg-white/10">
-                          <Link href={`/demo/${session.android_id}`}>
-                            View
-                          </Link>
+                        <MarkDemoCompleteButton sessionId={session.id} />
+                        <Button
+                          asChild
+                          size="sm"
+                          variant="outline"
+                          className="border-white/10 text-white hover:bg-white/10 bg-transparent"
+                        >
+                          <Link href={`/demo/${session.android_id}`}>View</Link>
                         </Button>
                         <DeleteDemoButton sessionId={session.id} />
                       </div>
