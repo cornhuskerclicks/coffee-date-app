@@ -558,8 +558,7 @@ export default function OpportunitiesV2() {
   }
 
   const canAdvanceFromShortlisted = () => {
-    if (!selectedNiche?.user_state) return false
-    return selectedNiche.user_state.messaging_prepared
+    return checkboxStates.messaging_prepared
   }
 
   const canAdvanceFromOutreach = () => {
@@ -727,7 +726,7 @@ export default function OpportunitiesV2() {
       const response = await fetch("/api/opportunities/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.JSONstringify({
+        body: JSON.stringify({
           messages: updatedMessages,
           nicheName: selectedNiche.niche_name,
         }),
@@ -751,7 +750,7 @@ export default function OpportunitiesV2() {
             customer_profile_generated: true,
           })
 
-          // Update local checkbox state
+          // Update local checkbox state for instant UI feedback
           setCheckboxStates((prev) => ({
             ...prev,
             customer_profile_generated: true,
