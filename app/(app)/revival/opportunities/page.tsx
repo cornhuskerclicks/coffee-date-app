@@ -35,6 +35,20 @@ type Industry = {
   name: string
 }
 
+// Define the structure for outreach_channels, allowing for specific keys and counts
+type OutreachChannels = {
+  LinkedIn?: number
+  Facebook?: number
+  "Cold Calling"?: number
+  Email?: number
+  linkedin_messages?: number
+  facebook_groups?: number
+  facebook_dms?: number
+  cold_calls?: number
+  meetings_booked?: number
+  objections?: string | null
+}
+
 type Niche = {
   id: string
   niche_name: string
@@ -76,7 +90,7 @@ type Niche = {
     messaging_prepared: boolean | null
     // Outreach phase
     outreach_start_date: string | null
-    outreach_channels: any | null
+    outreach_channels: OutreachChannels | null
     outreach_messages_sent: number
     outreach_notes: string | null
     demo_script_created: boolean | null
@@ -97,7 +111,10 @@ export default function OpportunitiesV2() {
   const [filteredNiches, setFilteredNiches] = useState<Niche[]>([])
   const [selectedNiche, setSelectedNiche] = useState<Niche | null>(null)
   const [loading, setLoading] = useState(true)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false) // General loading state
+
+  // Renamed to avoid confusion with the general `isLoading` state
+  const [isGeneratingDemo, setIsGeneratingDemo] = useState(false)
 
   const [searchTerm, setSearchTerm] = useState("")
   const [industryFilter, setIndustryFilter] = useState<string>("all")
@@ -114,12 +131,13 @@ export default function OpportunitiesV2() {
     profitSplit: "50", // Local only, not stored in DB
     outreachNotes: "",
     profileChatInput: "",
+    objectionsHeard: "", // Added for outreach objections
   })
 
   // AI generation states
   const [generatingProfile, setGeneratingProfile] = useState(false)
   // CHANGE: Removed generateMessaging state
-  const [generatingDemo, setGeneratingDemo] = useState(false)
+  // const [generatingDemo, setGeneratingDemo] = useState(false) // Moved to top level
 
   const [profileChatMessagesByNiche, setProfileChatMessagesByNiche] = useState<
     Record<string, Array<{ role: string; content: string }>>
@@ -180,6 +198,7 @@ export default function OpportunitiesV2() {
         profitSplit: "50", // Always use default
         outreachNotes: selectedNiche.user_state.outreach_notes || "",
         profileChatInput: "",
+        objectionsHeard: (selectedNiche.user_state.outreach_channels as OutreachChannels)?.objections || "", // Load objections
       })
     } else {
       // Reset local inputs and checkboxes when no niche is selected or user_state is null
@@ -192,6 +211,7 @@ export default function OpportunitiesV2() {
         profitSplit: "50",
         outreachNotes: "",
         profileChatInput: "",
+        objectionsHeard: "",
       })
       setCheckboxStates({
         research_notes_added: false,
@@ -269,7 +289,7 @@ export default function OpportunitiesV2() {
           messaging_scripts: null,
           messaging_prepared: false,
           outreach_start_date: null,
-          outreach_channels: null,
+          outreach_channels: null, // Initialize as null
           outreach_messages_sent: 0,
           outreach_notes: null,
           demo_script_created: false,
@@ -596,11 +616,28 @@ export default function OpportunitiesV2() {
     await updateNicheState(updateData)
   }
 
-  const saveFieldToDatabase = async (field: "researchNotes" | "outreachNotes") => {
+  const saveFieldToDatabase = async (field: "researchNotes" | "outreachNotes" | "objectionsHeard") => {
     if (!selectedNiche) return
 
-    const dbField = field === "researchNotes" ? "research_notes" : "outreach_notes"
-    await updateNicheState({ [dbField]: localInputs[field] })
+    let dbField: string
+    let valueToSave: any = localInputs[field]
+
+    if (field === "researchNotes") {
+      dbField = "research_notes"
+    } else if (field === "outreachNotes") {
+      dbField = "outreach_notes"
+    } else if (field === "objectionsHeard") {
+      dbField = "outreach_channels"
+      const currentOutreachChannels = (selectedNiche.user_state?.outreach_channels as OutreachChannels) || {}
+      valueToSave = {
+        ...currentOutreachChannels,
+        objections: valueToSave,
+      }
+    } else {
+      return // Should not happen with the current type
+    }
+
+    await updateNicheState({ [dbField]: valueToSave })
   }
 
   // CHANGE: Save before switching niches to prevent data loss
@@ -619,6 +656,15 @@ export default function OpportunitiesV2() {
 
       const dbSize = Number.parseFloat(localInputs.databaseSizeInput)
       if (!isNaN(dbSize)) updates.database_size_input = dbSize
+
+      // Handle objections save
+      if (localInputs.objectionsHeard !== undefined) {
+        const currentOutreachChannels = (selectedNiche.user_state?.outreach_channels as OutreachChannels) || {}
+        updates.outreach_channels = {
+          ...currentOutreachChannels,
+          objections: localInputs.objectionsHeard,
+        }
+      }
 
       // saveCalculatorData() will handle calculated fields
       await updateNicheState(updates)
@@ -642,13 +688,32 @@ export default function OpportunitiesV2() {
     return checkboxStates.messaging_prepared
   }
 
+  // Modified to check for at least one channel and non-empty objections if they exist
   const canAdvanceFromOutreach = () => {
     if (!selectedNiche?.user_state) return false
-    return (
-      selectedNiche.user_state.outreach_start_date &&
-      selectedNiche.user_state.outreach_channels &&
-      Object.keys(selectedNiche.user_state.outreach_channels).length > 0
+
+    const outreachChannels = selectedNiche.user_state.outreach_channels as OutreachChannels
+    if (!outreachChannels) return false
+
+    const hasActiveChannel = Object.values(outreachChannels).some(
+      (value, key) => typeof value === "number" && value > 0 && !["meetings_booked", "objections"].includes(key), // Exclude keys not representing sent messages/calls
     )
+
+    // Check if any channel has been selected OR if any outreach message count is > 0
+    const anyChannelSelected =
+      outreachChannels.LinkedIn ||
+      outreachChannels.Facebook ||
+      outreachChannels["Cold Calling"] ||
+      outreachChannels.Email
+    const anyMessageSent =
+      (outreachChannels.linkedin_messages || 0) > 0 ||
+      (outreachChannels.facebook_dms || 0) > 0 ||
+      (outreachChannels.cold_calls || 0) > 0
+
+    const isDateSet = selectedNiche.user_state.outreach_start_date
+
+    // Ensure at least one channel is selected or one message is sent, and date is set
+    return isDateSet && (anyChannelSelected || anyMessageSent)
   }
 
   const advanceStatus = async (newStatus: string) => {
@@ -764,7 +829,7 @@ export default function OpportunitiesV2() {
     // Renamed from generateDemoScript to generateDemo
     if (!selectedNiche) return
 
-    setGeneratingDemo(true)
+    setIsGeneratingDemo(true) // Use the renamed state variable
     try {
       const response = await fetch("/api/opportunities/generate", {
         method: "POST",
@@ -790,6 +855,8 @@ export default function OpportunitiesV2() {
           demo_script: result.data,
           demo_script_created: true,
         })
+        // Automatically advance to Coffee Date Demo if generating demo script
+        await advanceStatus("Coffee Date Demo")
       } else {
         throw new Error("Invalid response format")
       }
@@ -800,7 +867,7 @@ export default function OpportunitiesV2() {
         variant: "destructive",
       })
     } finally {
-      setGeneratingDemo(false)
+      setIsGeneratingDemo(false) // Use the renamed state variable
     }
   }
 
@@ -1634,70 +1701,198 @@ export default function OpportunitiesV2() {
                   {/* Outreach Phase */}
                   {(currentStatus === "Outreach in Progress" ||
                     STATUSES.indexOf(currentStatus) > STATUSES.indexOf("Outreach in Progress")) && (
-                    <div className="space-y-4 p-4 bg-white/5 rounded-lg border border-white/10">
+                    <div className="space-y-4 p-6 bg-white/[0.08] rounded-lg border border-white/10">
                       <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                         <Calendar className="h-5 w-5 text-primary" />
                         Outreach Tracker
                         {canAdvanceFromOutreach() && <CheckCircle2 className="h-4 w-4 text-green-400 ml-2" />}
                       </h3>
 
-                      <div className="space-y-3">
+                      <div className="space-y-6">
+                        {/* Outreach Date */}
                         <div>
-                          <Label className="text-white">Outreach Start Date</Label>
+                          <Label className="text-white font-medium mb-2 block">Outreach Date</Label>
                           <Input
                             type="date"
                             value={selectedNiche.user_state?.outreach_start_date || ""}
-                            onChange={(e) => updateNicheState({ outreach_start_date: e.target.value })}
-                            className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
+                            onChange={(e) =>
+                              updateNicheState({ outreach_start_date: e.target.value, status: currentStatus })
+                            }
+                            className="bg-white/5 border-white/20 text-white placeholder:text-white/40 h-11"
+                            placeholder="mm/dd/yyyy"
                           />
                         </div>
 
+                        {/* Channel Chips */}
                         <div>
-                          <Label className="text-white">Messages Sent</Label>
-                          <Input
-                            type="number"
-                            value={selectedNiche.user_state?.outreach_messages_sent || 0}
-                            onChange={(e) => updateNicheState({ outreach_messages_sent: Number(e.target.value) })}
-                            className="bg-white/5 border-white/10 text-white placeholder:text-white/40 mt-1"
-                          />
+                          <Label className="text-white font-medium mb-2 block">Channels Focused On</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {["LinkedIn", "Facebook", "Cold Calling", "Email"].map((channel) => {
+                              const channels = (selectedNiche.user_state?.outreach_channels as OutreachChannels) || {}
+                              const isSelected = Object.keys(channels).includes(channel) // Check if channel key exists
+                              return (
+                                <button
+                                  key={channel}
+                                  onClick={() => {
+                                    const currentChannels =
+                                      (selectedNiche.user_state?.outreach_channels as OutreachChannels) || {}
+                                    let updatedChannels: OutreachChannels
+
+                                    if (isSelected) {
+                                      // Remove channel and its specific keys if they exist
+                                      const { [channel]: _, ...rest } = currentChannels
+                                      // Also remove specific keys related to this channel if they exist
+                                      if (channel === "LinkedIn") {
+                                        const { linkedin_messages, ...restWithoutLinkedIn } = rest
+                                        updatedChannels = restWithoutLinkedIn
+                                      } else if (channel === "Facebook") {
+                                        const { facebook_groups, facebook_dms, ...restWithoutFacebook } = rest
+                                        updatedChannels = restWithoutFacebook
+                                      } else {
+                                        updatedChannels = rest
+                                      }
+                                    } else {
+                                      // Add channel and initialize its specific keys to 0
+                                      updatedChannels = {
+                                        ...currentChannels,
+                                        [channel]: 0, // Initialize the channel
+                                        // Initialize specific metrics to 0 if they don't exist
+                                        ...(channel === "LinkedIn" && {
+                                          linkedin_messages: currentChannels.linkedin_messages || 0,
+                                        }),
+                                        ...(channel === "Facebook" && {
+                                          facebook_groups: currentChannels.facebook_groups || 0,
+                                          facebook_dms: currentChannels.facebook_dms || 0,
+                                        }),
+                                      }
+                                    }
+                                    updateNicheState({ outreach_channels: updatedChannels, status: currentStatus })
+                                  }}
+                                  className={cn(
+                                    "px-4 py-2 rounded-full text-sm font-medium transition-colors",
+                                    isSelected
+                                      ? "bg-primary text-white"
+                                      : "bg-white/10 text-white/70 hover:bg-white/15",
+                                  )}
+                                >
+                                  {channel}
+                                </button>
+                              )
+                            })}
+                          </div>
                         </div>
 
-                        <div>
-                          <Label className="text-white">Outreach Notes</Label>
-                          <Textarea
-                            value={localInputs.outreachNotes}
-                            onFocus={() => {
-                              // setActivelyEditing((prev) => new Set(prev).add("outreachNotes")) // Removed this line
-                            }}
-                            onChange={(e) => setLocalInputs({ ...localInputs, outreachNotes: e.target.value })}
-                            onBlur={() => {
-                              // Removed: setActivelyEditing(...)
-                              saveFieldToDatabase("outreachNotes")
-                            }}
-                            placeholder="Track responses, scheduling, etc..."
-                            className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
-                          />
+                        {/* Numeric Inputs with Increment Buttons */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {[
+                            { key: "linkedin_messages", label: "LinkedIn Messages Sent" },
+                            { key: "facebook_groups", label: "Facebook Groups Joined" },
+                            { key: "facebook_dms", label: "Facebook DMs Sent" },
+                            { key: "cold_calls", label: "Cold Calls Made" },
+                            { key: "meetings_booked", label: "Meetings / Calls Booked" },
+                          ].map((field) => {
+                            const channels = (selectedNiche.user_state?.outreach_channels as OutreachChannels) || {}
+                            // Only render if the channel is selected or if it's a general field like 'meetings_booked'
+                            const isChannelSelected =
+                              field.key === "meetings_booked" || // Always show meetings booked
+                              field.key === "cold_calls" || // Always show cold calls
+                              (field.key === "linkedin_messages" && channels.LinkedIn) ||
+                              (field.key === "facebook_groups" && channels.Facebook) ||
+                              (field.key === "facebook_dms" && channels.Facebook)
+
+                            if (!isChannelSelected) return null // Skip if the channel isn't selected
+
+                            const value = channels[field.key as keyof OutreachChannels] || 0
+                            return (
+                              <div key={field.key}>
+                                <Label className="text-white font-medium mb-2 block">{field.label}</Label>
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    value={value}
+                                    onChange={(e) => {
+                                      const updatedChannels = {
+                                        ...channels,
+                                        [field.key]: Math.max(0, Number(e.target.value) || 0),
+                                      }
+                                      updateNicheState({ outreach_channels: updatedChannels, status: currentStatus })
+                                    }}
+                                    className="bg-white/5 border-white/20 text-white placeholder:text-white/40 h-11 flex-1"
+                                  />
+                                  <Button
+                                    onClick={() => {
+                                      const updatedChannels = {
+                                        ...channels,
+                                        [field.key as keyof OutreachChannels]: (value || 0) + 1,
+                                      }
+                                      updateNicheState({ outreach_channels: updatedChannels, status: currentStatus })
+                                    }}
+                                    className="bg-primary hover:bg-primary/90 h-11 w-11 p-0 shrink-0"
+                                    disabled={!channels.LinkedIn && field.key === "linkedin_messages"} // Disable if LinkedIn isn't selected
+                                    // Add similar disabling logic for other channel-specific fields if needed
+                                  >
+                                    <span className="text-xl font-bold">+</span>
+                                  </Button>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+
+                        {/* Text Areas */}
+                        <div className="space-y-4">
+                          <div>
+                            <Label className="text-white font-medium mb-2 block">Objections Heard</Label>
+                            <Textarea
+                              value={localInputs.objectionsHeard || ""}
+                              onChange={(e) => setLocalInputs({ ...localInputs, objectionsHeard: e.target.value })}
+                              onBlur={() => {
+                                const channels = (selectedNiche.user_state?.outreach_channels as OutreachChannels) || {}
+                                updateNicheState({
+                                  outreach_channels: {
+                                    ...channels,
+                                    objections: localInputs.objectionsHeard,
+                                  },
+                                  status: currentStatus,
+                                })
+                              }}
+                              placeholder="Track common objections and concerns..."
+                              className="bg-white/5 border-white/20 text-white placeholder:text-white/40 min-h-[100px] resize-none"
+                            />
+                          </div>
+
+                          <div>
+                            <Label className="text-white font-medium mb-2 block">Outreach Notes</Label>
+                            <Textarea
+                              value={localInputs.outreachNotes}
+                              onChange={(e) => setLocalInputs({ ...localInputs, outreachNotes: e.target.value })}
+                              onBlur={() => saveFieldToDatabase("outreachNotes")}
+                              placeholder="Track responses, scheduling, etc..."
+                              className="bg-white/5 border-white/20 text-white placeholder:text-white/40 min-h-[100px] resize-none"
+                            />
+                          </div>
                         </div>
                       </div>
 
                       {currentStatus === "Outreach in Progress" && canAdvanceFromOutreach() && (
                         <Button
-                          onClick={generateDemo} // Changed to call generateDemo
-                          disabled={generatingDemo || isLoading}
+                          onClick={generateDemo}
+                          disabled={isLoading || isGeneratingDemo}
                           className={cn(
-                            "w-full",
-                            !generatingDemo && !isLoading
-                              ? "bg-primary hover:bg-primary/90"
+                            "w-full mt-4",
+                            canAdvanceFromOutreach() && !isLoading && !isGeneratingDemo
+                              ? "bg-green-600 hover:bg-green-700"
                               : "bg-white/10 text-white/60 border border-white/20 cursor-not-allowed",
                           )}
                         >
-                          {generatingDemo || isLoading ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              {generatingDemo ? "Creating Demo Script..." : "Advancing..."}
-                            </>
+                          {isLoading || isGeneratingDemo ? (
+                            <span className="flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Generating Demo Script...
+                            </span>
                           ) : (
-                            "Create Coffee Date Demo Script"
+                            "Generate Demo Script & Move to Coffee Date"
                           )}
                         </Button>
                       )}
