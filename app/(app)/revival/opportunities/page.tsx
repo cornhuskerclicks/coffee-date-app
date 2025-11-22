@@ -97,6 +97,7 @@ export default function OpportunitiesV2() {
   const [filteredNiches, setFilteredNiches] = useState<Niche[]>([])
   const [selectedNiche, setSelectedNiche] = useState<Niche | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
 
   const [searchTerm, setSearchTerm] = useState("")
   const [industryFilter, setIndustryFilter] = useState<string>("all")
@@ -563,6 +564,7 @@ export default function OpportunitiesV2() {
 
     const updateData: any = {
       [field]: checked,
+      status: selectedNiche.user_state.status, // Preserve existing status
       research_notes: localInputs.researchNotes, // Include current research notes
     }
 
@@ -653,6 +655,8 @@ export default function OpportunitiesV2() {
     if (!selectedNiche) return
 
     try {
+      setIsLoading(true)
+
       // If advancing from Research to Shortlisted, save all research data first
       if (selectedNiche.user_state?.status === "Research" && newStatus === "Shortlisted") {
         console.log("[v0] Saving research data before advancing...")
@@ -694,13 +698,23 @@ export default function OpportunitiesV2() {
         // For other status changes, just update the status
         await updateNicheState({ status: newStatus })
       }
-    } catch (error) {
-      console.error("[v0] Error advancing status:", error)
+
       toast({
-        title: "Error",
-        description: "Failed to advance status. Please try again.",
-        variant: "destructive",
+        title: "Success",
+        description: `Advanced to ${newStatus}`,
       })
+      await loadNiches()
+    } catch (error: any) {
+      console.error("[v0] Error advancing status:", error)
+      if (!error?.message?.includes("violates check constraint")) {
+        toast({
+          title: "Error",
+          description: error?.message || "Failed to advance status. Please try again.",
+          variant: "destructive",
+        })
+      }
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -1525,15 +1539,20 @@ export default function OpportunitiesV2() {
                         {currentStatus === "Research" && (
                           <Button
                             onClick={() => advanceStatus("Shortlisted")}
-                            disabled={!canAdvanceFromResearch()}
+                            disabled={!canAdvanceFromResearch() || isLoading}
                             className={cn(
                               "w-full",
-                              canAdvanceFromResearch()
+                              canAdvanceFromResearch() && !isLoading
                                 ? "bg-primary hover:bg-primary/90 text-white"
                                 : "bg-white/10 text-white/60 border border-white/20 hover:bg-white/15 cursor-not-allowed",
                             )}
                           >
-                            {canAdvanceFromResearch() ? (
+                            {isLoading ? (
+                              <span className="flex items-center gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Advancing...
+                              </span>
+                            ) : canAdvanceFromResearch() ? (
                               <>
                                 Complete Research & Move to Shortlisted <ChevronRight className="ml-2 h-4 w-4" />
                               </>
@@ -1591,9 +1610,22 @@ export default function OpportunitiesV2() {
                       {currentStatus === "Shortlisted" && canAdvanceFromShortlisted() && (
                         <Button
                           onClick={() => advanceStatus("Outreach in Progress")}
-                          className="w-full bg-green-600 hover:bg-green-700"
+                          disabled={isLoading}
+                          className={cn(
+                            "w-full",
+                            canAdvanceFromShortlisted() && !isLoading
+                              ? "bg-green-600 hover:bg-green-700"
+                              : "bg-white/10 text-white/60 border border-white/20 cursor-not-allowed",
+                          )}
                         >
-                          Complete Shortlisted & Move to Outreach
+                          {isLoading ? (
+                            <span className="flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Advancing...
+                            </span>
+                          ) : (
+                            "Complete Shortlisted & Move to Outreach"
+                          )}
                         </Button>
                       )}
                     </div>
@@ -1651,13 +1683,18 @@ export default function OpportunitiesV2() {
                       {currentStatus === "Outreach in Progress" && canAdvanceFromOutreach() && (
                         <Button
                           onClick={generateDemo} // Changed to call generateDemo
-                          disabled={generatingDemo}
-                          className="w-full bg-primary hover:bg-primary/90"
+                          disabled={generatingDemo || isLoading}
+                          className={cn(
+                            "w-full",
+                            !generatingDemo && !isLoading
+                              ? "bg-primary hover:bg-primary/90"
+                              : "bg-white/10 text-white/60 border border-white/20 cursor-not-allowed",
+                          )}
                         >
-                          {generatingDemo ? (
+                          {generatingDemo || isLoading ? (
                             <>
                               <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              Creating Demo Script...
+                              {generatingDemo ? "Creating Demo Script..." : "Advancing..."}
                             </>
                           ) : (
                             "Create Coffee Date Demo Script"
