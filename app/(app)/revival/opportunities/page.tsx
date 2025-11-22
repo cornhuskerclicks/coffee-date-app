@@ -114,7 +114,7 @@ export default function OpportunitiesV2() {
 
   // AI generation states
   const [generatingProfile, setGeneratingProfile] = useState(false)
-  const [generatingMessaging, setGeneratingMessaging] = useState(false)
+  // CHANGE: Removed generateMessaging state
   const [generatingDemo, setGeneratingDemo] = useState(false)
 
   const [profileChatMessagesByNiche, setProfileChatMessagesByNiche] = useState<
@@ -650,74 +650,11 @@ export default function OpportunitiesV2() {
     }
   }
 
-  const generateMessaging = async () => {
-    if (!selectedNiche) return
+  // CHANGE: Removed generateMessaging function - users will manage messaging manually
+  // const generateMessaging = async () => { ... }
 
-    console.log("[v0] Generating messaging scripts for:", selectedNiche.niche_name)
-    setGeneratingMessaging(true)
-
-    try {
-      console.log("[v0] Sending request to /api/opportunities/generate")
-      const response = await fetch("/api/opportunities/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "messaging",
-          nicheName: selectedNiche.niche_name,
-        }),
-      })
-
-      console.log("[v0] Response status:", response.status)
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error("[v0] Response error:", errorText)
-        throw new Error(`Failed to generate messaging scripts: ${response.status}`)
-      }
-
-      const result = await response.json()
-      console.log("[v0] Result:", result)
-
-      if (result.success && result.data) {
-        console.log("[v0] Saving messaging scripts to database")
-        await updateNicheState({
-          messaging_scripts: result.data,
-          messaging_prepared: true,
-        })
-
-        setSelectedNiche((prev) => {
-          if (!prev) return prev
-          return {
-            ...prev,
-            user_state: {
-              ...prev.user_state,
-              messaging_scripts: result.data,
-              messaging_prepared: true,
-            },
-          }
-        })
-
-        toast({
-          title: "Success",
-          description: "Messaging scripts generated successfully!",
-        })
-      } else {
-        console.error("[v0] Invalid response format:", result)
-        throw new Error("Invalid response format")
-      }
-    } catch (error: any) {
-      console.error("[v0] Error generating messaging scripts:", error)
-      toast({
-        title: "Error",
-        description: error.message || "Failed to generate messaging scripts",
-        variant: "destructive",
-      })
-    } finally {
-      setGeneratingMessaging(false)
-    }
-  }
-
-  const generateDemoScript = async () => {
+  const generateDemo = async () => {
+    // Renamed from generateDemoScript to generateDemo
     if (!selectedNiche) return
 
     setGeneratingDemo(true)
@@ -790,7 +727,7 @@ export default function OpportunitiesV2() {
       const response = await fetch("/api/opportunities/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: JSON.JSONstringify({
           messages: updatedMessages,
           nicheName: selectedNiche.niche_name,
         }),
@@ -1532,87 +1469,21 @@ export default function OpportunitiesV2() {
                         )}
                       </h3>
 
-                      <Button
-                        onClick={generateMessaging}
-                        disabled={generatingMessaging}
-                        className="w-full bg-primary hover:bg-primary/90"
-                      >
-                        {generatingMessaging ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Generating Messaging...
-                          </>
-                        ) : (
-                          "Generate Outreach Scripts"
-                        )}
-                      </Button>
+                      <div className="space-y-2">
+                        <p className="text-sm text-white/70">
+                          Prepare your outreach messaging for this niche (LinkedIn, email, social media, etc.)
+                        </p>
 
-                      {selectedNiche.user_state?.messaging_scripts && (
-                        <div className="space-y-4 p-4 bg-black/20 rounded-lg border border-white/10">
-                          {typeof selectedNiche.user_state.messaging_scripts === "object" ? (
-                            <>
-                              {selectedNiche.user_state.messaging_scripts.linkedin && (
-                                <div>
-                                  <h4 className="text-sm font-semibold text-primary mb-2">LinkedIn Message:</h4>
-                                  <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
-                                    {selectedNiche.user_state.messaging_scripts.linkedin}
-                                  </p>
-                                </div>
-                              )}
-                              {selectedNiche.user_state.messaging_scripts.email && (
-                                <div>
-                                  <h4 className="text-sm font-semibold text-primary mb-2">Email Script:</h4>
-                                  <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
-                                    {selectedNiche.user_state.messaging_scripts.email}
-                                  </p>
-                                </div>
-                              )}
-                              {selectedNiche.user_state.messaging_scripts.facebook && (
-                                <div>
-                                  <h4 className="text-sm font-semibold text-primary mb-2">Facebook Approach:</h4>
-                                  <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
-                                    {selectedNiche.user_state.messaging_scripts.facebook}
-                                  </p>
-                                </div>
-                              )}
-                              {selectedNiche.user_state.messaging_scripts.forum && (
-                                <div>
-                                  <h4 className="text-sm font-semibold text-primary mb-2">Forum Post:</h4>
-                                  <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
-                                    {selectedNiche.user_state.messaging_scripts.forum}
-                                  </p>
-                                </div>
-                              )}
-                              {selectedNiche.user_state.messaging_scripts.lead_magnet && (
-                                <div>
-                                  <h4 className="text-sm font-semibold text-primary mb-2">Lead Magnet Ideas:</h4>
-                                  <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
-                                    {Array.isArray(selectedNiche.user_state.messaging_scripts.lead_magnet)
-                                      ? selectedNiche.user_state.messaging_scripts.lead_magnet.join("\n")
-                                      : selectedNiche.user_state.messaging_scripts.lead_magnet}
-                                  </p>
-                                </div>
-                              )}
-                            </>
-                          ) : (
-                            <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
-                              {selectedNiche.user_state.messaging_scripts}
-                            </p>
-                          )}
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={checkboxStates.messaging_prepared}
+                            onCheckedChange={(checked) =>
+                              handleCheckboxChange("messaging_prepared", checked as boolean)
+                            }
+                            className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-white"
+                          />
+                          <span className="text-sm text-white/70">Messaging Created & Ready for Outreach</span>
                         </div>
-                      )}
-
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          checked={checkboxStates.messaging_prepared}
-                          onCheckedChange={(checked) => handleCheckboxChange("messaging_prepared", checked as boolean)}
-                          disabled={!selectedNiche.user_state?.messaging_scripts}
-                          className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-white"
-                        />
-                        <span className="text-sm text-white/70">
-                          Messaging Prepared
-                          {!selectedNiche.user_state?.messaging_scripts && " (Generate scripts first)"}
-                        </span>
                       </div>
 
                       {currentStatus === "Shortlisted" && canAdvanceFromShortlisted() && (
@@ -1677,7 +1548,7 @@ export default function OpportunitiesV2() {
 
                       {currentStatus === "Outreach in Progress" && canAdvanceFromOutreach() && (
                         <Button
-                          onClick={generateDemoScript}
+                          onClick={generateDemo} // Changed to call generateDemo
                           disabled={generatingDemo}
                           className="w-full bg-primary hover:bg-primary/90"
                         >
