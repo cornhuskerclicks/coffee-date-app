@@ -516,8 +516,34 @@ export default function OpportunitiesV2() {
     // Update local state immediately for instant UI feedback
     setCheckboxStates((prev) => ({ ...prev, [key]: value }))
 
-    // Save to database
-    await updateNicheState({ [key]: value } as Partial<Niche["user_state"]>)
+    // CRITICAL: Save ALL current inputs + checkbox state to prevent data loss
+    const updates: any = { [key]: value }
+
+    // Always include current notes
+    if (localInputs.researchNotes) {
+      updates.research_notes = localInputs.researchNotes
+    }
+
+    // Always include calculator values
+    if (localInputs.aovInput) {
+      updates.aov_input = Number.parseFloat(localInputs.aovInput)
+    }
+    if (localInputs.databaseSizeInput) {
+      updates.database_size_input = Number.parseFloat(localInputs.databaseSizeInput)
+    }
+    updates.conversation_rate = Number.parseFloat(localInputs.conversationRate) || 40
+    updates.sales_conversion = Number.parseFloat(localInputs.salesConversion) || 10
+    updates.profit_pct = Number.parseFloat(localInputs.profitSplit) || 50
+
+    // Store calculated values
+    updates.cpl_calculated = Number.parseFloat(aovOutputs.cpl)
+    updates.cpa_calculated = Number.parseFloat(aovOutputs.cpa)
+    updates.potential_retainer =
+      aovOutputs.suggestedRetainer === "Not eligible" ? 0 : Number.parseFloat(aovOutputs.suggestedRetainer)
+    updates.profit_split_potential = Number.parseFloat(aovOutputs.potentialProfitSplit)
+
+    console.log("[v0] Saving all data with checkbox:", updates)
+    await updateNicheState(updates)
   }
 
   // CHANGE: Changed to check checkboxStates instead of database values for instant feedback
@@ -546,7 +572,43 @@ export default function OpportunitiesV2() {
   }
 
   const advanceStatus = async (newStatus: string) => {
-    await updateNicheState({ status: newStatus })
+    if (!selectedNiche) return
+
+    try {
+      // If advancing from Research to Shortlisted, save all research data first
+      if (selectedNiche.user_state?.status === "Research" && newStatus === "Shortlisted") {
+        console.log("[v0] Saving research data before advancing...")
+        await updateNicheState({
+          research_notes: localInputs.researchNotes,
+          aov_input: Number.parseFloat(localInputs.aovInput) || null,
+          database_size_input: Number.parseFloat(localInputs.databaseSizeInput) || null,
+          conversation_rate: Number.parseFloat(localInputs.conversationRate) || null,
+          sales_conversion: Number.parseFloat(localInputs.salesConversion) || null,
+          profit_pct: Number.parseFloat(localInputs.profitSplit) || null,
+          // Keeping calculations for now, but will be overwritten if inputs change
+          cpl_calculated: Number.parseFloat(aovOutputs.cpl),
+          cpa_calculated: Number.parseFloat(aovOutputs.cpa),
+          potential_retainer:
+            aovOutputs.suggestedRetainer === "Not eligible" ? 0 : Number.parseFloat(aovOutputs.suggestedRetainer),
+          profit_split_potential: Number.parseFloat(aovOutputs.potentialProfitSplit),
+          // Update checkboxes based on local state
+          research_notes_added: checkboxStates.research_notes_added,
+          aov_calculator_completed: checkboxStates.aov_calculator_completed,
+          customer_profile_generated: checkboxStates.customer_profile_generated,
+          status: newStatus,
+        })
+      } else {
+        // For other status changes, just update the status
+        await updateNicheState({ status: newStatus })
+      }
+    } catch (error) {
+      console.error("[v0] Error advancing status:", error)
+      toast({
+        title: "Error",
+        description: "Failed to change status. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const generateCustomerProfile = async () => {

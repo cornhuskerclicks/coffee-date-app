@@ -10,6 +10,11 @@ export async function POST(request: NextRequest) {
     const { type, nicheName, context } = await request.json()
     console.log("[v0] Type:", type, "Niche:", nicheName)
 
+    if (!process.env.OPENAI_API_KEY) {
+      console.error("[v0] OPENAI_API_KEY not configured")
+      return Response.json({ error: "OpenAI API key not configured" }, { status: 500 })
+    }
+
     let systemPrompt = ""
     let userPrompt = ""
 
@@ -58,6 +63,7 @@ Make it conversational and consultative, not pushy. Include specific questions t
         break
 
       default:
+        console.error("[v0] Invalid generation type:", type)
         return Response.json({ error: "Invalid generation type" }, { status: 400 })
     }
 
