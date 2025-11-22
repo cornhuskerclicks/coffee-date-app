@@ -1829,13 +1829,11 @@ export default function OpportunitiesV2() {
                         </div>
                       )}
 
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          checked={selectedNiche.user_state?.coffee_date_completed || false}
-                          onCheckedChange={(checked) => updateNicheState({ coffee_date_completed: checked as boolean })}
-                          className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-white"
-                        />
-                        <span className="text-sm text-white/70">Coffee Date Completed</span>
+                      <div className="p-4 bg-white/5 rounded-lg border border-white/10">
+                        <p className="text-sm text-white/70">
+                          To complete this phase, go to the Coffee Date Demo page and mark a saved demo session as
+                          complete by selecting this niche.
+                        </p>
                       </div>
 
                       {currentStatus === "Coffee Date Demo" && selectedNiche.user_state?.coffee_date_completed && (
