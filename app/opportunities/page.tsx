@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Star, Search, Filter } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getStatusOptions, getStatusConfig, DEFAULT_STATUS, type StatusValue } from "@/lib/status-map"
+import { getStatusOptions, getStatusConfig, type StatusValue } from "@/lib/status-map"
 
 type Niche = {
   id: string
@@ -197,19 +197,22 @@ export default function OpportunitiesPage() {
       // Optimistic update
       setAllNiches((prev) => prev.map((n) => (n.id === nicheId ? { ...n, is_favourite: newFavouriteStatus } : n)))
 
-      // Update in database
-      const { error } = await supabase.from("niche_user_state").upsert(
-        {
-          user_id: user.id,
-          niche_id: nicheId,
-          is_favourite: newFavouriteStatus,
-          status: niche.status || DEFAULT_STATUS,
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: "user_id,niche_id",
-        },
-      )
+      const upsertData: any = {
+        user_id: user.id,
+        niche_id: nicheId,
+        is_favourite: newFavouriteStatus,
+        updated_at: new Date().toISOString(),
+      }
+
+      // Only include status if it already exists (to preserve existing status)
+      if (niche.status) {
+        upsertData.status = niche.status
+      }
+      // If status is null, database DEFAULT will apply 'Research' for new rows
+
+      const { error } = await supabase.from("niche_user_state").upsert(upsertData, {
+        onConflict: "user_id,niche_id",
+      })
 
       if (error) {
         console.error("Error toggling favourite:", error)
