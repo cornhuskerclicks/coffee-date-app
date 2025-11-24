@@ -1027,10 +1027,14 @@ export default function OpportunitiesV2() {
 
           {/* Industry Filter */}
           <Select value={industryFilter} onValueChange={handleIndustryChange}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="All Industries" />
+            <SelectTrigger className="w-[200px] text-foreground">
+              <SelectValue placeholder="All Industries">
+                {industryFilter === "all"
+                  ? "All Industries"
+                  : industries.find((i) => i.id === industryFilter)?.name || "All Industries"}
+              </SelectValue>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background text-foreground">
               <SelectItem value="all">All Industries</SelectItem>
               {industries.map((industry) => (
                 <SelectItem key={industry.id} value={industry.id}>
@@ -1042,10 +1046,12 @@ export default function OpportunitiesV2() {
 
           {/* Status Filter */}
           <Select value={statusFilter} onValueChange={handleStatusChange}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="All Statuses" />
+            <SelectTrigger className="w-[200px] text-foreground">
+              <SelectValue placeholder="All Statuses">
+                {statusFilter === "all" ? "All Statuses" : statusFilter}
+              </SelectValue>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background text-foreground">
               <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="Research">Research</SelectItem>
               <SelectItem value="Shortlisted">Shortlisted</SelectItem>
@@ -1057,10 +1063,14 @@ export default function OpportunitiesV2() {
 
           {/* Sort By */}
           <Select value={sortBy} onValueChange={handleSortChange}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Sort by" />
+            <SelectTrigger className="w-[180px] text-foreground">
+              <SelectValue placeholder="Alphabetical">
+                {sortBy === "alphabetical" && "Alphabetical"}
+                {sortBy === "status" && "By Status"}
+                {sortBy === "potential" && "By Potential"}
+              </SelectValue>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background text-foreground">
               <SelectItem value="alphabetical">Alphabetical</SelectItem>
               <SelectItem value="status">By Status</SelectItem>
               <SelectItem value="potential">By Potential</SelectItem>
