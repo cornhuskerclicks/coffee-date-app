@@ -225,28 +225,11 @@ export default function OpportunitiesPage() {
               <Select
                 value={industryFilter}
                 onValueChange={(value: string) => {
-                  console.log("[v0] ===== INDUSTRY DROPDOWN DEBUG =====")
-                  console.log("[v0] RAW value received:", value)
-                  console.log("[v0] Type of value:", typeof value)
-                  console.log("[v0] Value length:", value.length)
-
-                  // Test if it's a UUID
-                  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
-                  console.log("[v0] Is UUID format?", isUUID)
-
-                  // Show what we have in industries array
-                  const automotive = industries.find((i) => i.name === "Automotive")
-                  if (automotive) {
-                    console.log("[v0] Automotive UUID from data:", automotive.id)
-                    console.log("[v0] Does value match Automotive UUID?", value === automotive.id)
-                    console.log("[v0] Does value match Automotive NAME?", value === automotive.name)
-                  }
-
-                  // Show all industry IDs
-                  console.log("[v0] All industry IDs:", industries.map((i) => i.id).join(", "))
-                  console.log("[v0] All industry NAMES:", industries.map((i) => i.name).join(", "))
-                  console.log("[v0] ===================================")
-
+                  console.log("[v0] Industry dropdown changed to:", value)
+                  console.log(
+                    "[v0] Is UUID?",
+                    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value),
+                  )
                   setIndustryFilter(value)
                 }}
               >
@@ -255,16 +238,11 @@ export default function OpportunitiesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Industries</SelectItem>
-                  {industries.map((industry) => {
-                    if (industry.name === "Automotive") {
-                      console.log("[v0] Automotive industry mapping - ID:", industry.id, "Name:", industry.name)
-                    }
-                    return (
-                      <SelectItem key={industry.id} value={industry.id}>
-                        {industry.name}
-                      </SelectItem>
-                    )
-                  })}
+                  {industries.map((industry) => (
+                    <SelectItem key={industry.id} value={industry.id}>
+                      {industry.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
