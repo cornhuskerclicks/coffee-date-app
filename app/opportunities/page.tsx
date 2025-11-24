@@ -108,7 +108,16 @@ export default function OpportunitiesPage() {
 
   // Client-side filtering
   const filteredNiches = useMemo(() => {
+    console.log("[v0] === FILTERING START ===")
+    console.log("[v0] Total niches:", allNiches.length)
+    console.log("[v0] Search query:", searchQuery)
+    console.log("[v0] Selected industry:", selectedIndustry)
+    console.log("[v0] Selected status:", selectedStatus)
+    console.log("[v0] Favourites only:", favouritesOnly)
+    console.log("[v0] Sort by:", sortBy)
+
     let result = [...allNiches]
+    console.log("[v0] After copy:", result.length)
 
     // Search filter
     if (searchQuery.trim()) {
@@ -116,11 +125,26 @@ export default function OpportunitiesPage() {
       result = result.filter(
         (n) => n.niche_name.toLowerCase().includes(query) || n.industry_name.toLowerCase().includes(query),
       )
+      console.log("[v0] After search filter:", result.length)
     }
 
     // Industry filter
     if (selectedIndustry !== "all") {
+      console.log("[v0] Filtering by industry:", selectedIndustry)
+      console.log(
+        "[v0] Sample niche industries:",
+        result.slice(0, 5).map((n) => n.industry_name),
+      )
+      const beforeCount = result.length
       result = result.filter((n) => n.industry_name === selectedIndustry)
+      console.log("[v0] After industry filter:", result.length, "(removed", beforeCount - result.length, ")")
+      if (result.length === 0 && beforeCount > 0) {
+        console.log("[v0] WARNING: Industry filter removed ALL niches!")
+        console.log(
+          "[v0] Available industries in filtered set:",
+          Array.from(new Set(allNiches.map((n) => n.industry_name))).sort(),
+        )
+      }
     }
 
     // Status filter
@@ -130,11 +154,13 @@ export default function OpportunitiesPage() {
       } else {
         result = result.filter((n) => n.status === selectedStatus)
       }
+      console.log("[v0] After status filter:", result.length)
     }
 
     // Favourites filter
     if (favouritesOnly) {
       result = result.filter((n) => n.is_favourite === true)
+      console.log("[v0] After favourites filter:", result.length)
     }
 
     // Sorting
@@ -150,6 +176,8 @@ export default function OpportunitiesPage() {
       result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     }
 
+    console.log("[v0] Final result:", result.length)
+    console.log("[v0] === FILTERING END ===")
     return result
   }, [allNiches, searchQuery, selectedIndustry, selectedStatus, favouritesOnly, sortBy])
 
