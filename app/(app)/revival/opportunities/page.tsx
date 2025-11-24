@@ -345,9 +345,8 @@ export default function OpportunitiesV2() {
       console.log("[v0] After search filter:", filtered.length, "niches (search:", searchTerm, ")")
     }
 
-    // Industry filter
     if (industryFilter !== "all") {
-      filtered = filtered.filter((n) => n.industry?.id === industryFilter)
+      filtered = filtered.filter((n) => n.industry?.name === industryFilter)
       console.log("[v0] After industry filter:", filtered.length, "niches (industry:", industryFilter, ")")
     }
 
@@ -1039,7 +1038,7 @@ export default function OpportunitiesV2() {
                 {industries.map((ind) => (
                   <SelectItem
                     key={ind.id}
-                    value={ind.id}
+                    value={ind.name}
                     className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white"
                   >
                     {ind.name}
