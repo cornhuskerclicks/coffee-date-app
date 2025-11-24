@@ -14,6 +14,7 @@ import { getStatusOptions, getStatusConfig, type StatusValue } from "@/lib/statu
 type Niche = {
   id: string
   niche_name: string
+  industry_id: string
   industry_name: string
   scale: string
   database_size: string
@@ -26,7 +27,7 @@ export default function OpportunitiesPage() {
   const [allNiches, setAllNiches] = useState<Niche[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedIndustry, setSelectedIndustry] = useState("all")
+  const [selectedIndustryId, setSelectedIndustryId] = useState("all")
   const [selectedStatus, setSelectedStatus] = useState("all")
   const [sortBy, setSortBy] = useState("alphabetical")
   const [favouritesOnly, setFavouritesOnly] = useState(false)
@@ -80,6 +81,7 @@ export default function OpportunitiesPage() {
           return {
             id: niche.id,
             niche_name: niche.niche_name,
+            industry_id: niche.industry_id,
             industry_name: industryName,
             scale: niche.scale || "Local",
             database_size: niche.database_size || "Small",
@@ -100,24 +102,19 @@ export default function OpportunitiesPage() {
     loadAllData()
   }, [])
 
-  // Get unique industries from all niches
   const industries = useMemo(() => {
-    const unique = Array.from(new Set(allNiches.map((n) => n.industry_name)))
-    return unique.sort()
+    const industrySet = new Map<string, string>()
+    allNiches.forEach((n) => {
+      industrySet.set(n.industry_id, n.industry_name)
+    })
+    return Array.from(industrySet.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name))
   }, [allNiches])
 
   // Client-side filtering
   const filteredNiches = useMemo(() => {
-    console.log("[v0] === FILTERING START ===")
-    console.log("[v0] Total niches:", allNiches.length)
-    console.log("[v0] Search query:", searchQuery)
-    console.log("[v0] Selected industry:", selectedIndustry)
-    console.log("[v0] Selected status:", selectedStatus)
-    console.log("[v0] Favourites only:", favouritesOnly)
-    console.log("[v0] Sort by:", sortBy)
-
     let result = [...allNiches]
-    console.log("[v0] After copy:", result.length)
 
     // Search filter
     if (searchQuery.trim()) {
@@ -125,27 +122,13 @@ export default function OpportunitiesPage() {
       result = result.filter(
         (n) => n.niche_name.toLowerCase().includes(query) || n.industry_name.toLowerCase().includes(query),
       )
-      console.log("[v0] After search filter:", result.length)
     }
 
-    // Industry filter
-    if (selectedIndustry !== "all") {
-      console.log("[v0] Filtering by industry:", selectedIndustry)
-      console.log(
-        "[v0] Sample niche industries:",
-        result.slice(0, 5).map((n) => n.industry_name),
-      )
-      const beforeCount = result.length
-      result = result.filter((n) => n.industry_name === selectedIndustry)
-      console.log("[v0] After industry filter:", result.length, "(removed", beforeCount - result.length, ")")
-      if (result.length === 0 && beforeCount > 0) {
-        console.log("[v0] WARNING: Industry filter removed ALL niches!")
-        console.log(
-          "[v0] Available industries in filtered set:",
-          Array.from(new Set(allNiches.map((n) => n.industry_name))).sort(),
-        )
-      }
+    if (selectedIndustryId !== "all") {
+      result = result.filter((n) => n.industry_id === selectedIndustryId)
     }
+
+    console.log("Industry filter:", { selectedIndustryId, count: result.length })
 
     // Status filter
     if (selectedStatus !== "all") {
@@ -154,13 +137,11 @@ export default function OpportunitiesPage() {
       } else {
         result = result.filter((n) => n.status === selectedStatus)
       }
-      console.log("[v0] After status filter:", result.length)
     }
 
     // Favourites filter
     if (favouritesOnly) {
       result = result.filter((n) => n.is_favourite === true)
-      console.log("[v0] After favourites filter:", result.length)
     }
 
     // Sorting
@@ -176,10 +157,8 @@ export default function OpportunitiesPage() {
       result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     }
 
-    console.log("[v0] Final result:", result.length)
-    console.log("[v0] === FILTERING END ===")
     return result
-  }, [allNiches, searchQuery, selectedIndustry, selectedStatus, favouritesOnly, sortBy])
+  }, [allNiches, searchQuery, selectedIndustryId, selectedStatus, favouritesOnly, sortBy])
 
   // Toggle favourite handler
   const handleToggleFavourite = async (nicheId: string) => {
@@ -262,15 +241,15 @@ export default function OpportunitiesPage() {
               <Label htmlFor="industry" className="text-sm text-gray-400 mb-2 block">
                 Industry
               </Label>
-              <Select value={selectedIndustry} onValueChange={setSelectedIndustry}>
+              <Select value={selectedIndustryId} onValueChange={setSelectedIndustryId}>
                 <SelectTrigger className="h-10 bg-black border-white/20 text-white">
                   <SelectValue placeholder="All Industries" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Industries</SelectItem>
                   {industries.map((industry) => (
-                    <SelectItem key={industry} value={industry}>
-                      {industry}
+                    <SelectItem key={industry.id} value={industry.id}>
+                      {industry.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -353,7 +332,7 @@ export default function OpportunitiesPage() {
                   className="mt-4 border-white/20 text-white hover:bg-white/5 bg-transparent"
                   onClick={() => {
                     setSearchQuery("")
-                    setSelectedIndustry("all")
+                    setSelectedIndustryId("all")
                     setSelectedStatus("all")
                     setFavouritesOnly(false)
                   }}
