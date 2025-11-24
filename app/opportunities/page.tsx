@@ -24,10 +24,12 @@ type Niche = {
 }
 
 export default function OpportunitiesPage() {
+  const ALL_INDUSTRIES = "all"
+
   const [allNiches, setAllNiches] = useState<Niche[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedIndustryId, setSelectedIndustryId] = useState("all")
+  const [selectedIndustryId, setSelectedIndustryId] = useState(ALL_INDUSTRIES)
   const [selectedStatus, setSelectedStatus] = useState("all")
   const [sortBy, setSortBy] = useState("alphabetical")
   const [favouritesOnly, setFavouritesOnly] = useState(false)
@@ -52,6 +54,10 @@ export default function OpportunitiesPage() {
           .order("niche_name", { ascending: true })
 
         if (nichesError) throw nichesError
+
+        if (nichesData && nichesData.length > 0) {
+          console.log("[v0] Sample niche row:", nichesData[0])
+        }
 
         // Fetch ALL industries
         const { data: industriesData, error: industriesError } = await supabase.from("industries").select("*")
@@ -92,6 +98,8 @@ export default function OpportunitiesPage() {
         })
 
         setAllNiches(enrichedNiches)
+
+        console.log("[v0] Loaded niches:", enrichedNiches.length)
       } catch (error) {
         console.error("Error loading data:", error)
       } finally {
@@ -124,11 +132,14 @@ export default function OpportunitiesPage() {
       )
     }
 
-    if (selectedIndustryId !== "all") {
+    if (selectedIndustryId !== ALL_INDUSTRIES) {
       result = result.filter((n) => n.industry_id === selectedIndustryId)
     }
 
-    console.log("Industry filter:", { selectedIndustryId, count: result.length })
+    console.log("[v0] Industry filter result:", {
+      selectedIndustryId,
+      count: result.length,
+    })
 
     // Status filter
     if (selectedStatus !== "all") {
@@ -158,7 +169,7 @@ export default function OpportunitiesPage() {
     }
 
     return result
-  }, [allNiches, searchQuery, selectedIndustryId, selectedStatus, favouritesOnly, sortBy])
+  }, [allNiches, searchQuery, selectedIndustryId, selectedStatus, favouritesOnly, sortBy, ALL_INDUSTRIES])
 
   // Toggle favourite handler
   const handleToggleFavourite = async (nicheId: string) => {
@@ -246,7 +257,7 @@ export default function OpportunitiesPage() {
                   <SelectValue placeholder="All Industries" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Industries</SelectItem>
+                  <SelectItem value={ALL_INDUSTRIES}>All Industries</SelectItem>
                   {industries.map((industry) => (
                     <SelectItem key={industry.id} value={industry.id}>
                       {industry.name}
@@ -332,7 +343,7 @@ export default function OpportunitiesPage() {
                   className="mt-4 border-white/20 text-white hover:bg-white/5 bg-transparent"
                   onClick={() => {
                     setSearchQuery("")
-                    setSelectedIndustryId("all")
+                    setSelectedIndustryId(ALL_INDUSTRIES)
                     setSelectedStatus("all")
                     setFavouritesOnly(false)
                   }}
