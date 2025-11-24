@@ -124,7 +124,7 @@ export default function OpportunitiesV2() {
   const [sortBy, setSortBy] = useState<string>("alphabetical")
 
   const handleIndustryChange = (value: string) => {
-    console.log("[v0] Industry dropdown changed to:", value)
+    console.log("[DEBUG] Industry filter changed to:", value)
     setIndustryFilter(value)
   }
 
@@ -248,7 +248,7 @@ export default function OpportunitiesV2() {
   const loadIndustries = async () => {
     try {
       const { data: industriesData } = await supabase.from("industries").select("*").order("name")
-      console.log("[v0] Loaded industries:", industriesData?.length, "industries")
+      console.log("[DEBUG] Industries loaded:", industriesData?.length)
       setIndustries(industriesData || [])
     } catch (error: any) {
       console.error("[v0] Error loading industries:", error)
@@ -277,7 +277,14 @@ export default function OpportunitiesV2() {
         `)
         .order("niche_name")
 
-      console.log("[v0] Loaded niches:", nichesData?.length, "niches")
+      console.log("[DEBUG] Niches loaded:", nichesData?.length)
+      if (nichesData && nichesData.length > 0) {
+        console.log("[v0] Sample niche with industry:", {
+          niche_name: nichesData[0].niche_name,
+          raw_industry: nichesData[0].industry,
+          industry_is_array: Array.isArray(nichesData[0].industry),
+        })
+      }
 
       const processedNiches = (nichesData || []).map((niche) => ({
         ...niche,
@@ -323,6 +330,22 @@ export default function OpportunitiesV2() {
         },
       }))
 
+      if (processedNiches.length > 0) {
+        console.log("[v0] Sample processed niche:", {
+          niche_name: processedNiches[0].niche_name,
+          industry: processedNiches[0].industry,
+          industry_id: processedNiches[0].industry?.id,
+          industry_name: processedNiches[0].industry?.name,
+        })
+        // Count niches by industry
+        const byIndustry = processedNiches.reduce((acc: any, n: any) => {
+          const id = n.industry?.id || "unknown"
+          acc[id] = (acc[id] || 0) + 1
+          return acc
+        }, {})
+        console.log("[v0] Niches by industry ID:", byIndustry)
+      }
+
       setNiches(processedNiches)
     } catch (error: any) {
       toast({
@@ -337,7 +360,8 @@ export default function OpportunitiesV2() {
 
   const applyFilters = () => {
     let filtered = [...niches]
-    console.log("[v0] Starting filter - total niches:", filtered.length)
+
+    console.log("[DEBUG] industryFilter:", industryFilter)
 
     // Search filter
     if (searchTerm) {
@@ -346,8 +370,17 @@ export default function OpportunitiesV2() {
     }
 
     if (industryFilter !== "all") {
+      console.log("[v0] Filtering by industry ID:", industryFilter)
+      console.log("[v0] Sample niche industry before filter:", filtered[0]?.industry)
       filtered = filtered.filter((n) => n.industry?.id === industryFilter)
-      console.log("[v0] After industry filter:", filtered.length, "niches (industry ID:", industryFilter, ")")
+      console.log("[v0] After industry filter:", filtered.length, "niches")
+      if (filtered.length > 0) {
+        console.log("[v0] Sample filtered niche:", {
+          name: filtered[0].niche_name,
+          industry_id: filtered[0].industry?.id,
+          industry_name: filtered[0].industry?.name,
+        })
+      }
     }
 
     // Status filter
@@ -381,7 +414,7 @@ export default function OpportunitiesV2() {
       })
     }
 
-    console.log("[v0] Final filtered niches:", filtered.length)
+    console.log("[DEBUG] filteredNiches count:", filtered.length)
     setFilteredNiches(filtered)
   }
 
