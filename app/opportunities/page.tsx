@@ -81,49 +81,28 @@ export default function OpportunitiesPage() {
 
         // Merge everything into enriched niches
         const enrichedNiches: Niche[] = (nichesData || []).map((niche: any) => {
-          const userState = stateMap.get(niche.id)
-          const industryName = industryMap.get(niche.industry_id) || "Unknown"
+          const state = stateMap.get(niche.id)
 
           return {
             id: niche.id,
             niche_name: niche.niche_name,
-            industry_id: niche.industry_id,
-            industry_name: industryName,
+            industry_id: niche.industry_id, // 🔥 MUST be preserved exactly
+            industry_name: industryMap.get(niche.industry_id) || "Unknown",
             scale: niche.scale || "Local",
             database_size: niche.database_size || "Small",
-            status: userState?.status || null,
-            is_favourite: userState?.is_favourite || false,
             created_at: niche.created_at,
+
+            // merge user_state but DO NOT overwrite niche fields
+            status: state?.status ?? null,
+            is_favourite: state?.is_favourite ?? false,
           }
         })
 
         setAllNiches(enrichedNiches)
 
-        console.log("[v0] Loaded niches:", enrichedNiches.length)
-        console.log("[v0] Sample enriched niche (first):", {
-          id: enrichedNiches[0]?.id,
-          niche_name: enrichedNiches[0]?.niche_name,
-          industry_id: enrichedNiches[0]?.industry_id,
-          industry_name: enrichedNiches[0]?.industry_name,
-        })
-
-        // Show distinct industry_ids
-        const distinctIndustryIds = new Set(enrichedNiches.map((n) => n.industry_id))
-        console.log("[v0] Distinct industry_ids in enriched data:", Array.from(distinctIndustryIds))
-        console.log("[v0] Total distinct industries:", distinctIndustryIds.size)
-
-        // Count niches per industry
-        const nichesByIndustry = new Map<string, number>()
-        enrichedNiches.forEach((n) => {
-          const count = nichesByIndustry.get(n.industry_id) || 0
-          nichesByIndustry.set(n.industry_id, count + 1)
-        })
-
-        console.log("[v0] Niches per industry_id:")
-        nichesByIndustry.forEach((count, industryId) => {
-          const industryName = enrichedNiches.find((n) => n.industry_id === industryId)?.industry_name
-          console.log(`  ${industryName} (${industryId}): ${count} niches`)
-        })
+        console.log("[v0] Sample enriched niche:", enrichedNiches[0])
+        console.log("[v0] Distinct industry_ids:", Array.from(new Set(enrichedNiches.map((n) => n.industry_id))))
+        console.log("[v0] Total loaded niches:", enrichedNiches.length)
       } catch (error) {
         console.error("Error loading data:", error)
       } finally {
@@ -148,13 +127,8 @@ export default function OpportunitiesPage() {
   const filteredNiches = useMemo(() => {
     let result = [...allNiches]
 
-    console.log("[v0] Filter inputs:", {
-      total: allNiches.length,
-      selectedIndustryId,
-      searchQuery,
-      selectedStatus,
-      favouritesOnly,
-    })
+    console.log("[v0] Starting filter with", result.length, "niches")
+    console.log("[v0] Selected industry:", selectedIndustryId)
 
     // Search filter
     if (searchQuery.trim()) {
@@ -162,31 +136,12 @@ export default function OpportunitiesPage() {
       result = result.filter(
         (n) => n.niche_name.toLowerCase().includes(query) || n.industry_name.toLowerCase().includes(query),
       )
-      console.log("[v0] After search filter:", result.length)
+      console.log("[v0] After search:", result.length)
     }
 
     if (selectedIndustryId !== ALL_INDUSTRIES) {
-      console.log("[v0] Filtering by industry_id:", selectedIndustryId)
-      console.log("[v0] Sample niche before filter:", {
-        id: result[0]?.id,
-        niche_name: result[0]?.niche_name,
-        industry_id: result[0]?.industry_id,
-        industry_name: result[0]?.industry_name,
-      })
-
-      result = result.filter((n) => {
-        const matches = n.industry_id === selectedIndustryId
-        if (!matches) {
-          console.log("[v0] Niche filtered out:", {
-            niche: n.niche_name,
-            has_industry_id: n.industry_id,
-            looking_for: selectedIndustryId,
-          })
-        }
-        return matches
-      })
-
-      console.log("[v0] After industry filter:", result.length)
+      result = result.filter((n) => n.industry_id === selectedIndustryId)
+      console.log("[v0] After industry filter:", result.length, "niches for industry:", selectedIndustryId)
     }
 
     // Status filter
