@@ -30,6 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 const STATUSES = ["Research", "Shortlisted", "Outreach in Progress", "Coffee Date Demo", "Win"]
 
+// Define the structure for industry
 type Industry = {
   id: string
   name: string
@@ -50,6 +51,55 @@ type OutreachChannels = {
   emails?: number // Added for email tracking
 }
 
+// Define the structure for niche_user_state to match Supabase response
+type NicheUserState = {
+  id: string // Added to match Supabase response
+  niche_id: string // Added to match Supabase response
+  user_id: string // Added to match Supabase response
+  is_favourite: boolean
+  status: string | null
+  notes: string | null
+  expected_monthly_value: number | null
+  // Research phase
+  research_notes: string | null
+  aov_input: number | null
+  database_size_input: number | null
+  // REMOVED: conversation_rate: number | null
+  // REMOVED: sales_conversion: number | null
+  // REMOVED: retainer_pct: number | null // Kept for reference but not used in new calc
+  // REMOVED: profit_pct: number | null
+  cpl_calculated: number | null
+  cpa_calculated: number | null
+  potential_retainer: number | null
+  profit_split_potential: number | null
+  customer_profile: {
+    decision_maker?: string
+    pain_points?: string
+    gathering_places?: string
+  } | null
+  research_notes_added: boolean | null
+  aov_calculator_completed: boolean | null
+  customer_profile_generated: boolean | null
+  // Shortlisted phase
+  messaging_scripts: any | null
+  messaging_prepared: boolean | null
+  // Outreach phase
+  outreach_start_date: string | null
+  outreach_channels: OutreachChannels | null
+  outreach_messages_sent: number
+  outreach_notes: string | null
+  demo_script_created: boolean | null
+  demo_script: string | null
+  coffee_date_completed: boolean | null
+  ghl_sub_account_id: string | null
+  // Win phase
+  active_monthly_retainer: number | null
+  monthly_profit_split: number | null
+  target_monthly_recurring: number | null
+  win_completed: boolean | null
+}
+
+// Define the structure for a Niche, referencing NicheUserState
 type Niche = {
   id: string
   niche_name: string
@@ -58,57 +108,13 @@ type Niche = {
   database_size: string | null
   default_priority: number | null
   industry?: Industry // Kept for display
-  user_state: {
-    id: string // Added to match Supabase response
-    niche_id: string // Added to match Supabase response
-    user_id: string // Added to match Supabase response
-    is_favourite: boolean
-    status: string | null
-    notes: string | null
-    expected_monthly_value: number | null
-    // Research phase
-    research_notes: string | null
-    aov_input: number | null
-    database_size_input: number | null
-    // REMOVED: conversation_rate: number | null
-    // REMOVED: sales_conversion: number | null
-    // REMOVED: retainer_pct: number | null // Kept for reference but not used in new calc
-    // REMOVED: profit_pct: number | null
-    cpl_calculated: number | null
-    cpa_calculated: number | null
-    potential_retainer: number | null
-    profit_split_potential: number | null
-    customer_profile: {
-      decision_maker?: string
-      pain_points?: string
-      gathering_places?: string
-    } | null
-    research_notes_added: boolean | null
-    aov_calculator_completed: boolean | null
-    customer_profile_generated: boolean | null
-    // Shortlisted phase
-    messaging_scripts: any | null
-    messaging_prepared: boolean | null
-    // Outreach phase
-    outreach_start_date: string | null
-    outreach_channels: OutreachChannels | null
-    outreach_messages_sent: number
-    outreach_notes: string | null
-    demo_script_created: boolean | null
-    demo_script: string | null
-    coffee_date_completed: boolean | null
-    ghl_sub_account_id: string | null
-    // Win phase
-    active_monthly_retainer: number | null
-    monthly_profit_split: number | null
-    target_monthly_recurring: number | null
-    win_completed: boolean | null
-  } | null
+  user_state: NicheUserState | null
 }
 
 export default function OpportunitiesV2() {
   const [industries, setIndustries] = useState<Industry[]>([])
   const [niches, setNiches] = useState<Niche[]>([])
+  const [industryMap, setIndustryMap] = useState<Map<string, Industry>>(new Map())
   const [filteredNiches, setFilteredNiches] = useState<Niche[]>([])
   const [selectedNiche, setSelectedNiche] = useState<Niche | null>(null)
   const [loading, setLoading] = useState(true)
@@ -247,11 +253,29 @@ export default function OpportunitiesV2() {
 
   const loadIndustries = async () => {
     try {
-      const { data: industriesData } = await supabase.from("industries").select("*").order("name")
-      console.log("[DEBUG] Industries loaded:", industriesData?.length)
-      setIndustries(industriesData || [])
+      const { data: industriesData, error: industriesError } = await supabase
+        .from("industries")
+        .select("id, name")
+        .order("name")
+
+      if (industriesError) {
+        console.error("[DEBUG] Error loading industries:", industriesError)
+        return
+      }
+
+      const industries: Industry[] = industriesData ?? []
+      console.log("[DEBUG] Industries loaded:", industries.length)
+      setIndustries(industries)
+
+      // Build industry Map for fast lookups
+      const map = new Map<string, Industry>()
+      for (const ind of industries) {
+        map.set(ind.id, ind)
+      }
+      setIndustryMap(map)
+      console.log("[DEBUG] industryMap keys:", Array.from(map.keys()).slice(0, 5))
     } catch (error: any) {
-      console.error("[v0] Error loading industries:", error)
+      console.error("[DEBUG] Error loading industries:", error)
       toast({
         title: "Error loading industries",
         description: error.message,
@@ -268,86 +292,93 @@ export default function OpportunitiesV2() {
       } = await supabase.auth.getUser()
       if (!user) return
 
-      const { data: nichesData } = await supabase
+      const { data: nichesData, error: nichesError } = await supabase
         .from("niches")
         .select(`
-          *,
-          industry:industries(id, name),
-          user_state:niche_user_state!niche_id(*)
+          id,
+          niche_name,
+          industry_id,
+          scale,
+          database_size,
+          default_priority,
+          niche_user_state (
+            *,
+            niche_id
+          )
         `)
         .order("niche_name")
 
+      if (nichesError) {
+        console.error("[DEBUG] Error loading niches:", nichesError)
+        return
+      }
+
       console.log("[DEBUG] Niches loaded:", nichesData?.length)
       if (nichesData && nichesData.length > 0) {
-        console.log("[v0] Sample niche with industry:", {
+        console.log("[DEBUG] Sample raw niche:", {
+          id: nichesData[0].id,
           niche_name: nichesData[0].niche_name,
-          raw_industry: nichesData[0].industry,
-          industry_is_array: Array.isArray(nichesData[0].industry),
+          industry_id: nichesData[0].industry_id,
         })
       }
 
-      const processedNiches = (nichesData || []).map((niche) => ({
-        ...niche,
-        industry: niche.industry?.[0] || null, // Ensure industry is correctly assigned
-        user_state: niche.user_state?.[0] || {
-          id: "", // Default to empty string if no user_state exists
-          niche_id: niche.id,
-          user_id: user.id,
-          is_favourite: false,
-          status: "Research",
-          notes: null,
-          expected_monthly_value: null,
-          research_notes: null,
-          aov_input: null,
-          database_size_input: null,
-          // Add default values for new fields
-          // REMOVED: conversation_rate: null,
-          // REMOVED: sales_conversion: null,
-          // REMOVED: retainer_pct: null, // Kept for reference
-          // REMOVED: profit_pct: null,
-          cpl_calculated: null,
-          cpa_calculated: null,
-          potential_retainer: null,
-          profit_split_potential: null,
-          customer_profile: null,
-          research_notes_added: false,
-          aov_calculator_completed: false,
-          customer_profile_generated: false,
-          messaging_scripts: null,
-          messaging_prepared: false,
-          outreach_start_date: null,
-          outreach_channels: null, // Initialize as null
-          outreach_messages_sent: 0,
-          outreach_notes: null,
-          demo_script_created: false,
-          demo_script: null,
-          coffee_date_completed: false,
-          ghl_sub_account_id: null,
-          active_monthly_retainer: null,
-          monthly_profit_split: null,
-          target_monthly_recurring: null,
-          win_completed: false,
-        },
+      const niches: Niche[] = (nichesData ?? []).map((n: any) => ({
+        id: n.id,
+        niche_name: n.niche_name,
+        industry_id: n.industry_id ?? null,
+        scale: n.scale ?? null,
+        database_size: n.database_size ?? null,
+        default_priority: n.default_priority ?? null,
+        user_state:
+          Array.isArray(n.niche_user_state) && n.niche_user_state[0]
+            ? n.niche_user_state[0]
+            : {
+                id: "",
+                niche_id: n.id,
+                user_id: user.id,
+                is_favourite: false,
+                status: "Research",
+                notes: null,
+                expected_monthly_value: null,
+                research_notes: null,
+                aov_input: null,
+                database_size_input: null,
+                cpl_calculated: null,
+                cpa_calculated: null,
+                potential_retainer: null,
+                profit_split_potential: null,
+                customer_profile: null,
+                research_notes_added: false,
+                aov_calculator_completed: false,
+                customer_profile_generated: false,
+                messaging_scripts: null,
+                messaging_prepared: false,
+                outreach_start_date: null,
+                outreach_channels: null,
+                outreach_messages_sent: 0,
+                outreach_notes: null,
+                demo_script_created: false,
+                demo_script: null,
+                coffee_date_completed: false,
+                ghl_sub_account_id: null,
+                active_monthly_retainer: null,
+                monthly_profit_split: null,
+                target_monthly_recurring: null,
+                win_completed: false,
+              },
       }))
 
-      if (processedNiches.length > 0) {
-        console.log("[v0] Sample processed niche:", {
-          niche_name: processedNiches[0].niche_name,
-          industry: processedNiches[0].industry,
-          industry_id: processedNiches[0].industry?.id,
-          industry_name: processedNiches[0].industry?.name,
-        })
-        // Count niches by industry
-        const byIndustry = processedNiches.reduce((acc: any, n: any) => {
-          const id = n.industry?.id || "unknown"
-          acc[id] = (acc[id] || 0) + 1
-          return acc
-        }, {})
-        console.log("[v0] Niches by industry ID:", byIndustry)
-      }
+      // Debug: Count niches by industry_id
+      const byIndustry = niches.reduce((acc: any, n: Niche) => {
+        const id = n.industry_id || "unknown"
+        acc[id] = (acc[id] || 0) + 1
+        return acc
+      }, {})
+      console.log("[DEBUG] Niches by industry ID:", byIndustry)
 
-      setNiches(processedNiches)
+      setNiches(niches)
     } catch (error: any) {
+      console.error("[DEBUG] Error in loadNiches:", error)
       toast({
         title: "Error",
         description: error.message,
@@ -372,13 +403,12 @@ export default function OpportunitiesV2() {
     if (industryFilter !== "all") {
       console.log("[v0] Filtering by industry ID:", industryFilter)
       console.log("[v0] Sample niche industry before filter:", filtered[0]?.industry)
-      filtered = filtered.filter((n) => n.industry?.id === industryFilter)
-      console.log("[v0] After industry filter:", filtered.length, "niches")
+      filtered = filtered.filter((n) => n.industry_id === industryFilter) // Use industry_id
+      console.log("[DEBUG] After industry filter:", filtered.length, "niches for industry ID:", industryFilter)
       if (filtered.length > 0) {
         console.log("[v0] Sample filtered niche:", {
           name: filtered[0].niche_name,
-          industry_id: filtered[0].industry?.id,
-          industry_name: filtered[0].industry?.name,
+          industry_id: filtered[0].industry_id,
         })
       }
     }
@@ -564,7 +594,7 @@ export default function OpportunitiesV2() {
   }
 
   // CHANGE: Simplified update function - no complex state tracking
-  const updateNicheState = async (updates: Partial<Niche["user_state"]>) => {
+  const updateNicheState = async (updates: Partial<NicheUserState>) => {
     if (!selectedNiche) return
 
     console.log("[v0] Updating niche state:", updates)
@@ -1043,34 +1073,105 @@ export default function OpportunitiesV2() {
 
   const currentStatus = selectedNiche?.user_state?.status || "Research"
 
+  // Helper function to handle niche selection and saving
+  const handleNicheClick = async (niche: Niche) => {
+    // Save current inputs before switching
+    if (selectedNiche) {
+      const updates: any = {
+        research_notes: localInputs.researchNotes,
+        outreach_notes: localInputs.outreachNotes,
+      }
+
+      const aovInput = Number.parseFloat(localInputs.aovInput)
+      if (!isNaN(aovInput)) updates.aov_input = aovInput
+
+      const dbSize = Number.parseFloat(localInputs.databaseSizeInput)
+      if (!isNaN(dbSize)) updates.database_size_input = dbSize
+
+      if (localInputs.objectionsHeard !== undefined) {
+        const currentOutreachChannels = (selectedNiche.user_state?.outreach_channels as OutreachChannels) || {}
+        updates.outreach_channels = {
+          ...currentOutreachChannels,
+          objections: localInputs.objectionsHeard,
+        }
+      }
+      await updateNicheState(updates)
+    }
+    setSelectedNiche(niche)
+  }
+
+  // Helper function to toggle favorite status
+  const handleToggleFavourite = async (nicheId: string, currentFavState: boolean) => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
+
+      const newFavState = !currentFavState
+
+      const { error } = await supabase.from("niche_user_state").upsert(
+        {
+          niche_id: nicheId,
+          user_id: user.id,
+          is_favourite: newFavState,
+        },
+        { onConflict: "niche_id,user_id" },
+      )
+
+      if (error) throw error
+
+      // Update the local state
+      setNiches((prevNiches) =>
+        prevNiches.map((n) =>
+          n.id === nicheId ? { ...n, user_state: { ...n.user_state!, is_favourite: newFavState } } : n,
+        ),
+      )
+      // If the selected niche is the one being favorited/unfavorited, update its state too
+      if (selectedNiche?.id === nicheId) {
+        setSelectedNiche((prevNiche) =>
+          prevNiche ? { ...prevNiche, user_state: { ...prevNiche.user_state!, is_favourite: newFavState } } : null,
+        )
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+    }
+  }
+
   return (
     <div className="min-h-screen bg-black">
       <div className="max-w-[1800px] mx-auto px-6 py-6">
         <div className="mb-6 flex flex-wrap items-center gap-4">
           {/* Search */}
           <div className="relative flex-1 min-w-[300px]">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input
               placeholder="Search niches..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
+              className="pl-9 bg-zinc-900 border-zinc-700 text-white placeholder:text-gray-500"
             />
           </div>
 
           {/* Industry Filter */}
           <Select value={industryFilter} onValueChange={handleIndustryChange}>
-            <SelectTrigger className="w-[200px] bg-background border-input text-foreground">
+            <SelectTrigger className="w-[200px] bg-zinc-900 border-zinc-700 text-white">
               <SelectValue placeholder="All Industries">
                 {industryFilter === "all"
                   ? "All Industries"
-                  : industries.find((i) => i.id === industryFilter)?.name || "All Industries"}
+                  : industryMap.get(industryFilter)?.name || "All Industries"}
               </SelectValue>
             </SelectTrigger>
-            <SelectContent className="bg-popover text-popover-foreground border-border">
-              <SelectItem value="all">All Industries</SelectItem>
+            <SelectContent className="bg-zinc-900 text-white border-zinc-700">
+              <SelectItem value="all" className="text-white hover:bg-zinc-800">
+                All Industries
+              </SelectItem>
               {industries.map((industry) => (
-                <SelectItem key={industry.id} value={industry.id}>
+                <SelectItem key={industry.id} value={industry.id} className="text-white hover:bg-zinc-800">
                   {industry.name}
                 </SelectItem>
               ))}
@@ -1079,34 +1180,52 @@ export default function OpportunitiesV2() {
 
           {/* Status Filter */}
           <Select value={statusFilter} onValueChange={handleStatusChange}>
-            <SelectTrigger className="w-[200px] bg-background border-input text-foreground">
+            <SelectTrigger className="w-[200px] bg-zinc-900 border-zinc-700 text-white">
               <SelectValue placeholder="All Statuses">
                 {statusFilter === "all" ? "All Statuses" : statusFilter}
               </SelectValue>
             </SelectTrigger>
-            <SelectContent className="bg-popover text-popover-foreground border-border">
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="Research">Research</SelectItem>
-              <SelectItem value="Shortlisted">Shortlisted</SelectItem>
-              <SelectItem value="Outreach in Progress">Outreach in Progress</SelectItem>
-              <SelectItem value="Coffee Date Demo">Coffee Date Demo</SelectItem>
-              <SelectItem value="Win">Win</SelectItem>
+            <SelectContent className="bg-zinc-900 text-white border-zinc-700">
+              <SelectItem value="all" className="text-white hover:bg-zinc-800">
+                All Statuses
+              </SelectItem>
+              <SelectItem value="Research" className="text-white hover:bg-zinc-800">
+                Research
+              </SelectItem>
+              <SelectItem value="Shortlisted" className="text-white hover:bg-zinc-800">
+                Shortlisted
+              </SelectItem>
+              <SelectItem value="Outreach in Progress" className="text-white hover:bg-zinc-800">
+                Outreach in Progress
+              </SelectItem>
+              <SelectItem value="Coffee Date Demo" className="text-white hover:bg-zinc-800">
+                Coffee Date Demo
+              </SelectItem>
+              <SelectItem value="Win" className="text-white hover:bg-zinc-800">
+                Win
+              </SelectItem>
             </SelectContent>
           </Select>
 
           {/* Sort By */}
           <Select value={sortBy} onValueChange={handleSortChange}>
-            <SelectTrigger className="w-[180px] bg-background border-input text-foreground">
+            <SelectTrigger className="w-[180px] bg-zinc-900 border-zinc-700 text-white">
               <SelectValue placeholder="Alphabetical">
                 {sortBy === "alphabetical" && "Alphabetical"}
                 {sortBy === "status" && "By Status"}
                 {sortBy === "potential" && "By Potential"}
               </SelectValue>
             </SelectTrigger>
-            <SelectContent className="bg-popover text-popover-foreground border-border">
-              <SelectItem value="alphabetical">Alphabetical</SelectItem>
-              <SelectItem value="status">By Status</SelectItem>
-              <SelectItem value="potential">By Potential</SelectItem>
+            <SelectContent className="bg-zinc-900 text-white border-zinc-700">
+              <SelectItem value="alphabetical" className="text-white hover:bg-zinc-800">
+                Alphabetical
+              </SelectItem>
+              <SelectItem value="status" className="text-white hover:bg-zinc-800">
+                By Status
+              </SelectItem>
+              <SelectItem value="potential" className="text-white hover:bg-zinc-800">
+                By Potential
+              </SelectItem>
             </SelectContent>
           </Select>
 
@@ -1117,7 +1236,7 @@ export default function OpportunitiesV2() {
               checked={favouritesOnly}
               onCheckedChange={(checked) => setFavouritesOnly(checked === true)}
             />
-            <label htmlFor="favourites" className="text-sm font-medium cursor-pointer">
+            <label htmlFor="favourites" className="text-sm font-medium cursor-pointer text-white">
               Favourites
             </label>
           </div>
@@ -1130,57 +1249,62 @@ export default function OpportunitiesV2() {
               {filteredNiches.length} {filteredNiches.length === 1 ? "Niche" : "Niches"}
             </h2>
             <div className="space-y-2 max-h-[calc(100vh-180px)] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-white/20">
-              {filteredNiches.map((niche) => (
-                <Card
-                  key={niche.id}
-                  onClick={() => handleNicheSelect(niche)}
-                  className={cn(
-                    "w-full text-left px-4 py-3 rounded-lg border transition-colors cursor-pointer",
-                    selectedNiche?.id === niche.id
-                      ? "bg-primary/10 border-primary"
-                      : "bg-white/5 border-white/10 hover:bg-white/8",
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-medium text-white truncate">{niche.niche_name}</h3>
-                      <p className="text-xs text-white/60 mt-1">{niche.industry?.name}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/70">
-                          {niche.user_state?.status || "Research"}
-                        </span>
-                        {/* Display new tiered retainer value */}
-                        {niche.user_state?.potential_retainer && niche.user_state.potential_retainer > 0 && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary">
-                            ${Math.round(niche.user_state.potential_retainer)}/mo
+              {filteredNiches.map((niche) => {
+                const industry = niche.industry_id ? industryMap.get(niche.industry_id) : null
+                const industryName = industry?.name ?? "Unknown"
+
+                return (
+                  <Card
+                    key={niche.id}
+                    onClick={() => handleNicheSelect(niche)}
+                    className={cn(
+                      "w-full text-left px-4 py-3 rounded-lg border transition-colors cursor-pointer",
+                      selectedNiche?.id === niche.id
+                        ? "bg-primary/10 border-primary"
+                        : "bg-white/5 border-white/10 hover:bg-white/8",
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-medium text-white truncate">{niche.niche_name}</h3>
+                        <p className="text-xs text-white/60 mt-1">{industryName}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/70">
+                            {niche.user_state?.status || "Research"}
                           </span>
-                        )}
-                        {niche.user_state?.potential_retainer === 0 &&
-                          niche.user_state?.database_size_input &&
-                          niche.user_state.database_size_input >= 1000 && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">
-                              Needs Review
+                          {/* Display new tiered retainer value */}
+                          {niche.user_state?.potential_retainer && niche.user_state.potential_retainer > 0 && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary">
+                              ${Math.round(niche.user_state.potential_retainer)}/mo
                             </span>
                           )}
+                          {niche.user_state?.potential_retainer === 0 &&
+                            niche.user_state?.database_size_input &&
+                            niche.user_state.database_size_input >= 1000 && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">
+                                Needs Review
+                              </span>
+                            )}
+                        </div>
                       </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleFavourite(niche)
+                        }}
+                        className="shrink-0"
+                      >
+                        <Star
+                          className={cn(
+                            "h-4 w-4",
+                            niche.user_state?.is_favourite ? "fill-yellow-400 text-yellow-400" : "text-white/30",
+                          )}
+                        />
+                      </button>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleFavourite(niche)
-                      }}
-                      className="shrink-0"
-                    >
-                      <Star
-                        className={cn(
-                          "h-4 w-4",
-                          niche.user_state?.is_favourite ? "fill-yellow-400 text-yellow-400" : "text-white/30",
-                        )}
-                      />
-                    </button>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                )
+              })}
             </div>
           </div>
 
