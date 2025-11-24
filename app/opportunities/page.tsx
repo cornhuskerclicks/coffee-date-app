@@ -100,6 +100,30 @@ export default function OpportunitiesPage() {
         setAllNiches(enrichedNiches)
 
         console.log("[v0] Loaded niches:", enrichedNiches.length)
+        console.log("[v0] Sample enriched niche (first):", {
+          id: enrichedNiches[0]?.id,
+          niche_name: enrichedNiches[0]?.niche_name,
+          industry_id: enrichedNiches[0]?.industry_id,
+          industry_name: enrichedNiches[0]?.industry_name,
+        })
+
+        // Show distinct industry_ids
+        const distinctIndustryIds = new Set(enrichedNiches.map((n) => n.industry_id))
+        console.log("[v0] Distinct industry_ids in enriched data:", Array.from(distinctIndustryIds))
+        console.log("[v0] Total distinct industries:", distinctIndustryIds.size)
+
+        // Count niches per industry
+        const nichesByIndustry = new Map<string, number>()
+        enrichedNiches.forEach((n) => {
+          const count = nichesByIndustry.get(n.industry_id) || 0
+          nichesByIndustry.set(n.industry_id, count + 1)
+        })
+
+        console.log("[v0] Niches per industry_id:")
+        nichesByIndustry.forEach((count, industryId) => {
+          const industryName = enrichedNiches.find((n) => n.industry_id === industryId)?.industry_name
+          console.log(`  ${industryName} (${industryId}): ${count} niches`)
+        })
       } catch (error) {
         console.error("Error loading data:", error)
       } finally {
@@ -124,22 +148,46 @@ export default function OpportunitiesPage() {
   const filteredNiches = useMemo(() => {
     let result = [...allNiches]
 
+    console.log("[v0] Filter inputs:", {
+      total: allNiches.length,
+      selectedIndustryId,
+      searchQuery,
+      selectedStatus,
+      favouritesOnly,
+    })
+
     // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
       result = result.filter(
         (n) => n.niche_name.toLowerCase().includes(query) || n.industry_name.toLowerCase().includes(query),
       )
+      console.log("[v0] After search filter:", result.length)
     }
 
     if (selectedIndustryId !== ALL_INDUSTRIES) {
-      result = result.filter((n) => n.industry_id === selectedIndustryId)
-    }
+      console.log("[v0] Filtering by industry_id:", selectedIndustryId)
+      console.log("[v0] Sample niche before filter:", {
+        id: result[0]?.id,
+        niche_name: result[0]?.niche_name,
+        industry_id: result[0]?.industry_id,
+        industry_name: result[0]?.industry_name,
+      })
 
-    console.log("[v0] Industry filter result:", {
-      selectedIndustryId,
-      count: result.length,
-    })
+      result = result.filter((n) => {
+        const matches = n.industry_id === selectedIndustryId
+        if (!matches) {
+          console.log("[v0] Niche filtered out:", {
+            niche: n.niche_name,
+            has_industry_id: n.industry_id,
+            looking_for: selectedIndustryId,
+          })
+        }
+        return matches
+      })
+
+      console.log("[v0] After industry filter:", result.length)
+    }
 
     // Status filter
     if (selectedStatus !== "all") {
