@@ -15,32 +15,21 @@ type Niche = {
   database_size: string
   is_favourite: boolean
   status: string | null
-  created_at: string | null
-}
-
-type Industry = {
-  id: string
-  name: string
 }
 
 export default function OpportunitiesPage() {
-  const [allNiches, setAllNiches] = useState<Niche[]>([])
-  const [industries, setIndustries] = useState<Industry[]>([])
+  const [niches, setNiches] = useState<Niche[]>([])
   const [loading, setLoading] = useState(true)
+  const [industryCount, setIndustryCount] = useState(0)
 
-  // Load data once on mount
   useEffect(() => {
     async function loadData() {
       const supabase = createClient()
 
       try {
-        // Load niches, industries, and user states in parallel
         const [nichesRes, industriesRes, userStatesRes] = await Promise.all([
-          supabase
-            .from("niches")
-            .select("id, niche_name, industry_id, scale, database_size, created_at")
-            .order("niche_name"),
-          supabase.from("industries").select("id, name").order("name"),
+          supabase.from("niches").select("id, niche_name, industry_id, scale, database_size").order("niche_name"),
+          supabase.from("industries").select("id, name"),
           supabase.from("niche_user_state").select("niche_id, is_favourite, status"),
         ])
 
@@ -51,12 +40,10 @@ export default function OpportunitiesPage() {
         const industriesData = industriesRes.data || []
         const userStatesData = userStatesRes.data || []
 
-        // Create lookup maps
         const industryMap = new Map(industriesData.map((i) => [i.id, i.name]))
         const userStateMap = new Map(userStatesData.map((s) => [s.niche_id, s]))
 
-        // Enrich niches with industry names and user state
-        const enrichedNiches: Niche[] = nichesData.map((n) => {
+        const enriched: Niche[] = nichesData.map((n) => {
           const userState = userStateMap.get(n.id)
           return {
             id: n.id,
@@ -67,12 +54,11 @@ export default function OpportunitiesPage() {
             database_size: n.database_size || "Small",
             is_favourite: userState?.is_favourite || false,
             status: userState?.status || null,
-            created_at: n.created_at,
           }
         })
 
-        setIndustries(industriesData)
-        setAllNiches(enrichedNiches)
+        setNiches(enriched)
+        setIndustryCount(industriesData.length)
       } catch (error) {
         console.error("Error loading data:", error)
       } finally {
@@ -90,13 +76,12 @@ export default function OpportunitiesPage() {
     } = await supabase.auth.getUser()
     if (!user) return
 
-    const niche = allNiches.find((n) => n.id === nicheId)
+    const niche = niches.find((n) => n.id === nicheId)
     if (!niche) return
 
     const newFavStatus = !niche.is_favourite
 
-    // Optimistic update
-    setAllNiches((prev) => prev.map((n) => (n.id === nicheId ? { ...n, is_favourite: newFavStatus } : n)))
+    setNiches((prev) => prev.map((n) => (n.id === nicheId ? { ...n, is_favourite: newFavStatus } : n)))
 
     const { error } = await supabase.from("niche_user_state").upsert(
       {
@@ -111,8 +96,7 @@ export default function OpportunitiesPage() {
 
     if (error) {
       console.error("Error toggling favourite:", error)
-      // Revert on error
-      setAllNiches((prev) => prev.map((n) => (n.id === nicheId ? { ...n, is_favourite: !newFavStatus } : n)))
+      setNiches((prev) => prev.map((n) => (n.id === nicheId ? { ...n, is_favourite: !newFavStatus } : n)))
     }
   }
 
@@ -129,20 +113,18 @@ export default function OpportunitiesPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Header */}
       <header className="border-b border-white/10">
         <div className="max-w-7xl mx-auto px-6 py-5">
-          <h1 className="text-2xl font-bold text-white">Opportunities - Niche List</h1>
+          <h1 className="text-2xl font-bold text-white">Opportunities</h1>
           <p className="text-sm text-gray-400 mt-1">
-            Showing {allNiches.length} business niches across {industries.length} industries
+            {niches.length} niches across {industryCount} industries
           </p>
         </div>
       </header>
 
-      {/* Results */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {allNiches.map((niche) => {
+          {niches.map((niche) => {
             const statusConfig = getStatusConfig(niche.status as StatusValue)
 
             return (
