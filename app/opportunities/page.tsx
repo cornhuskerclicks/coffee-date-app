@@ -129,35 +129,55 @@ export default function OpportunitiesPage() {
   }, [])
 
   const filteredNiches = (() => {
+    console.log("[v0] === FILTERING START ===")
+    console.log("[v0] Total niches:", allNiches.length)
+    console.log("[v0] Search query:", searchQuery)
+    console.log("[v0] Selected industry:", selectedIndustry)
+    console.log("[v0] Selected status:", selectedStatus)
+    console.log("[v0] Favourites only:", favouritesOnly)
+
     let filtered = [...allNiches]
 
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
+      const beforeCount = filtered.length
       filtered = filtered.filter(
         (n) => n.niche_name.toLowerCase().includes(query) || n.industry_name.toLowerCase().includes(query),
       )
+      console.log("[v0] After search filter:", filtered.length, "(removed", beforeCount - filtered.length, ")")
     }
 
     // Apply industry filter
     if (selectedIndustry !== "all") {
-      filtered = filtered.filter((n) => n.industry_name === selectedIndustry)
+      const beforeCount = filtered.length
+      console.log("[v0] Filtering by industry:", selectedIndustry)
+      filtered = filtered.filter((n) => {
+        const matches = n.industry_name === selectedIndustry
+        if (!matches) {
+          console.log("[v0] Filtered out:", n.niche_name, "- industry:", n.industry_name)
+        }
+        return matches
+      })
+      console.log("[v0] After industry filter:", filtered.length, "(removed", beforeCount - filtered.length, ")")
     }
 
     // Apply status filter
     if (selectedStatus !== "all") {
+      const beforeCount = filtered.length
       if (selectedStatus === "none") {
-        // Filter for niches with no status set
         filtered = filtered.filter((n) => n.status === null)
       } else {
-        // Filter for specific status
         filtered = filtered.filter((n) => n.status === selectedStatus)
       }
+      console.log("[v0] After status filter:", filtered.length, "(removed", beforeCount - filtered.length, ")")
     }
 
     // Apply favourites filter
     if (favouritesOnly) {
+      const beforeCount = filtered.length
       filtered = filtered.filter((n) => n.is_favourite === true)
+      console.log("[v0] After favourites filter:", filtered.length, "(removed", beforeCount - filtered.length, ")")
     }
 
     // Apply sorting
@@ -173,7 +193,8 @@ export default function OpportunitiesPage() {
       filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     }
 
-    console.log("[v0] Filtered results:", filtered.length, "from", allNiches.length)
+    console.log("[v0] Final filtered count:", filtered.length)
+    console.log("[v0] === FILTERING END ===")
     return filtered
   })()
 
@@ -368,7 +389,9 @@ export default function OpportunitiesPage() {
                     )}
                   >
                     <div className="flex items-start justify-between mb-3">
-                      <h3 className="font-semibold text-white text-sm leading-tight flex-1">{niche.niche_name}</h3>
+                      <h3 className="font-semibold text-white text-sm leading-tight flex-1">
+                        <span className="text-[#00A8FF]">[{niche.industry_name}]</span> {niche.niche_name}
+                      </h3>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -388,11 +411,6 @@ export default function OpportunitiesPage() {
                     </div>
 
                     <div className="space-y-2 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-400">Industry:</span>
-                        <span className="text-gray-300 font-medium">{niche.industry_name}</span>
-                      </div>
-
                       <div className="flex items-center justify-between">
                         <span className="text-gray-400">Scale:</span>
                         <span className="text-gray-300">{niche.scale}</span>
