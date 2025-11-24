@@ -16,10 +16,12 @@ type Niche = {
   industry_name: string
   scale: string
   database_size: string
-  status: string
+  status: string | null
   is_favourite: boolean
   created_at: string
 }
+
+const STATUS_OPTIONS = ["Research", "Shortlisted", "Outreach in Progress", "Coffee Date Demo", "Win"] as const
 
 export default function OpportunitiesPage() {
   const [allNiches, setAllNiches] = useState<Niche[]>([])
@@ -102,13 +104,14 @@ export default function OpportunitiesPage() {
             industry_name: industryName,
             scale: niche.scale || "Local",
             database_size: niche.database_size || "Small",
-            status: userState?.status || "Not Started",
+            status: userState?.status || null,
             is_favourite: userState?.is_favourite || false,
             created_at: niche.created_at,
           }
         })
 
         console.log("[v0] Enriched niches:", enrichedNiches.length)
+        console.log("[v0] Sample niche:", enrichedNiches[0])
         setAllNiches(enrichedNiches)
 
         // Extract unique industries for filter dropdown
@@ -123,7 +126,7 @@ export default function OpportunitiesPage() {
     }
 
     loadAllData()
-  }, []) // Empty dependency array - only run once on mount
+  }, [])
 
   const filteredNiches = (() => {
     let filtered = [...allNiches]
@@ -143,7 +146,13 @@ export default function OpportunitiesPage() {
 
     // Apply status filter
     if (selectedStatus !== "all") {
-      filtered = filtered.filter((n) => n.status === selectedStatus)
+      if (selectedStatus === "none") {
+        // Filter for niches with no status set
+        filtered = filtered.filter((n) => n.status === null)
+      } else {
+        // Filter for specific status
+        filtered = filtered.filter((n) => n.status === selectedStatus)
+      }
     }
 
     // Apply favourites filter
@@ -164,6 +173,7 @@ export default function OpportunitiesPage() {
       filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     }
 
+    console.log("[v0] Filtered results:", filtered.length, "from", allNiches.length)
     return filtered
   })()
 
@@ -272,9 +282,12 @@ export default function OpportunitiesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="Not Started">Not Started</SelectItem>
-                  <SelectItem value="In Progress">In Progress</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="none">Not Started</SelectItem>
+                  {STATUS_OPTIONS.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -395,12 +408,15 @@ export default function OpportunitiesPage() {
                         <span
                           className={cn(
                             "px-2 py-0.5 rounded text-xs font-medium",
-                            niche.status === "Completed" && "bg-green-500/20 text-green-400",
-                            niche.status === "In Progress" && "bg-blue-500/20 text-blue-400",
-                            niche.status === "Not Started" && "bg-gray-500/20 text-gray-400",
+                            niche.status === "Win" && "bg-green-500/20 text-green-400",
+                            niche.status === "Coffee Date Demo" && "bg-purple-500/20 text-purple-400",
+                            niche.status === "Outreach in Progress" && "bg-blue-500/20 text-blue-400",
+                            niche.status === "Shortlisted" && "bg-yellow-500/20 text-yellow-400",
+                            niche.status === "Research" && "bg-cyan-500/20 text-cyan-400",
+                            !niche.status && "bg-gray-500/20 text-gray-400",
                           )}
                         >
-                          {niche.status}
+                          {niche.status || "Not Started"}
                         </span>
                       </div>
                     </div>
