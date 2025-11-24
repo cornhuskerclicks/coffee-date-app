@@ -24,9 +24,9 @@ import {
   Send,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import React from "react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const STATUSES = ["Research", "Shortlisted", "Outreach in Progress", "Coffee Date Demo", "Win"]
 
@@ -346,8 +346,8 @@ export default function OpportunitiesV2() {
     }
 
     if (industryFilter !== "all") {
-      filtered = filtered.filter((n) => n.industry?.name === industryFilter)
-      console.log("[v0] After industry filter:", filtered.length, "niches (industry:", industryFilter, ")")
+      filtered = filtered.filter((n) => n.industry?.id === industryFilter)
+      console.log("[v0] After industry filter:", filtered.length, "niches (industry ID:", industryFilter, ")")
     }
 
     // Status filter
@@ -1012,100 +1012,74 @@ export default function OpportunitiesV2() {
 
   return (
     <div className="min-h-screen bg-black">
-      <div className="border-b border-white/10 bg-black/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-[1800px] mx-auto px-6 py-4">
-          <div className="flex items-center gap-4 flex-wrap">
-            {/* Search */}
-            <div className="relative flex-1 min-w-[240px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-              <Input
-                placeholder="Search niches..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/40"
-              />
-            </div>
+      <div className="max-w-[1800px] mx-auto px-6 py-6">
+        <div className="mb-6 flex flex-wrap items-center gap-4">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[300px]">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search niches..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
 
-            {/* Industry */}
-            <Select value={industryFilter} onValueChange={handleIndustryChange}>
-              <SelectTrigger className="w-[200px] bg-white/5 border-white/10 text-white">
-                <SelectValue placeholder="All Industries" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#111] border-white/10">
-                <SelectItem value="all" className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white">
-                  All Industries
+          {/* Industry Filter */}
+          <Select value={industryFilter} onValueChange={handleIndustryChange}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="All Industries" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Industries</SelectItem>
+              {industries.map((industry) => (
+                <SelectItem key={industry.id} value={industry.id}>
+                  {industry.name}
                 </SelectItem>
-                {industries.map((ind) => (
-                  <SelectItem
-                    key={ind.id}
-                    value={ind.name}
-                    className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white"
-                  >
-                    {ind.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              ))}
+            </SelectContent>
+          </Select>
 
-            {/* Status */}
-            <Select value={statusFilter} onValueChange={handleStatusChange}>
-              <SelectTrigger className="w-[200px] bg-white/5 border-white/10 text-white">
-                <SelectValue placeholder="All Statuses" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#111] border-white/10">
-                <SelectItem value="all" className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white">
-                  All Statuses
-                </SelectItem>
-                {STATUSES.map((status) => (
-                  <SelectItem
-                    key={status}
-                    value={status}
-                    className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white"
-                  >
-                    {status}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Status Filter */}
+          <Select value={statusFilter} onValueChange={handleStatusChange}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="Research">Research</SelectItem>
+              <SelectItem value="Shortlisted">Shortlisted</SelectItem>
+              <SelectItem value="Outreach in Progress">Outreach in Progress</SelectItem>
+              <SelectItem value="Coffee Date Demo">Coffee Date Demo</SelectItem>
+              <SelectItem value="Win">Win</SelectItem>
+            </SelectContent>
+          </Select>
 
-            {/* Sort */}
-            <Select value={sortBy} onValueChange={handleSortChange}>
-              <SelectTrigger className="w-[200px] bg-white/5 border-white/10 text-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-[#111] border-white/10">
-                <SelectItem
-                  value="alphabetical"
-                  className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white"
-                >
-                  Alphabetical
-                </SelectItem>
-                <SelectItem value="status" className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white">
-                  Status Order
-                </SelectItem>
-                <SelectItem
-                  value="potential"
-                  className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white"
-                >
-                  Potential Value
-                </SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Sort By */}
+          <Select value={sortBy} onValueChange={handleSortChange}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alphabetical">Alphabetical</SelectItem>
+              <SelectItem value="status">By Status</SelectItem>
+              <SelectItem value="potential">By Potential</SelectItem>
+            </SelectContent>
+          </Select>
 
-            {/* Favourites */}
-            <label className="flex items-center gap-2 cursor-pointer">
-              <Checkbox
-                checked={favouritesOnly}
-                onCheckedChange={(checked) => setFavouritesOnly(checked as boolean)}
-                className="border-white/20"
-              />
-              <span className="text-sm text-white">Favourites</span>
+          {/* Favourites Toggle */}
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="favourites"
+              checked={favouritesOnly}
+              onCheckedChange={(checked) => setFavouritesOnly(checked === true)}
+            />
+            <label htmlFor="favourites" className="text-sm font-medium cursor-pointer">
+              Favourites
             </label>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-[1800px] mx-auto px-6 py-6">
         <div className="grid grid-cols-12 gap-6">
           {/* Niche List */}
           <div className="col-span-5 space-y-3">
