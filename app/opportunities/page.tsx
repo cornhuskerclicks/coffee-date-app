@@ -1,12 +1,10 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Star, Search } from "lucide-react"
+import { Star } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getStatusConfig, getStatusOptions, type StatusValue } from "@/lib/status-map"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
+import { getStatusConfig, type StatusValue } from "@/lib/status-map"
 
 type Niche = {
   id: string
@@ -29,11 +27,6 @@ export default function OpportunitiesPage() {
   const [allNiches, setAllNiches] = useState<Niche[]>([])
   const [industries, setIndustries] = useState<Industry[]>([])
   const [loading, setLoading] = useState(true)
-
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedIndustryId, setSelectedIndustryId] = useState<string>("all")
-  const [selectedStatus, setSelectedStatus] = useState<string>("all")
-  const [showFavouritesOnly, setShowFavouritesOnly] = useState(false)
 
   // Load data once on mount
   useEffect(() => {
@@ -123,35 +116,6 @@ export default function OpportunitiesPage() {
     }
   }
 
-  const filteredNiches = useMemo(() => {
-    let filtered = allNiches
-
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(
-        (n) => n.name.toLowerCase().includes(query) || n.industry_name.toLowerCase().includes(query),
-      )
-    }
-
-    // Filter by industry
-    if (selectedIndustryId !== "all") {
-      filtered = filtered.filter((n) => n.industry_id === selectedIndustryId)
-    }
-
-    // Filter by status
-    if (selectedStatus !== "all") {
-      filtered = filtered.filter((n) => n.status === selectedStatus)
-    }
-
-    // Filter by favourites
-    if (showFavouritesOnly) {
-      filtered = filtered.filter((n) => n.is_favourite)
-    }
-
-    return filtered
-  }, [allNiches, searchQuery, selectedIndustryId, selectedStatus, showFavouritesOnly])
-
   if (loading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -170,144 +134,62 @@ export default function OpportunitiesPage() {
         <div className="max-w-7xl mx-auto px-6 py-5">
           <h1 className="text-2xl font-bold text-white">Opportunities - Niche List</h1>
           <p className="text-sm text-gray-400 mt-1">
-            Showing {filteredNiches.length} of {allNiches.length} business niches across {industries.length} industries
+            Showing {allNiches.length} business niches across {industries.length} industries
           </p>
         </div>
       </header>
 
-      <div className="border-b border-white/10 bg-white/5 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Search niches..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-black/50 border-white/20 text-white placeholder:text-gray-500 focus:border-[#00A8FF]"
-              />
-            </div>
-
-            {/* Industry Filter */}
-            <Select value={selectedIndustryId} onValueChange={setSelectedIndustryId}>
-              <SelectTrigger className="bg-black/50 border-white/20 text-white">
-                <SelectValue placeholder="All Industries" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Industries</SelectItem>
-                {industries.map((industry) => (
-                  <SelectItem key={industry.id} value={industry.id}>
-                    {industry.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Status Filter */}
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger className="bg-black/50 border-white/20 text-white">
-                <SelectValue placeholder="All Statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="null">Not Started</SelectItem>
-                {getStatusOptions().map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {getStatusConfig(status).label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Favourites Toggle */}
-            <button
-              onClick={() => setShowFavouritesOnly(!showFavouritesOnly)}
-              className={cn(
-                "flex items-center justify-center gap-2 px-4 py-2 rounded-md border transition-all font-medium text-sm",
-                showFavouritesOnly
-                  ? "bg-[#00A8FF] border-[#00A8FF] text-white"
-                  : "bg-black/50 border-white/20 text-gray-400 hover:text-white hover:border-white/40",
-              )}
-            >
-              <Star className={cn("h-4 w-4", showFavouritesOnly && "fill-current")} />
-              {showFavouritesOnly ? "Favourites Only" : "Show Favourites"}
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Results */}
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {filteredNiches.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-gray-400 text-lg">No niches match your filters</p>
-            <button
-              onClick={() => {
-                setSearchQuery("")
-                setSelectedIndustryId("all")
-                setSelectedStatus("all")
-                setShowFavouritesOnly(false)
-              }}
-              className="mt-4 px-6 py-2 bg-[#00A8FF] text-white rounded-md hover:bg-[#0090DD] transition-colors"
-            >
-              Clear All Filters
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filteredNiches.map((niche) => {
-              const statusConfig = getStatusConfig(niche.status as StatusValue)
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {allNiches.map((niche) => {
+            const statusConfig = getStatusConfig(niche.status as StatusValue)
 
-              return (
-                <div
-                  key={niche.id}
-                  className="bg-white/5 backdrop-blur-sm rounded-lg p-5 border border-white/10 hover:bg-white/10 transition-all cursor-pointer"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-semibold text-white text-sm leading-tight flex-1">
-                      <span className="text-[#00A8FF]">[{niche.industry_name}]</span> {niche.name}
-                    </h3>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleToggleFavourite(niche.id)
-                      }}
-                      className="ml-2 flex-shrink-0"
-                    >
-                      <Star
-                        className={cn(
-                          "h-4 w-4 transition-colors",
-                          niche.is_favourite
-                            ? "fill-yellow-400 text-yellow-400"
-                            : "text-gray-400 hover:text-yellow-400",
-                        )}
-                      />
-                    </button>
+            return (
+              <div
+                key={niche.id}
+                className="bg-white/5 backdrop-blur-sm rounded-lg p-5 border border-white/10 hover:bg-white/10 transition-all cursor-pointer"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <h3 className="font-semibold text-white text-sm leading-tight flex-1">
+                    <span className="text-[#00A8FF]">[{niche.industry_name}]</span> {niche.name}
+                  </h3>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleToggleFavourite(niche.id)
+                    }}
+                    className="ml-2 flex-shrink-0"
+                  >
+                    <Star
+                      className={cn(
+                        "h-4 w-4 transition-colors",
+                        niche.is_favourite ? "fill-yellow-400 text-yellow-400" : "text-gray-400 hover:text-yellow-400",
+                      )}
+                    />
+                  </button>
+                </div>
+
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">Scale:</span>
+                    <span className="text-gray-300">{niche.scale}</span>
                   </div>
-
-                  <div className="space-y-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-400">Scale:</span>
-                      <span className="text-gray-300">{niche.scale}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-400">Database:</span>
-                      <span className="text-gray-300">{niche.database_size}</span>
-                    </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-white/10">
-                      <span className="text-gray-400">Status:</span>
-                      <span className={cn("px-2 py-0.5 rounded text-xs font-medium", statusConfig.color)}>
-                        {statusConfig.label}
-                      </span>
-                    </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">Database:</span>
+                    <span className="text-gray-300">{niche.database_size}</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                    <span className="text-gray-400">Status:</span>
+                    <span className={cn("px-2 py-0.5 rounded text-xs font-medium", statusConfig.color)}>
+                      {statusConfig.label}
+                    </span>
                   </div>
                 </div>
-              )
-            })}
-          </div>
-        )}
+              </div>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
