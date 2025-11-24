@@ -233,8 +233,10 @@ export default function OpportunitiesV2() {
   const loadIndustries = async () => {
     try {
       const { data: industriesData } = await supabase.from("industries").select("*").order("name")
+      console.log("[v0] Loaded industries:", industriesData?.length, "industries")
       setIndustries(industriesData || [])
     } catch (error: any) {
+      console.error("[v0] Error loading industries:", error)
       toast({
         title: "Error loading industries",
         description: error.message,
@@ -259,6 +261,8 @@ export default function OpportunitiesV2() {
           user_state:niche_user_state!niche_id(*)
         `)
         .order("niche_name")
+
+      console.log("[v0] Loaded niches:", nichesData?.length, "niches")
 
       const processedNiches = (nichesData || []).map((niche) => ({
         ...niche,
@@ -318,25 +322,30 @@ export default function OpportunitiesV2() {
 
   const applyFilters = () => {
     let filtered = [...niches]
+    console.log("[v0] Starting filter - total niches:", filtered.length)
 
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter((n) => n.niche_name.toLowerCase().includes(searchTerm.toLowerCase()))
+      console.log("[v0] After search filter:", filtered.length, "niches (search:", searchTerm, ")")
     }
 
     // Industry filter
     if (industryFilter !== "all") {
       filtered = filtered.filter((n) => n.industry?.id === industryFilter)
+      console.log("[v0] After industry filter:", filtered.length, "niches (industry:", industryFilter, ")")
     }
 
     // Status filter
     if (statusFilter !== "all") {
       filtered = filtered.filter((n) => (n.user_state?.status || "Research") === statusFilter)
+      console.log("[v0] After status filter:", filtered.length, "niches (status:", statusFilter, ")")
     }
 
     // Favourites filter
     if (favouritesOnly) {
       filtered = filtered.filter((n) => n.user_state?.is_favourite)
+      console.log("[v0] After favourites filter:", filtered.length, "niches")
     }
 
     // Sort
@@ -358,6 +367,7 @@ export default function OpportunitiesV2() {
       })
     }
 
+    console.log("[v0] Final filtered niches:", filtered.length)
     setFilteredNiches(filtered)
   }
 
