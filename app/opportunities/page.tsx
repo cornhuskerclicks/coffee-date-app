@@ -247,12 +247,15 @@ export default function OpportunitiesPage() {
               <Select
                 value={selectedIndustryId}
                 onValueChange={(val) => {
-                  console.log("SELECTED INDUSTRY VALUE RAW:", val)
-                  console.log("SELECTED INDUSTRY VALUE TYPE:", typeof val)
+                  console.log("[v0] Industry dropdown changed to:", val)
+                  console.log("[v0] SELECTED INDUSTRY VALUE RAW:", val)
+                  console.log("[v0] SELECTED INDUSTRY VALUE TYPE:", typeof val)
                   console.log(
-                    "IS UUID FORMAT:",
+                    "[v0] IS UUID FORMAT:",
                     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val),
                   )
+                  console.log("[v0] Available industry IDs:", industries.map((i) => i.id).slice(0, 5))
+                  console.log("[v0] Available industry names:", industries.map((i) => i.name).slice(0, 5))
                   setSelectedIndustryId(val)
                 }}
               >
@@ -261,11 +264,14 @@ export default function OpportunitiesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ALL_INDUSTRIES}>All Industries</SelectItem>
-                  {industries.map((industry) => (
-                    <SelectItem key={industry.id} value={industry.id}>
-                      {industry.name}
-                    </SelectItem>
-                  ))}
+                  {industries.map((industry) => {
+                    console.log("[v0] Rendering SelectItem:", { id: industry.id, name: industry.name })
+                    return (
+                      <SelectItem key={industry.id} value={industry.id}>
+                        {industry.name}
+                      </SelectItem>
+                    )
+                  })}
                 </SelectContent>
               </Select>
             </div>
