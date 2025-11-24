@@ -2,14 +2,11 @@
 
 import { useEffect, useState, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Star, Search, Filter } from "lucide-react"
+import { Star, Search } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getStatusOptions, getStatusConfig, type StatusValue } from "@/lib/status-map"
+import { getStatusConfig, getStatusOptions, type StatusValue } from "@/lib/status-map"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
 
 type Niche = {
   id: string
@@ -33,12 +30,10 @@ export default function OpportunitiesPage() {
   const [industries, setIndustries] = useState<Industry[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Filter states
   const [searchQuery, setSearchQuery] = useState("")
-  const [industryFilter, setIndustryFilter] = useState("all")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [favouritesOnly, setFavouritesOnly] = useState(false)
-  const [sortBy, setSortBy] = useState<"alphabetical" | "newest">("alphabetical")
+  const [selectedIndustryId, setSelectedIndustryId] = useState<string>("all")
+  const [selectedStatus, setSelectedStatus] = useState<string>("all")
+  const [showFavouritesOnly, setShowFavouritesOnly] = useState(false)
 
   // Load data once on mount
   useEffect(() => {
@@ -48,7 +43,10 @@ export default function OpportunitiesPage() {
       try {
         // Load niches, industries, and user states in parallel
         const [nichesRes, industriesRes, userStatesRes] = await Promise.all([
-          supabase.from("niches").select("id, niche_name, industry_id, scale, database_size, created_at"),
+          supabase
+            .from("niches")
+            .select("id, niche_name, industry_id, scale, database_size, created_at")
+            .order("niche_name"),
           supabase.from("industries").select("id, name").order("name"),
           supabase.from("niche_user_state").select("niche_id, is_favourite, status"),
         ])
@@ -60,9 +58,6 @@ export default function OpportunitiesPage() {
         const industriesData = industriesRes.data || []
         const userStatesData = userStatesRes.data || []
 
-        console.log("[v0] Loaded niches:", nichesData.length)
-        console.log("[v0] Loaded industries:", industriesData.length, "industries")
-
         // Create lookup maps
         const industryMap = new Map(industriesData.map((i) => [i.id, i.name]))
         const userStateMap = new Map(userStatesData.map((s) => [s.niche_id, s]))
@@ -73,7 +68,7 @@ export default function OpportunitiesPage() {
           return {
             id: n.id,
             name: n.niche_name,
-            industry_id: n.industry_id, // <-- UUID preserved here
+            industry_id: n.industry_id,
             industry_name: industryMap.get(n.industry_id) || "Unknown",
             scale: n.scale || "Local",
             database_size: n.database_size || "Small",
@@ -83,12 +78,10 @@ export default function OpportunitiesPage() {
           }
         })
 
-        console.log("[v0] Sample niche:", enrichedNiches[0])
-
         setIndustries(industriesData)
         setAllNiches(enrichedNiches)
       } catch (error) {
-        console.error("[v0] Error loading data:", error)
+        console.error("Error loading data:", error)
       } finally {
         setLoading(false)
       }
@@ -96,54 +89,6 @@ export default function OpportunitiesPage() {
 
     loadData()
   }, [])
-
-  // Filter niches client-side
-  const filteredNiches = useMemo(() => {
-    console.log("[v0] Starting filter - total niches:", allNiches.length)
-
-    let result = allNiches
-
-    // Industry filter
-    if (industryFilter !== "all") {
-      console.log("[v0] Filtering by industry_id:", industryFilter)
-      result = result.filter((n) => n.industry_id === industryFilter)
-      console.log("[v0] After industry filter:", result.length, "niches")
-    }
-
-    // Status filter
-    if (statusFilter !== "all") {
-      if (statusFilter === "none") {
-        result = result.filter((n) => !n.status)
-      } else {
-        result = result.filter((n) => n.status === statusFilter)
-      }
-    }
-
-    // Favourites filter
-    if (favouritesOnly) {
-      result = result.filter((n) => n.is_favourite)
-    }
-
-    // Search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      result = result.filter((n) => n.name.toLowerCase().includes(query))
-    }
-
-    // Sort
-    if (sortBy === "alphabetical") {
-      result = result.sort((a, b) => a.name.localeCompare(b.name))
-    } else {
-      result = result.sort((a, b) => {
-        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
-        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
-        return dateB - dateA
-      })
-    }
-
-    console.log("[v0] final filtered niches:", result.length)
-    return result
-  }, [allNiches, industryFilter, statusFilter, favouritesOnly, searchQuery, sortBy])
 
   const handleToggleFavourite = async (nicheId: string) => {
     const supabase = createClient()
@@ -172,11 +117,40 @@ export default function OpportunitiesPage() {
     )
 
     if (error) {
-      console.error("[v0] Error toggling favourite:", error)
+      console.error("Error toggling favourite:", error)
       // Revert on error
       setAllNiches((prev) => prev.map((n) => (n.id === nicheId ? { ...n, is_favourite: !newFavStatus } : n)))
     }
   }
+
+  const filteredNiches = useMemo(() => {
+    let filtered = allNiches
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(
+        (n) => n.name.toLowerCase().includes(query) || n.industry_name.toLowerCase().includes(query),
+      )
+    }
+
+    // Filter by industry
+    if (selectedIndustryId !== "all") {
+      filtered = filtered.filter((n) => n.industry_id === selectedIndustryId)
+    }
+
+    // Filter by status
+    if (selectedStatus !== "all") {
+      filtered = filtered.filter((n) => n.status === selectedStatus)
+    }
+
+    // Filter by favourites
+    if (showFavouritesOnly) {
+      filtered = filtered.filter((n) => n.is_favourite)
+    }
+
+    return filtered
+  }, [allNiches, searchQuery, selectedIndustryId, selectedStatus, showFavouritesOnly])
 
   if (loading) {
     return (
@@ -196,128 +170,90 @@ export default function OpportunitiesPage() {
         <div className="max-w-7xl mx-auto px-6 py-5">
           <h1 className="text-2xl font-bold text-white">Opportunities - Niche List</h1>
           <p className="text-sm text-gray-400 mt-1">
-            Browse {allNiches.length} business niches across {industries.length} industries
+            Showing {filteredNiches.length} of {allNiches.length} business niches across {industries.length} industries
           </p>
         </div>
       </header>
 
-      {/* Filters */}
-      <div className="border-b border-white/10 bg-white/5">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="border-b border-white/10 bg-white/5 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Search */}
-            <div className="lg:col-span-2">
-              <Label className="text-sm text-gray-400 mb-2 block">Search Niches</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search by name..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-10 bg-black border-white/20 text-white placeholder:text-gray-500"
-                />
-              </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search niches..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 bg-black/50 border-white/20 text-white placeholder:text-gray-500 focus:border-[#00A8FF]"
+              />
             </div>
 
             {/* Industry Filter */}
-            <div>
-              <Label className="text-sm text-gray-400 mb-2 block">Industry</Label>
-              <Select
-                value={industryFilter}
-                onValueChange={(value: string) => {
-                  console.log("[v0] Industry dropdown changed to:", value)
-                  console.log(
-                    "[v0] Is UUID?",
-                    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value),
-                  )
-                  setIndustryFilter(value)
-                }}
-              >
-                <SelectTrigger className="h-10 bg-black border-white/20 text-white">
-                  <SelectValue placeholder="All Industries" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Industries</SelectItem>
-                  {industries.map((industry) => (
-                    <SelectItem key={industry.id} value={industry.id}>
-                      {industry.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={selectedIndustryId} onValueChange={setSelectedIndustryId}>
+              <SelectTrigger className="bg-black/50 border-white/20 text-white">
+                <SelectValue placeholder="All Industries" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Industries</SelectItem>
+                {industries.map((industry) => (
+                  <SelectItem key={industry.id} value={industry.id}>
+                    {industry.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             {/* Status Filter */}
-            <div>
-              <Label className="text-sm text-gray-400 mb-2 block">Status</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-10 bg-black border-white/20 text-white">
-                  <SelectValue placeholder="All Statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="none">Not Started</SelectItem>
-                  {getStatusOptions().map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <SelectTrigger className="bg-black/50 border-white/20 text-white">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="null">Not Started</SelectItem>
+                {getStatusOptions().map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {getStatusConfig(status).label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-            {/* Sort */}
-            <div>
-              <Label className="text-sm text-gray-400 mb-2 block">Sort By</Label>
-              <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
-                <SelectTrigger className="h-10 bg-black border-white/20 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="alphabetical">Alphabetical</SelectItem>
-                  <SelectItem value="newest">Newest First</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Favourites Checkbox */}
-          <div className="mt-4 flex items-center gap-2">
-            <Checkbox
-              id="favourites"
-              checked={favouritesOnly}
-              onCheckedChange={(checked) => setFavouritesOnly(!!checked)}
-              className="border-white/20"
-            />
-            <Label htmlFor="favourites" className="text-sm text-gray-400 cursor-pointer">
-              Show favourites only
-            </Label>
+            {/* Favourites Toggle */}
+            <button
+              onClick={() => setShowFavouritesOnly(!showFavouritesOnly)}
+              className={cn(
+                "flex items-center justify-center gap-2 px-4 py-2 rounded-md border transition-all font-medium text-sm",
+                showFavouritesOnly
+                  ? "bg-[#00A8FF] border-[#00A8FF] text-white"
+                  : "bg-black/50 border-white/20 text-gray-400 hover:text-white hover:border-white/40",
+              )}
+            >
+              <Star className={cn("h-4 w-4", showFavouritesOnly && "fill-current")} />
+              {showFavouritesOnly ? "Favourites Only" : "Show Favourites"}
+            </button>
           </div>
         </div>
       </div>
 
       {/* Results */}
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="mb-4 text-sm text-gray-400">
-          Showing {filteredNiches.length} of {allNiches.length} niches
-        </div>
-
         {filteredNiches.length === 0 ? (
-          <div className="text-center py-12">
-            <Filter className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400">No niches match your filters</p>
-            <Button
-              variant="outline"
-              className="mt-4 border-white/20 text-white hover:bg-white/5 bg-transparent"
+          <div className="text-center py-16">
+            <p className="text-gray-400 text-lg">No niches match your filters</p>
+            <button
               onClick={() => {
                 setSearchQuery("")
-                setIndustryFilter("all")
-                setStatusFilter("all")
-                setFavouritesOnly(false)
+                setSelectedIndustryId("all")
+                setSelectedStatus("all")
+                setShowFavouritesOnly(false)
               }}
+              className="mt-4 px-6 py-2 bg-[#00A8FF] text-white rounded-md hover:bg-[#0090DD] transition-colors"
             >
-              Clear Filters
-            </Button>
+              Clear All Filters
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
