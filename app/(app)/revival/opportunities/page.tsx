@@ -123,6 +123,21 @@ export default function OpportunitiesV2() {
   const [favouritesOnly, setFavouritesOnly] = useState(false)
   const [sortBy, setSortBy] = useState<string>("alphabetical")
 
+  const handleIndustryChange = (value: string) => {
+    console.log("[v0] Industry dropdown changed to:", value)
+    setIndustryFilter(value)
+  }
+
+  const handleStatusChange = (value: string) => {
+    console.log("[v0] Status dropdown changed to:", value)
+    setStatusFilter(value)
+  }
+
+  const handleSortChange = (value: string) => {
+    console.log("[v0] Sort dropdown changed to:", value)
+    setSortBy(value)
+  }
+
   const [localInputs, setLocalInputs] = useState({
     researchNotes: "",
     aovInput: "",
@@ -1013,16 +1028,20 @@ export default function OpportunitiesV2() {
             </div>
 
             {/* Industry */}
-            <Select value={industryFilter} onValueChange={setIndustryFilter}>
+            <Select value={industryFilter} onValueChange={handleIndustryChange}>
               <SelectTrigger className="w-[200px] bg-white/5 border-white/10 text-white">
                 <SelectValue placeholder="All Industries" />
               </SelectTrigger>
               <SelectContent className="bg-[#111] border-white/10">
-                <SelectItem value="all" className="text-white hover:bg-white/10">
+                <SelectItem value="all" className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white">
                   All Industries
                 </SelectItem>
                 {industries.map((ind) => (
-                  <SelectItem key={ind.id} value={ind.id} className="text-white hover:bg-white/10">
+                  <SelectItem
+                    key={ind.id}
+                    value={ind.id}
+                    className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white"
+                  >
                     {ind.name}
                   </SelectItem>
                 ))}
@@ -1030,16 +1049,20 @@ export default function OpportunitiesV2() {
             </Select>
 
             {/* Status */}
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={handleStatusChange}>
               <SelectTrigger className="w-[200px] bg-white/5 border-white/10 text-white">
                 <SelectValue placeholder="All Statuses" />
               </SelectTrigger>
               <SelectContent className="bg-[#111] border-white/10">
-                <SelectItem value="all" className="text-white hover:bg-white/10">
+                <SelectItem value="all" className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white">
                   All Statuses
                 </SelectItem>
                 {STATUSES.map((status) => (
-                  <SelectItem key={status} value={status} className="text-white hover:bg-white/10">
+                  <SelectItem
+                    key={status}
+                    value={status}
+                    className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white"
+                  >
                     {status}
                   </SelectItem>
                 ))}
@@ -1047,19 +1070,25 @@ export default function OpportunitiesV2() {
             </Select>
 
             {/* Sort */}
-            <Select value={sortBy} onValueChange={setSortBy}>
+            <Select value={sortBy} onValueChange={handleSortChange}>
               <SelectTrigger className="w-[200px] bg-white/5 border-white/10 text-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-[#111] border-white/10">
-                <SelectItem value="alphabetical" className="text-white hover:bg-white/10">
+                <SelectItem
+                  value="alphabetical"
+                  className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white"
+                >
                   Alphabetical
                 </SelectItem>
-                <SelectItem value="status" className="text-white hover:bg-white/10">
+                <SelectItem value="status" className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white">
                   Status Order
                 </SelectItem>
-                <SelectItem value="potential" className="text-white hover:bg-white/10">
-                  Highest Potential Value
+                <SelectItem
+                  value="potential"
+                  className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white"
+                >
+                  Potential Value
                 </SelectItem>
               </SelectContent>
             </Select>
