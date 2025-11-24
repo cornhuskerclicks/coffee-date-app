@@ -25,17 +25,16 @@ type Niche = {
 export default function OpportunitiesPage() {
   const [allNiches, setAllNiches] = useState<Niche[]>([])
   const [loading, setLoading] = useState(true)
-
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedIndustry, setSelectedIndustry] = useState("all")
   const [selectedStatus, setSelectedStatus] = useState("all")
   const [sortBy, setSortBy] = useState("alphabetical")
   const [favouritesOnly, setFavouritesOnly] = useState(false)
-
   const [selectedNiche, setSelectedNiche] = useState<Niche | null>(null)
 
   const supabase = createClient()
 
+  // Load all data once on mount
   useEffect(() => {
     async function loadAllData() {
       try {
@@ -73,6 +72,7 @@ export default function OpportunitiesPage() {
 
         const stateMap = new Map(userStates.map((state) => [state.niche_id, state]))
 
+        // Merge everything into enriched niches
         const enrichedNiches: Niche[] = (nichesData || []).map((niche: any) => {
           const userState = stateMap.get(niche.id)
           const industryName = industryMap.get(niche.industry_id) || "Unknown"
@@ -100,14 +100,17 @@ export default function OpportunitiesPage() {
     loadAllData()
   }, [])
 
+  // Get unique industries from all niches
   const industries = useMemo(() => {
     const unique = Array.from(new Set(allNiches.map((n) => n.industry_name)))
     return unique.sort()
   }, [allNiches])
 
+  // Client-side filtering
   const filteredNiches = useMemo(() => {
     let result = [...allNiches]
 
+    // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
       result = result.filter(
@@ -115,10 +118,12 @@ export default function OpportunitiesPage() {
       )
     }
 
+    // Industry filter
     if (selectedIndustry !== "all") {
       result = result.filter((n) => n.industry_name === selectedIndustry)
     }
 
+    // Status filter
     if (selectedStatus !== "all") {
       if (selectedStatus === "none") {
         result = result.filter((n) => n.status === null)
@@ -127,10 +132,12 @@ export default function OpportunitiesPage() {
       }
     }
 
+    // Favourites filter
     if (favouritesOnly) {
       result = result.filter((n) => n.is_favourite === true)
     }
 
+    // Sorting
     if (sortBy === "alphabetical") {
       result.sort((a, b) => a.niche_name.localeCompare(b.niche_name))
     } else if (sortBy === "industry") {
@@ -146,6 +153,7 @@ export default function OpportunitiesPage() {
     return result
   }, [allNiches, searchQuery, selectedIndustry, selectedStatus, favouritesOnly, sortBy])
 
+  // Toggle favourite handler
   const handleToggleFavourite = async (nicheId: string) => {
     try {
       const {
@@ -158,14 +166,16 @@ export default function OpportunitiesPage() {
 
       const newFavouriteStatus = !niche.is_favourite
 
+      // Optimistic update
       setAllNiches((prev) => prev.map((n) => (n.id === nicheId ? { ...n, is_favourite: newFavouriteStatus } : n)))
 
+      // Update in database
       const { error } = await supabase.from("niche_user_state").upsert(
         {
           user_id: user.id,
           niche_id: nicheId,
           is_favourite: newFavouriteStatus,
-          status: niche.status || DEFAULT_STATUS, // Use default status if none exists
+          status: niche.status || DEFAULT_STATUS,
           updated_at: new Date().toISOString(),
         },
         {
@@ -175,6 +185,7 @@ export default function OpportunitiesPage() {
 
       if (error) {
         console.error("Error toggling favourite:", error)
+        // Revert on error
         setAllNiches((prev) => prev.map((n) => (n.id === nicheId ? { ...n, is_favourite: !newFavouriteStatus } : n)))
       }
     } catch (error) {
