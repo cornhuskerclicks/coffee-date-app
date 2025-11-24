@@ -224,8 +224,16 @@ export default function OpportunitiesPage() {
               <Label className="text-sm text-gray-400 mb-2 block">Industry</Label>
               <Select
                 value={industryFilter}
-                onValueChange={(value) => {
-                  console.log("[v0] Industry dropdown changed to:", value)
+                onValueChange={(value: string) => {
+                  console.log("[v0] Industry dropdown RAW VALUE:", value)
+                  console.log(
+                    "[v0] Is UUID format?",
+                    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value),
+                  )
+
+                  const sampleIndustryIds = industries.slice(0, 3).map((i) => ({ id: i.id, name: i.name }))
+                  console.log("[v0] Sample industry IDs from data:", sampleIndustryIds)
+
                   setIndustryFilter(value)
                 }}
               >
@@ -234,11 +242,16 @@ export default function OpportunitiesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Industries</SelectItem>
-                  {industries.map((industry) => (
-                    <SelectItem key={industry.id} value={industry.id}>
-                      {industry.name}
-                    </SelectItem>
-                  ))}
+                  {industries.map((industry) => {
+                    if (industry.name === "Automotive") {
+                      console.log("[v0] Automotive industry mapping - ID:", industry.id, "Name:", industry.name)
+                    }
+                    return (
+                      <SelectItem key={industry.id} value={industry.id}>
+                        {industry.name}
+                      </SelectItem>
+                    )
+                  })}
                 </SelectContent>
               </Select>
             </div>
