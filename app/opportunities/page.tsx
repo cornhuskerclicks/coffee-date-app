@@ -247,7 +247,12 @@ export default function OpportunitiesPage() {
               <Select
                 value={selectedIndustryId}
                 onValueChange={(val) => {
-                  console.log("SELECTED INDUSTRY VALUE RAW:", JSON.stringify(val))
+                  console.log("SELECTED INDUSTRY VALUE RAW:", val)
+                  console.log("SELECTED INDUSTRY VALUE TYPE:", typeof val)
+                  console.log(
+                    "IS UUID FORMAT:",
+                    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val),
+                  )
                   setSelectedIndustryId(val)
                 }}
               >
