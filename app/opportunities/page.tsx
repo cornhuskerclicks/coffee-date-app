@@ -137,6 +137,10 @@ export default function OpportunitiesPage() {
   }, [])
 
   const filteredNiches = useMemo(() => {
+    console.log("DEBUG SelectedIndustryId:", selectedIndustryId)
+    console.log("DEBUG Sample industry_id from enriched data:", allNiches[0]?.industry_id)
+    console.log("DEBUG Distinct loaded industry_ids:", [...new Set(allNiches.map((n) => n.industry_id))].slice(0, 10))
+
     console.log("[opps] Starting filter – total niches:", allNiches.length)
     let result = [...allNiches]
 
@@ -240,7 +244,13 @@ export default function OpportunitiesPage() {
               <Label htmlFor="industry" className="text-sm text-gray-400 mb-2 block">
                 Industry
               </Label>
-              <Select value={selectedIndustryId} onValueChange={setSelectedIndustryId}>
+              <Select
+                value={selectedIndustryId}
+                onValueChange={(val) => {
+                  console.log("SELECTED INDUSTRY VALUE RAW:", JSON.stringify(val))
+                  setSelectedIndustryId(val)
+                }}
+              >
                 <SelectTrigger className="h-10 bg-black border-white/20 text-white">
                   <SelectValue placeholder="All Industries" />
                 </SelectTrigger>
