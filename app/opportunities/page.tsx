@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Star, Search, Filter } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { getStatusOptions, getStatusConfig, DEFAULT_STATUS, type StatusValue } from "@/lib/status-map"
 
 type Niche = {
   id: string
@@ -16,12 +17,10 @@ type Niche = {
   industry_name: string
   scale: string
   database_size: string
-  status: string | null
+  status: StatusValue | null
   is_favourite: boolean
   created_at: string
 }
-
-const STATUS_OPTIONS = ["Research", "Shortlisted", "Outreach in Progress", "Coffee Date Demo", "Win"] as const
 
 export default function OpportunitiesPage() {
   const [allNiches, setAllNiches] = useState<Niche[]>([])
@@ -59,7 +58,6 @@ export default function OpportunitiesPage() {
 
         if (industriesError) throw industriesError
 
-        // Create industry lookup map
         const industryMap = new Map((industriesData || []).map((ind: any) => [ind.id, ind.name]))
 
         // Fetch user's niche states if logged in
@@ -73,7 +71,6 @@ export default function OpportunitiesPage() {
           userStates = statesData || []
         }
 
-        // Create user state lookup map
         const stateMap = new Map(userStates.map((state) => [state.niche_id, state]))
 
         const enrichedNiches: Niche[] = (nichesData || []).map((niche: any) => {
@@ -94,7 +91,7 @@ export default function OpportunitiesPage() {
 
         setAllNiches(enrichedNiches)
       } catch (error) {
-        console.error("[v0] Error loading data:", error)
+        console.error("Error loading data:", error)
       } finally {
         setLoading(false)
       }
@@ -111,7 +108,6 @@ export default function OpportunitiesPage() {
   const filteredNiches = useMemo(() => {
     let result = [...allNiches]
 
-    // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
       result = result.filter(
@@ -119,12 +115,10 @@ export default function OpportunitiesPage() {
       )
     }
 
-    // Industry filter
     if (selectedIndustry !== "all") {
       result = result.filter((n) => n.industry_name === selectedIndustry)
     }
 
-    // Status filter
     if (selectedStatus !== "all") {
       if (selectedStatus === "none") {
         result = result.filter((n) => n.status === null)
@@ -133,12 +127,10 @@ export default function OpportunitiesPage() {
       }
     }
 
-    // Favourites filter
     if (favouritesOnly) {
       result = result.filter((n) => n.is_favourite === true)
     }
 
-    // Sorting
     if (sortBy === "alphabetical") {
       result.sort((a, b) => a.niche_name.localeCompare(b.niche_name))
     } else if (sortBy === "industry") {
@@ -166,15 +158,14 @@ export default function OpportunitiesPage() {
 
       const newFavouriteStatus = !niche.is_favourite
 
-      // Optimistically update local state
       setAllNiches((prev) => prev.map((n) => (n.id === nicheId ? { ...n, is_favourite: newFavouriteStatus } : n)))
 
-      // Sync to database
       const { error } = await supabase.from("niche_user_state").upsert(
         {
           user_id: user.id,
           niche_id: nicheId,
           is_favourite: newFavouriteStatus,
+          status: niche.status || DEFAULT_STATUS, // Use default status if none exists
           updated_at: new Date().toISOString(),
         },
         {
@@ -183,12 +174,11 @@ export default function OpportunitiesPage() {
       )
 
       if (error) {
-        console.error("[v0] Error toggling favourite:", error)
-        // Revert on error
+        console.error("Error toggling favourite:", error)
         setAllNiches((prev) => prev.map((n) => (n.id === nicheId ? { ...n, is_favourite: !newFavouriteStatus } : n)))
       }
     } catch (error) {
-      console.error("[v0] Error in handleToggleFavourite:", error)
+      console.error("Error in handleToggleFavourite:", error)
     }
   }
 
@@ -257,7 +247,7 @@ export default function OpportunitiesPage() {
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="none">Not Started</SelectItem>
-                  {STATUS_OPTIONS.map((status) => (
+                  {getStatusOptions().map((status) => (
                     <SelectItem key={status} value={status}>
                       {status}
                     </SelectItem>
@@ -331,68 +321,62 @@ export default function OpportunitiesPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredNiches.map((niche) => (
-                  <div
-                    key={niche.id}
-                    onClick={() => setSelectedNiche(niche)}
-                    className={cn(
-                      "bg-white/5 backdrop-blur-sm rounded-lg p-5 border border-white/10",
-                      "hover:bg-white/10 transition-all cursor-pointer",
-                      selectedNiche?.id === niche.id && "ring-2 ring-[#00A8FF] border-[#00A8FF]/50",
-                    )}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="font-semibold text-white text-sm leading-tight flex-1">
-                        <span className="text-[#00A8FF]">[{niche.industry_name}]</span> {niche.niche_name}
-                      </h3>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleToggleFavourite(niche.id)
-                        }}
-                        className="ml-2 flex-shrink-0"
-                      >
-                        <Star
-                          className={cn(
-                            "h-4 w-4 transition-colors",
-                            niche.is_favourite
-                              ? "fill-yellow-400 text-yellow-400"
-                              : "text-gray-400 hover:text-yellow-400",
-                          )}
-                        />
-                      </button>
-                    </div>
+                {filteredNiches.map((niche) => {
+                  const statusConfig = getStatusConfig(niche.status)
 
-                    <div className="space-y-2 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-400">Scale:</span>
-                        <span className="text-gray-300">{niche.scale}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-400">Database:</span>
-                        <span className="text-gray-300">{niche.database_size}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-2 border-t border-white/10">
-                        <span className="text-gray-400">Status:</span>
-                        <span
-                          className={cn(
-                            "px-2 py-0.5 rounded text-xs font-medium",
-                            niche.status === "Win" && "bg-green-500/20 text-green-400",
-                            niche.status === "Coffee Date Demo" && "bg-purple-500/20 text-purple-400",
-                            niche.status === "Outreach in Progress" && "bg-blue-500/20 text-blue-400",
-                            niche.status === "Shortlisted" && "bg-yellow-500/20 text-yellow-400",
-                            niche.status === "Research" && "bg-cyan-500/20 text-cyan-400",
-                            !niche.status && "bg-gray-500/20 text-gray-400",
-                          )}
+                  return (
+                    <div
+                      key={niche.id}
+                      onClick={() => setSelectedNiche(niche)}
+                      className={cn(
+                        "bg-white/5 backdrop-blur-sm rounded-lg p-5 border border-white/10",
+                        "hover:bg-white/10 transition-all cursor-pointer",
+                        selectedNiche?.id === niche.id && "ring-2 ring-[#00A8FF] border-[#00A8FF]/50",
+                      )}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <h3 className="font-semibold text-white text-sm leading-tight flex-1">
+                          <span className="text-[#00A8FF]">[{niche.industry_name}]</span> {niche.niche_name}
+                        </h3>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleToggleFavourite(niche.id)
+                          }}
+                          className="ml-2 flex-shrink-0"
                         >
-                          {niche.status || "Not Started"}
-                        </span>
+                          <Star
+                            className={cn(
+                              "h-4 w-4 transition-colors",
+                              niche.is_favourite
+                                ? "fill-yellow-400 text-yellow-400"
+                                : "text-gray-400 hover:text-yellow-400",
+                            )}
+                          />
+                        </button>
+                      </div>
+
+                      <div className="space-y-2 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-400">Scale:</span>
+                          <span className="text-gray-300">{niche.scale}</span>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-400">Database:</span>
+                          <span className="text-gray-300">{niche.database_size}</span>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                          <span className="text-gray-400">Status:</span>
+                          <span className={cn("px-2 py-0.5 rounded text-xs font-medium", statusConfig.color)}>
+                            {statusConfig.label}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </>
