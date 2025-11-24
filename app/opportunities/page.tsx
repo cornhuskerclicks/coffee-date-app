@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,14 +27,12 @@ export default function OpportunitiesPage() {
   const [allNiches, setAllNiches] = useState<Niche[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Filter states
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedIndustry, setSelectedIndustry] = useState("all")
   const [selectedStatus, setSelectedStatus] = useState("all")
   const [sortBy, setSortBy] = useState("alphabetical")
   const [favouritesOnly, setFavouritesOnly] = useState(false)
 
-  const [industries, setIndustries] = useState<string[]>([])
   const [selectedNiche, setSelectedNiche] = useState<Niche | null>(null)
 
   const supabase = createClient()
@@ -43,13 +41,10 @@ export default function OpportunitiesPage() {
     async function loadAllData() {
       try {
         setLoading(true)
-        console.log("[v0] Loading all niches from database...")
 
-        // Get current user
         const {
           data: { user },
         } = await supabase.auth.getUser()
-        console.log("[v0] Current user:", user?.id)
 
         // Fetch ALL niches
         const { data: nichesData, error: nichesError } = await supabase
@@ -57,20 +52,12 @@ export default function OpportunitiesPage() {
           .select("*")
           .order("niche_name", { ascending: true })
 
-        if (nichesError) {
-          console.error("[v0] Error loading niches:", nichesError)
-          throw nichesError
-        }
-        console.log("[v0] Loaded niches:", nichesData?.length)
+        if (nichesError) throw nichesError
 
         // Fetch ALL industries
         const { data: industriesData, error: industriesError } = await supabase.from("industries").select("*")
 
-        if (industriesError) {
-          console.error("[v0] Error loading industries:", industriesError)
-          throw industriesError
-        }
-        console.log("[v0] Loaded industries:", industriesData?.length)
+        if (industriesError) throw industriesError
 
         // Create industry lookup map
         const industryMap = new Map((industriesData || []).map((ind: any) => [ind.id, ind.name]))
@@ -78,17 +65,12 @@ export default function OpportunitiesPage() {
         // Fetch user's niche states if logged in
         let userStates: any[] = []
         if (user) {
-          const { data: statesData, error: statesError } = await supabase
+          const { data: statesData } = await supabase
             .from("niche_user_state")
             .select("niche_id, status, is_favourite")
             .eq("user_id", user.id)
 
-          if (statesError) {
-            console.error("[v0] Error loading user states:", statesError)
-          } else {
-            userStates = statesData || []
-            console.log("[v0] Loaded user states:", userStates.length)
-          }
+          userStates = statesData || []
         }
 
         // Create user state lookup map
@@ -110,16 +92,9 @@ export default function OpportunitiesPage() {
           }
         })
 
-        console.log("[v0] Enriched niches:", enrichedNiches.length)
-        console.log("[v0] Sample niche:", enrichedNiches[0])
         setAllNiches(enrichedNiches)
-
-        // Extract unique industries for filter dropdown
-        const uniqueIndustries = Array.from(new Set(enrichedNiches.map((n) => n.industry_name))).sort()
-        setIndustries(uniqueIndustries)
-        console.log("[v0] Unique industries:", uniqueIndustries.length)
       } catch (error) {
-        console.error("[v0] Fatal error loading data:", error)
+        console.error("[v0] Error loading data:", error)
       } finally {
         setLoading(false)
       }
@@ -128,95 +103,73 @@ export default function OpportunitiesPage() {
     loadAllData()
   }, [])
 
-  const filteredNiches = (() => {
-    console.log("[v0] === FILTERING START ===")
-    console.log("[v0] Total niches:", allNiches.length)
-    console.log("[v0] Search query:", searchQuery)
-    console.log("[v0] Selected industry:", selectedIndustry)
-    console.log("[v0] Selected status:", selectedStatus)
-    console.log("[v0] Favourites only:", favouritesOnly)
+  const industries = useMemo(() => {
+    const unique = Array.from(new Set(allNiches.map((n) => n.industry_name)))
+    return unique.sort()
+  }, [allNiches])
 
-    let filtered = [...allNiches]
+  const filteredNiches = useMemo(() => {
+    let result = [...allNiches]
 
-    // Apply search filter
+    // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
-      const beforeCount = filtered.length
-      filtered = filtered.filter(
+      result = result.filter(
         (n) => n.niche_name.toLowerCase().includes(query) || n.industry_name.toLowerCase().includes(query),
       )
-      console.log("[v0] After search filter:", filtered.length, "(removed", beforeCount - filtered.length, ")")
     }
 
-    // Apply industry filter
+    // Industry filter
     if (selectedIndustry !== "all") {
-      const beforeCount = filtered.length
-      console.log("[v0] Filtering by industry:", selectedIndustry)
-      filtered = filtered.filter((n) => {
-        const matches = n.industry_name === selectedIndustry
-        if (!matches) {
-          console.log("[v0] Filtered out:", n.niche_name, "- industry:", n.industry_name)
-        }
-        return matches
-      })
-      console.log("[v0] After industry filter:", filtered.length, "(removed", beforeCount - filtered.length, ")")
+      result = result.filter((n) => n.industry_name === selectedIndustry)
     }
 
-    // Apply status filter
+    // Status filter
     if (selectedStatus !== "all") {
-      const beforeCount = filtered.length
       if (selectedStatus === "none") {
-        filtered = filtered.filter((n) => n.status === null)
+        result = result.filter((n) => n.status === null)
       } else {
-        filtered = filtered.filter((n) => n.status === selectedStatus)
+        result = result.filter((n) => n.status === selectedStatus)
       }
-      console.log("[v0] After status filter:", filtered.length, "(removed", beforeCount - filtered.length, ")")
     }
 
-    // Apply favourites filter
+    // Favourites filter
     if (favouritesOnly) {
-      const beforeCount = filtered.length
-      filtered = filtered.filter((n) => n.is_favourite === true)
-      console.log("[v0] After favourites filter:", filtered.length, "(removed", beforeCount - filtered.length, ")")
+      result = result.filter((n) => n.is_favourite === true)
     }
 
-    // Apply sorting
+    // Sorting
     if (sortBy === "alphabetical") {
-      filtered.sort((a, b) => a.niche_name.localeCompare(b.niche_name))
+      result.sort((a, b) => a.niche_name.localeCompare(b.niche_name))
     } else if (sortBy === "industry") {
-      filtered.sort((a, b) => {
+      result.sort((a, b) => {
         const indCompare = a.industry_name.localeCompare(b.industry_name)
         if (indCompare !== 0) return indCompare
         return a.niche_name.localeCompare(b.niche_name)
       })
     } else if (sortBy === "newest") {
-      filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     }
 
-    console.log("[v0] Final filtered count:", filtered.length)
-    console.log("[v0] === FILTERING END ===")
-    return filtered
-  })()
+    return result
+  }, [allNiches, searchQuery, selectedIndustry, selectedStatus, favouritesOnly, sortBy])
 
   const handleToggleFavourite = async (nicheId: string) => {
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser()
-      if (!user) {
-        console.log("[v0] No user logged in, cannot toggle favourite")
-        return
-      }
+      if (!user) return
 
       const niche = allNiches.find((n) => n.id === nicheId)
       if (!niche) return
 
       const newFavouriteStatus = !niche.is_favourite
 
-      // Optimistically update local state first
+      // Optimistically update local state
       setAllNiches((prev) => prev.map((n) => (n.id === nicheId ? { ...n, is_favourite: newFavouriteStatus } : n)))
 
-      // Then sync to database
+      // Sync to database
       const { error } = await supabase.from("niche_user_state").upsert(
         {
           user_id: user.id,
