@@ -11,170 +11,163 @@ import { Star, Search, Filter } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getStatusOptions, getStatusConfig, type StatusValue } from "@/lib/status-map"
 
-type Niche = {
+type NicheRow = {
   id: string
   niche_name: string
   industry_id: string
-  industry_name: string
-  scale: string
-  database_size: string
-  status: StatusValue | null
-  is_favourite: boolean
-  created_at: string
+  created_at: string | null
 }
 
+type IndustryRow = {
+  id: string
+  name: string
+}
+
+type NicheUserStateRow = {
+  niche_id: string
+  is_favourite: boolean | null
+  status: string | null
+  notes: string | null
+}
+
+type EnrichedNiche = NicheRow & {
+  industry_name: string
+  is_favourite: boolean
+  status: string | null
+  notes: string | null
+  scale: string
+  database_size: string
+}
+
+const ALL_INDUSTRIES = "all"
+const ALL_STATUSES = "all"
+
 export default function OpportunitiesPage() {
-  const ALL_INDUSTRIES = "all"
-
-  const [allNiches, setAllNiches] = useState<Niche[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedIndustryId, setSelectedIndustryId] = useState(ALL_INDUSTRIES)
-  const [selectedStatus, setSelectedStatus] = useState("all")
-  const [sortBy, setSortBy] = useState("alphabetical")
-  const [favouritesOnly, setFavouritesOnly] = useState(false)
-  const [selectedNiche, setSelectedNiche] = useState<Niche | null>(null)
-
   const supabase = createClient()
 
-  // Load all data once on mount
+  const [allNiches, setAllNiches] = useState<EnrichedNiche[]>([])
+  const [industries, setIndustries] = useState<IndustryRow[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const [selectedIndustryId, setSelectedIndustryId] = useState<string>(ALL_INDUSTRIES)
+  const [selectedStatus, setSelectedStatus] = useState<string>(ALL_STATUSES)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [favouritesOnly, setFavouritesOnly] = useState(false)
+  const [sortBy, setSortBy] = useState<"alphabetical" | "newest">("alphabetical")
+  const [selectedNiche, setSelectedNiche] = useState<EnrichedNiche | null>(null)
+
   useEffect(() => {
-    async function loadAllData() {
-      try {
-        setLoading(true)
+    const load = async () => {
+      setLoading(true)
 
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
+      const [{ data: nichesData, error: nichesError }, { data: industriesData, error: industriesError }] =
+        await Promise.all([
+          supabase
+            .from("niches")
+            .select("id, niche_name, industry_id, scale, database_size, created_at")
+            .order("niche_name", { ascending: true }),
+          supabase.from("industries").select("id, name").order("name", { ascending: true }),
+        ])
 
-        // Fetch ALL niches
-        const { data: nichesData, error: nichesError } = await supabase
-          .from("niches")
-          .select("*")
-          .order("niche_name", { ascending: true })
-
-        if (nichesError) throw nichesError
-
-        if (nichesData && nichesData.length > 0) {
-          console.log("[v0] Sample niche row:", nichesData[0])
-        }
-
-        // Fetch ALL industries
-        const { data: industriesData, error: industriesError } = await supabase.from("industries").select("*")
-
-        if (industriesError) throw industriesError
-
-        const industryMap = new Map((industriesData || []).map((ind: any) => [ind.id, ind.name]))
-
-        // Fetch user's niche states if logged in
-        let userStates: any[] = []
-        if (user) {
-          const { data: statesData } = await supabase
-            .from("niche_user_state")
-            .select("niche_id, status, is_favourite")
-            .eq("user_id", user.id)
-
-          userStates = statesData || []
-        }
-
-        const stateMap = new Map(userStates.map((state) => [state.niche_id, state]))
-
-        // Merge everything into enriched niches
-        const enrichedNiches: Niche[] = (nichesData || []).map((niche: any) => {
-          const state = stateMap.get(niche.id)
-
-          return {
-            id: niche.id,
-            niche_name: niche.niche_name,
-            industry_id: niche.industry_id, // 🔥 MUST be preserved exactly
-            industry_name: industryMap.get(niche.industry_id) || "Unknown",
-            scale: niche.scale || "Local",
-            database_size: niche.database_size || "Small",
-            created_at: niche.created_at,
-
-            // merge user_state but DO NOT overwrite niche fields
-            status: state?.status ?? null,
-            is_favourite: state?.is_favourite ?? false,
-          }
-        })
-
-        setAllNiches(enrichedNiches)
-
-        console.log("[v0] Sample enriched niche:", enrichedNiches[0])
-        console.log("[v0] Distinct industry_ids:", Array.from(new Set(enrichedNiches.map((n) => n.industry_id))))
-        console.log("[v0] Total loaded niches:", enrichedNiches.length)
-      } catch (error) {
-        console.error("Error loading data:", error)
-      } finally {
+      if (nichesError) {
+        console.error("[opps] niches error", nichesError)
         setLoading(false)
+        return
       }
+      if (industriesError) {
+        console.error("[opps] industries error", industriesError)
+        setLoading(false)
+        return
+      }
+
+      const { data: userStatesData, error: userStatesError } = await supabase
+        .from("niche_user_state")
+        .select("niche_id, is_favourite, status, notes")
+
+      if (userStatesError) {
+        console.error("[opps] niche_user_state error", userStatesError)
+      }
+
+      const inds = (industriesData ?? []) as IndustryRow[]
+      const niches = (nichesData ?? []) as NicheRow[]
+      const userStates = (userStatesData ?? []) as NicheUserStateRow[]
+
+      console.log("[opps] Loaded industries:", inds.length)
+      console.log("[opps] Loaded niches:", niches.length)
+
+      const industryMap = new Map<string, string>()
+      inds.forEach((i) => {
+        industryMap.set(i.id, i.name)
+      })
+
+      const userStateMap = new Map<string, NicheUserStateRow>()
+      userStates.forEach((s) => {
+        userStateMap.set(s.niche_id, s)
+      })
+
+      const enriched: EnrichedNiche[] = niches.map((n) => {
+        const state = userStateMap.get(n.id)
+
+        return {
+          id: n.id,
+          niche_name: n.niche_name,
+          industry_id: n.industry_id,
+          created_at: n.created_at,
+          scale: (n as any).scale || "Local",
+          database_size: (n as any).database_size || "Small",
+          industry_name: industryMap.get(n.industry_id) ?? "Unknown",
+          is_favourite: state?.is_favourite ?? false,
+          status: state?.status ?? null,
+          notes: state?.notes ?? "",
+        }
+      })
+
+      console.log("[opps] Sample enriched niche:", enriched[0])
+      console.log(
+        "[opps] Distinct industry_ids in enriched:",
+        Array.from(new Set(enriched.map((n) => n.industry_id))).slice(0, 10),
+      )
+
+      setIndustries(inds)
+      setAllNiches(enriched)
+      setLoading(false)
     }
 
-    loadAllData()
+    load()
   }, [])
 
-  const industries = useMemo(() => {
-    const industrySet = new Map<string, string>()
-    allNiches.forEach((n) => {
-      industrySet.set(n.industry_id, n.industry_name)
-    })
-    return Array.from(industrySet.entries())
-      .map(([id, name]) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name))
-  }, [allNiches])
-
-  // Client-side filtering
   const filteredNiches = useMemo(() => {
+    console.log("[opps] Starting filter – total niches:", allNiches.length)
     let result = [...allNiches]
-
-    console.log("[v0] Starting filter with", result.length, "niches")
-    console.log("[v0] Selected industry:", selectedIndustryId)
-
-    // Search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      result = result.filter(
-        (n) => n.niche_name.toLowerCase().includes(query) || n.industry_name.toLowerCase().includes(query),
-      )
-      console.log("[v0] After search:", result.length)
-    }
 
     if (selectedIndustryId !== ALL_INDUSTRIES) {
       result = result.filter((n) => n.industry_id === selectedIndustryId)
-      console.log("[v0] After industry filter:", result.length, "niches for industry:", selectedIndustryId)
+      console.log("[opps] After industry filter:", result.length, "niches (industryId:", selectedIndustryId, ")")
     }
 
-    // Status filter
-    if (selectedStatus !== "all") {
-      if (selectedStatus === "none") {
-        result = result.filter((n) => n.status === null)
-      } else {
-        result = result.filter((n) => n.status === selectedStatus)
-      }
+    if (selectedStatus !== ALL_STATUSES) {
+      result = result.filter((n) => n.status === selectedStatus)
     }
 
-    // Favourites filter
     if (favouritesOnly) {
-      result = result.filter((n) => n.is_favourite === true)
+      result = result.filter((n) => n.is_favourite)
     }
 
-    // Sorting
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      result = result.filter((n) => n.niche_name.toLowerCase().includes(q))
+    }
+
     if (sortBy === "alphabetical") {
       result.sort((a, b) => a.niche_name.localeCompare(b.niche_name))
-    } else if (sortBy === "industry") {
-      result.sort((a, b) => {
-        const indCompare = a.industry_name.localeCompare(b.industry_name)
-        if (indCompare !== 0) return indCompare
-        return a.niche_name.localeCompare(b.niche_name)
-      })
-    } else if (sortBy === "newest") {
-      result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    } else {
+      result.sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
     }
 
+    console.log("[opps] Final filtered niches:", result.length)
     return result
-  }, [allNiches, searchQuery, selectedIndustryId, selectedStatus, favouritesOnly, sortBy, ALL_INDUSTRIES])
+  }, [allNiches, selectedIndustryId, selectedStatus, favouritesOnly, searchQuery, sortBy])
 
-  // Toggle favourite handler
   const handleToggleFavourite = async (nicheId: string) => {
     try {
       const {
@@ -187,7 +180,6 @@ export default function OpportunitiesPage() {
 
       const newFavouriteStatus = !niche.is_favourite
 
-      // Optimistic update
       setAllNiches((prev) => prev.map((n) => (n.id === nicheId ? { ...n, is_favourite: newFavouriteStatus } : n)))
 
       const upsertData: any = {
@@ -197,11 +189,9 @@ export default function OpportunitiesPage() {
         updated_at: new Date().toISOString(),
       }
 
-      // Only include status if it already exists (to preserve existing status)
       if (niche.status) {
         upsertData.status = niche.status
       }
-      // If status is null, database DEFAULT will apply 'Research' for new rows
 
       const { error } = await supabase.from("niche_user_state").upsert(upsertData, {
         onConflict: "user_id,niche_id",
@@ -209,7 +199,6 @@ export default function OpportunitiesPage() {
 
       if (error) {
         console.error("Error toggling favourite:", error)
-        // Revert on error
         setAllNiches((prev) => prev.map((n) => (n.id === nicheId ? { ...n, is_favourite: !newFavouriteStatus } : n)))
       }
     } catch (error) {
@@ -219,7 +208,6 @@ export default function OpportunitiesPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Header */}
       <header className="border-b border-white/10">
         <div className="max-w-7xl mx-auto px-6 py-5">
           <h1 className="text-2xl font-bold text-white">Opportunities - Niche List</h1>
@@ -229,11 +217,9 @@ export default function OpportunitiesPage() {
         </div>
       </header>
 
-      {/* Filters Section */}
       <div className="border-b border-white/10 bg-white/5">
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {/* Search */}
             <div className="lg:col-span-2">
               <Label htmlFor="search" className="text-sm text-gray-400 mb-2 block">
                 Search Niches
@@ -242,7 +228,7 @@ export default function OpportunitiesPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   id="search"
-                  placeholder="Search by name or industry..."
+                  placeholder="Search by name..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 h-10 bg-black border-white/20 text-white placeholder:text-gray-500"
@@ -250,7 +236,6 @@ export default function OpportunitiesPage() {
               </div>
             </div>
 
-            {/* Industry Filter */}
             <div>
               <Label htmlFor="industry" className="text-sm text-gray-400 mb-2 block">
                 Industry
@@ -270,7 +255,6 @@ export default function OpportunitiesPage() {
               </Select>
             </div>
 
-            {/* Status Filter */}
             <div>
               <Label htmlFor="status" className="text-sm text-gray-400 mb-2 block">
                 Status
@@ -280,7 +264,7 @@ export default function OpportunitiesPage() {
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value={ALL_STATUSES}>All Statuses</SelectItem>
                   <SelectItem value="none">Not Started</SelectItem>
                   {getStatusOptions().map((status) => (
                     <SelectItem key={status} value={status}>
@@ -291,25 +275,22 @@ export default function OpportunitiesPage() {
               </Select>
             </div>
 
-            {/* Sort */}
             <div>
               <Label htmlFor="sort" className="text-sm text-gray-400 mb-2 block">
                 Sort By
               </Label>
-              <Select value={sortBy} onValueChange={setSortBy}>
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as "alphabetical" | "newest")}>
                 <SelectTrigger className="h-10 bg-black border-white/20 text-white">
                   <SelectValue placeholder="Sort by..." />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="alphabetical">Alphabetical</SelectItem>
-                  <SelectItem value="industry">By Industry</SelectItem>
                   <SelectItem value="newest">Newest First</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          {/* Favourites Checkbox */}
           <div className="mt-4 flex items-center gap-2">
             <Checkbox
               id="favourites"
@@ -324,7 +305,6 @@ export default function OpportunitiesPage() {
         </div>
       </div>
 
-      {/* Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         {loading ? (
           <div className="text-center py-12">
@@ -347,7 +327,7 @@ export default function OpportunitiesPage() {
                   onClick={() => {
                     setSearchQuery("")
                     setSelectedIndustryId(ALL_INDUSTRIES)
-                    setSelectedStatus("all")
+                    setSelectedStatus(ALL_STATUSES)
                     setFavouritesOnly(false)
                   }}
                 >
@@ -357,7 +337,7 @@ export default function OpportunitiesPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {filteredNiches.map((niche) => {
-                  const statusConfig = getStatusConfig(niche.status)
+                  const statusConfig = getStatusConfig(niche.status as StatusValue)
 
                   return (
                     <div
