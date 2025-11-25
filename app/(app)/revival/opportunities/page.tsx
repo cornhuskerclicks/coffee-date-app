@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { createBrowserClient } from "@supabase/ssr"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -13,6 +14,7 @@ import {
   X,
   Search,
   ChevronRight,
+  ChevronDown,
   CheckCircle,
   Target,
   MessageSquare,
@@ -25,17 +27,53 @@ import {
   Zap,
   Flame,
   Snowflake,
+  BookOpen,
+  FileText,
+  Send,
+  Trophy,
+  Lock,
+  Minus,
+  Plus,
+  Coffee,
+  Calculator,
+  UserCheck,
+  Loader2,
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { toast } from "sonner"
 
-const STATUSES = ["Research", "Shortlisted", "Outreach in Progress", "Coffee Date Demo", "Win"]
+const PIPELINE_STAGES = [
+  { id: "research", label: "Research", icon: BookOpen },
+  { id: "shortlisted", label: "Shortlisted", icon: Target },
+  { id: "outreach_in_progress", label: "Outreach in Progress", icon: Send },
+  { id: "coffee_date_demo", label: "Coffee Date Demo", icon: Coffee },
+  { id: "win", label: "Win", icon: Trophy },
+]
+
+const STAGE_TO_DB_STATUS: Record<string, string> = {
+  research: "Research",
+  shortlisted: "Shortlisted",
+  outreach_in_progress: "Outreach in Progress",
+  coffee_date_demo: "Coffee Date Demo",
+  win: "Win",
+}
+
+const DB_STATUS_TO_STAGE: Record<string, string> = {
+  Research: "research",
+  Shortlisted: "shortlisted",
+  "Outreach in Progress": "outreach_in_progress",
+  "Coffee Date Demo": "coffee_date_demo",
+  Win: "win",
+}
 
 const STAGE_SCORES: Record<string, number> = {
-  Research: 10,
-  Shortlisted: 25,
-  "Outreach in Progress": 40,
-  "Coffee Date Demo": 70,
-  Win: 100,
+  research: 10,
+  shortlisted: 25,
+  outreach_in_progress: 40,
+  coffee_date_demo: 70,
+  win: 100,
 }
 
 // Define the structure for industry
@@ -46,17 +84,12 @@ type Industry = {
 
 // Define the structure for outreach_channels
 type OutreachChannels = {
-  LinkedIn?: number
-  Facebook?: number
-  "Cold Calling"?: number
-  Email?: number
   linkedin_messages?: number
-  facebook_groups?: number
   facebook_dms?: number
   cold_calls?: number
+  emails?: number
   meetings_booked?: number
   objections?: string | null
-  emails?: number
 }
 
 // Define the structure for niche_user_state
@@ -120,6 +153,54 @@ type AISuggestions = {
   suggestion: string
 }
 
+function getStageGating(userState: NicheUserState | null): {
+  canMoveToShortlisted: boolean
+  canMoveToOutreach: boolean
+  canMoveToCoffeeDate: boolean
+  canMoveToWin: boolean
+  shortlistedReason: string
+  outreachReason: string
+  coffeeDateReason: string
+  winReason: string
+} {
+  if (!userState) {
+    return {
+      canMoveToShortlisted: false,
+      canMoveToOutreach: false,
+      canMoveToCoffeeDate: false,
+      canMoveToWin: false,
+      shortlistedReason: "Complete Research tasks first",
+      outreachReason: "Mark messaging as prepared to move to Outreach",
+      coffeeDateReason: "Log at least one outreach activity to move forward",
+      winReason: "Complete coffee date demo first",
+    }
+  }
+
+  const researchComplete =
+    userState.research_notes_added === true &&
+    userState.customer_profile_generated === true &&
+    userState.aov_calculator_completed === true
+
+  const messagingComplete = userState.messaging_prepared === true
+
+  const outreachComplete = (userState.outreach_messages_sent || 0) > 0
+
+  const coffeeDateComplete = userState.coffee_date_completed === true
+
+  return {
+    canMoveToShortlisted: researchComplete,
+    canMoveToOutreach: messagingComplete,
+    canMoveToCoffeeDate: outreachComplete,
+    canMoveToWin: coffeeDateComplete,
+    shortlistedReason: researchComplete
+      ? ""
+      : "Add research notes, complete AOV calculator, and generate customer profile first",
+    outreachReason: messagingComplete ? "" : "Mark messaging as prepared to move to Outreach",
+    coffeeDateReason: outreachComplete ? "" : "Log at least one outreach activity to move forward",
+    winReason: coffeeDateComplete ? "" : "Complete coffee date demo first",
+  }
+}
+
 function calculatePipelineScore(userState: NicheUserState | null): {
   stageScore: number
   activityScore: number
@@ -129,11 +210,10 @@ function calculatePipelineScore(userState: NicheUserState | null): {
     return { stageScore: 10, activityScore: 0, pipelineScore: 10 }
   }
 
-  // Stage Score
   const status = userState.status || "Research"
-  const stageScore = STAGE_SCORES[status] ?? 10
+  const stageId = DB_STATUS_TO_STAGE[status] || "research"
+  const stageScore = STAGE_SCORES[stageId] ?? 10
 
-  // Activity Score from outreach_channels
   const channels = userState.outreach_channels || {}
   const totalActivity =
     (channels.linkedin_messages || 0) +
@@ -169,7 +249,6 @@ function getAutomationAlerts(
     (channels.cold_calls || 0) +
     (channels.emails || 0)
 
-  // Check for stale leads
   if (userState.updated_at) {
     const lastUpdate = new Date(userState.updated_at)
     const daysSinceUpdate = Math.floor((Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24))
@@ -182,17 +261,14 @@ function getAutomationAlerts(
     }
   }
 
-  // Check for low activity in outreach
   if (status === "Outreach in Progress" && totalActivity < 5) {
     alerts.push({ type: "info", message: "Low outreach activity - increase touchpoints" })
   }
 
-  // Check for stuck in research
   if (status === "Research" && userState.aov_calculator_completed && userState.customer_profile_generated) {
     alerts.push({ type: "info", message: "Research complete - ready to shortlist" })
   }
 
-  // Positive alert for high activity
   if (totalActivity >= 15) {
     alerts.push({ type: "success", message: "Strong engagement - prioritize follow-ups" })
   }
@@ -211,10 +287,16 @@ export default function OpportunitiesV2() {
   const [industryFilter, setIndustryFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [favouritesOnly, setFavouritesOnly] = useState(false)
-  const [sortBy, setSortBy] = useState<string>("score") // Default sort by pipeline score
+  const [sortBy, setSortBy] = useState<string>("score")
 
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestions | null>(null)
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+
+  const [researchOpen, setResearchOpen] = useState(true)
+  const [messagingOpen, setMessagingOpen] = useState(false)
+  const [outreachOpen, setOutreachOpen] = useState(false)
+
+  const [savingField, setSavingField] = useState<string | null>(null)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -266,17 +348,9 @@ export default function OpportunitiesV2() {
       return
     }
 
-    // Load niches with user state
     const { data: niches, error } = await supabase
       .from("niches")
-      .select(`
-        id,
-        niche_name,
-        industry_id,
-        scale,
-        database_size,
-        default_priority
-      `)
+      .select(`id, niche_name, industry_id, scale, database_size, default_priority`)
       .order("niche_name")
       .limit(1000)
 
@@ -285,13 +359,11 @@ export default function OpportunitiesV2() {
       return
     }
 
-    // Load user states
     const { data: userStates } = await supabase.from("niche_user_state").select("*").eq("user_id", user.id)
 
     const stateMap = new Map<string, NicheUserState>()
     userStates?.forEach((state) => stateMap.set(state.niche_id, state))
 
-    // Enrich niches with user state and industry
     const enrichedNiches: Niche[] = niches.map((niche) => ({
       ...niche,
       industry: industryMap.get(niche.industry_id) || undefined,
@@ -323,7 +395,6 @@ export default function OpportunitiesV2() {
   useEffect(() => {
     let filtered = [...allNiches]
 
-    // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(
@@ -333,17 +404,14 @@ export default function OpportunitiesV2() {
       )
     }
 
-    // Industry filter
     if (industryFilter !== "all") {
       filtered = filtered.filter((n) => n.industry_id === industryFilter)
     }
 
-    // Status filter
     if (statusFilter !== "all") {
       filtered = filtered.filter((n) => (n.user_state?.status || "Research") === statusFilter)
     }
 
-    // Favourites filter
     if (favouritesOnly) {
       filtered = filtered.filter((n) => n.user_state?.is_favourite)
     }
@@ -369,6 +437,21 @@ export default function OpportunitiesV2() {
 
   const handleNicheSelect = (niche: Niche) => {
     setSelectedNiche(niche)
+    // Open the appropriate card based on current stage
+    const stageId = DB_STATUS_TO_STAGE[niche.user_state?.status || "Research"] || "research"
+    if (stageId === "research") {
+      setResearchOpen(true)
+      setMessagingOpen(false)
+      setOutreachOpen(false)
+    } else if (stageId === "shortlisted") {
+      setResearchOpen(false)
+      setMessagingOpen(true)
+      setOutreachOpen(false)
+    } else {
+      setResearchOpen(false)
+      setMessagingOpen(false)
+      setOutreachOpen(true)
+    }
   }
 
   const toggleFavourite = async (niche: Niche) => {
@@ -402,18 +485,145 @@ export default function OpportunitiesV2() {
     }
   }
 
-  const updateStatus = async (newStatus: string) => {
+  const updateField = async (field: string, value: any, showToast = true) => {
     if (!selectedNiche) return
     const {
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) return
 
+    setSavingField(field)
+
+    const updateData: any = {
+      niche_id: selectedNiche.id,
+      user_id: user.id,
+      [field]: value,
+      updated_at: new Date().toISOString(),
+    }
+
+    const { error } = await supabase.from("niche_user_state").upsert(updateData, { onConflict: "niche_id,user_id" })
+
+    setSavingField(null)
+
+    if (!error) {
+      const updatedNiche = {
+        ...selectedNiche,
+        user_state: { ...selectedNiche.user_state!, [field]: value, updated_at: new Date().toISOString() },
+      }
+      setSelectedNiche(updatedNiche)
+      setAllNiches((prev) => prev.map((n) => (n.id === selectedNiche.id ? updatedNiche : n)))
+      if (showToast) {
+        toast.success("Changes saved")
+      }
+    } else {
+      toast.error("Failed to save changes")
+    }
+  }
+
+  const progressToStage = async (targetStageId: string) => {
+    if (!selectedNiche) return
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    const gating = getStageGating(selectedNiche.user_state)
+    const currentStageId = DB_STATUS_TO_STAGE[selectedNiche.user_state?.status || "Research"] || "research"
+    const currentIdx = PIPELINE_STAGES.findIndex((s) => s.id === currentStageId)
+    const targetIdx = PIPELINE_STAGES.findIndex((s) => s.id === targetStageId)
+
+    // Check if we can move forward
+    if (targetIdx > currentIdx) {
+      if (targetStageId === "shortlisted" && !gating.canMoveToShortlisted) {
+        toast.error(gating.shortlistedReason)
+        return
+      }
+      if (targetStageId === "outreach_in_progress" && !gating.canMoveToOutreach) {
+        toast.error(gating.outreachReason)
+        return
+      }
+      if (targetStageId === "coffee_date_demo" && !gating.canMoveToCoffeeDate) {
+        toast.error(gating.coffeeDateReason)
+        return
+      }
+      if (targetStageId === "win" && !gating.canMoveToWin) {
+        toast.error(gating.winReason)
+        return
+      }
+    }
+
+    const dbStatus = STAGE_TO_DB_STATUS[targetStageId]
+
+    const updateData: any = {
+      niche_id: selectedNiche.id,
+      user_id: user.id,
+      status: dbStatus,
+      updated_at: new Date().toISOString(),
+    }
+
+    // Set boolean flags based on target stage
+    if (targetStageId === "win") {
+      updateData.win_completed = true
+    }
+
+    const { error } = await supabase.from("niche_user_state").upsert(updateData, { onConflict: "niche_id,user_id" })
+
+    if (!error) {
+      const updatedUserState = {
+        ...selectedNiche.user_state!,
+        status: dbStatus,
+        updated_at: new Date().toISOString(),
+        ...(targetStageId === "win" ? { win_completed: true } : {}),
+      }
+      const updatedNiche = { ...selectedNiche, user_state: updatedUserState }
+      setSelectedNiche(updatedNiche)
+      setAllNiches((prev) => prev.map((n) => (n.id === selectedNiche.id ? updatedNiche : n)))
+      fetchAiSuggestions(updatedNiche)
+      toast.success(`Moved to ${STAGE_TO_DB_STATUS[targetStageId]}`)
+
+      // Open the appropriate card
+      if (targetStageId === "shortlisted") {
+        setResearchOpen(false)
+        setMessagingOpen(true)
+        setOutreachOpen(false)
+      } else if (
+        targetStageId === "outreach_in_progress" ||
+        targetStageId === "coffee_date_demo" ||
+        targetStageId === "win"
+      ) {
+        setResearchOpen(false)
+        setMessagingOpen(false)
+        setOutreachOpen(true)
+      }
+    }
+  }
+
+  const updateOutreachChannel = async (channel: keyof OutreachChannels, delta: number) => {
+    if (!selectedNiche) return
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    const currentChannels = selectedNiche.user_state?.outreach_channels || {}
+    const currentValue = (currentChannels[channel] as number) || 0
+    const newValue = Math.max(0, currentValue + delta)
+
+    const newChannels = { ...currentChannels, [channel]: newValue }
+
+    // Calculate total messages sent
+    const totalSent =
+      (newChannels.linkedin_messages || 0) +
+      (newChannels.facebook_dms || 0) +
+      (newChannels.cold_calls || 0) +
+      (newChannels.emails || 0)
+
     const { error } = await supabase.from("niche_user_state").upsert(
       {
         niche_id: selectedNiche.id,
         user_id: user.id,
-        status: newStatus,
+        outreach_channels: newChannels,
+        outreach_messages_sent: totalSent,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "niche_id,user_id" },
@@ -422,410 +632,880 @@ export default function OpportunitiesV2() {
     if (!error) {
       const updatedNiche = {
         ...selectedNiche,
-        user_state: { ...selectedNiche.user_state!, status: newStatus, updated_at: new Date().toISOString() },
+        user_state: {
+          ...selectedNiche.user_state!,
+          outreach_channels: newChannels,
+          outreach_messages_sent: totalSent,
+          updated_at: new Date().toISOString(),
+        },
       }
       setSelectedNiche(updatedNiche)
       setAllNiches((prev) => prev.map((n) => (n.id === selectedNiche.id ? updatedNiche : n)))
-      // Refetch AI suggestions for new status
-      fetchAiSuggestions(updatedNiche)
     }
   }
 
-  const currentStatus = selectedNiche?.user_state?.status || "Research"
-  const currentStatusIndex = STATUSES.indexOf(currentStatus)
+  const currentStageId = DB_STATUS_TO_STAGE[selectedNiche?.user_state?.status || "Research"] || "research"
+  const currentStageIndex = PIPELINE_STAGES.findIndex((s) => s.id === currentStageId)
+  const stageGating = getStageGating(selectedNiche?.user_state || null)
 
   const selectedNicheScore = selectedNiche ? calculatePipelineScore(selectedNiche.user_state) : null
   const selectedNicheTier = selectedNicheScore ? getPriorityTier(selectedNicheScore.pipelineScore) : "cold"
   const selectedNicheAlerts = selectedNiche ? getAutomationAlerts(selectedNiche.user_state) : []
 
   return (
-    <div className="flex-1 p-6 space-y-6">
-      {/* Filter Bar */}
-      <div className="flex flex-wrap items-center gap-4 p-4 bg-zinc-900/50 rounded-xl border border-white/10">
-        {/* Search */}
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-          <Input
-            placeholder="Search niches..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-zinc-800 border-zinc-700 text-white placeholder:text-white/40"
-          />
-        </div>
+    <TooltipProvider>
+      <div className="flex-1 p-6 space-y-6">
+        {/* Filter Bar */}
+        <div className="flex flex-wrap items-center gap-4 p-4 bg-zinc-900/50 rounded-xl border border-white/10">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+            <Input
+              placeholder="Search niches..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 bg-zinc-800 border-zinc-700 text-white placeholder:text-white/40"
+            />
+          </div>
 
-        {/* Industry Filter */}
-        <Select value={industryFilter} onValueChange={setIndustryFilter}>
-          <SelectTrigger className="w-[180px] bg-zinc-800 border-zinc-700 text-white">
-            <SelectValue placeholder="All Industries" />
-          </SelectTrigger>
-          <SelectContent className="bg-zinc-800 border-zinc-700">
-            <SelectItem value="all" className="text-white hover:bg-zinc-700">
-              All Industries
-            </SelectItem>
-            {industries.map((industry) => (
-              <SelectItem key={industry.id} value={industry.id} className="text-white hover:bg-zinc-700">
-                {industry.name}
+          <Select value={industryFilter} onValueChange={setIndustryFilter}>
+            <SelectTrigger className="w-[180px] bg-zinc-800 border-zinc-700 text-white">
+              <SelectValue placeholder="All Industries" />
+            </SelectTrigger>
+            <SelectContent className="bg-zinc-800 border-zinc-700">
+              <SelectItem value="all" className="text-white hover:bg-zinc-700">
+                All Industries
               </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+              {industries.map((industry) => (
+                <SelectItem key={industry.id} value={industry.id} className="text-white hover:bg-zinc-700">
+                  {industry.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        {/* Status Filter */}
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px] bg-zinc-800 border-zinc-700 text-white">
-            <SelectValue placeholder="All Statuses" />
-          </SelectTrigger>
-          <SelectContent className="bg-zinc-800 border-zinc-700">
-            <SelectItem value="all" className="text-white hover:bg-zinc-700">
-              All Statuses
-            </SelectItem>
-            {STATUSES.map((status) => (
-              <SelectItem key={status} value={status} className="text-white hover:bg-zinc-700">
-                {status}
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px] bg-zinc-800 border-zinc-700 text-white">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent className="bg-zinc-800 border-zinc-700">
+              <SelectItem value="all" className="text-white hover:bg-zinc-700">
+                All Statuses
               </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+              {PIPELINE_STAGES.map((stage) => (
+                <SelectItem
+                  key={stage.id}
+                  value={STAGE_TO_DB_STATUS[stage.id]}
+                  className="text-white hover:bg-zinc-700"
+                >
+                  {stage.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        {/* Sort By */}
-        <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-[160px] bg-zinc-800 border-zinc-700 text-white">
-            <SelectValue placeholder="Sort by" />
-          </SelectTrigger>
-          <SelectContent className="bg-zinc-800 border-zinc-700">
-            <SelectItem value="score" className="text-white hover:bg-zinc-700">
-              Pipeline Score
-            </SelectItem>
-            <SelectItem value="alphabetical" className="text-white hover:bg-zinc-700">
-              Alphabetical
-            </SelectItem>
-            <SelectItem value="newest" className="text-white hover:bg-zinc-700">
-              Recently Updated
-            </SelectItem>
-          </SelectContent>
-        </Select>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[160px] bg-zinc-800 border-zinc-700 text-white">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent className="bg-zinc-800 border-zinc-700">
+              <SelectItem value="score" className="text-white hover:bg-zinc-700">
+                Pipeline Score
+              </SelectItem>
+              <SelectItem value="alphabetical" className="text-white hover:bg-zinc-700">
+                Alphabetical
+              </SelectItem>
+              <SelectItem value="newest" className="text-white hover:bg-zinc-700">
+                Recently Updated
+              </SelectItem>
+            </SelectContent>
+          </Select>
 
-        {/* Favourites Toggle */}
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="favourites"
-            checked={favouritesOnly}
-            onCheckedChange={(checked) => setFavouritesOnly(checked as boolean)}
-            className="border-zinc-600 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-          />
-          <Label htmlFor="favourites" className="text-white/70 text-sm cursor-pointer">
-            Favourites
-          </Label>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="favourites"
+              checked={favouritesOnly}
+              onCheckedChange={(checked) => setFavouritesOnly(checked === true)}
+              className="border-zinc-600 data-[state=checked]:bg-primary"
+            />
+            <Label htmlFor="favourites" className="text-sm text-white/80 cursor-pointer">
+              Favourites
+            </Label>
+          </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-12 gap-6">
-          {/* Niche List - Left Panel */}
-          <div className="col-span-5 space-y-3">
-            <h2 className="text-sm font-semibold text-white/60 px-2">
-              {filteredNiches.length} {filteredNiches.length === 1 ? "Niche" : "Niches"}
-            </h2>
-            <div className="space-y-2 max-h-[calc(100vh-220px)] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full">
-              {filteredNiches.map((niche) => {
-                const industry = niche.industry_id ? industryMap.get(niche.industry_id) : null
-                const industryName = industry?.name ?? "Unknown"
-                const { pipelineScore } = calculatePipelineScore(niche.user_state)
-                const tier = getPriorityTier(pipelineScore)
-                const alerts = getAutomationAlerts(niche.user_state)
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-12 gap-6">
+            {/* Niche List - Left */}
+            <div className="col-span-5 space-y-4">
+              <div className="text-sm text-white/60">{filteredNiches.length} Niches</div>
+              <div className="space-y-2 max-h-[calc(100vh-280px)] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full">
+                {filteredNiches.map((niche) => {
+                  const score = calculatePipelineScore(niche.user_state)
+                  const tier = getPriorityTier(score.pipelineScore)
+                  const stageId = DB_STATUS_TO_STAGE[niche.user_state?.status || "Research"] || "research"
+                  const stage = PIPELINE_STAGES.find((s) => s.id === stageId)
 
-                return (
-                  <Card
-                    key={niche.id}
-                    onClick={() => handleNicheSelect(niche)}
-                    className={cn(
-                      "w-full text-left px-4 py-3 rounded-xl border cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg",
-                      selectedNiche?.id === niche.id
-                        ? "bg-primary/10 border-primary shadow-lg shadow-primary/10"
-                        : tier === "hot"
-                          ? "bg-gradient-to-r from-orange-500/10 to-red-500/10 border-orange-500/30 hover:border-orange-500/50"
-                          : tier === "warm"
-                            ? "bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-yellow-500/30 hover:border-yellow-500/50"
-                            : "bg-zinc-900/50 border-white/10 hover:border-white/20",
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-medium text-white truncate">{niche.niche_name}</h3>
-                          {tier === "hot" && <Flame className="h-3.5 w-3.5 text-orange-400 shrink-0" />}
-                          {tier === "warm" && <TrendingUp className="h-3.5 w-3.5 text-yellow-400 shrink-0" />}
-                          {tier === "cold" && <Snowflake className="h-3.5 w-3.5 text-blue-400 shrink-0" />}
+                  return (
+                    <Card
+                      key={niche.id}
+                      onClick={() => handleNicheSelect(niche)}
+                      className={cn(
+                        "p-4 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 border",
+                        selectedNiche?.id === niche.id
+                          ? "border-primary bg-primary/10"
+                          : tier === "hot"
+                            ? "border-orange-500/30 bg-gradient-to-r from-orange-500/5 to-red-500/5 hover:border-orange-500/50"
+                            : tier === "warm"
+                              ? "border-yellow-500/30 bg-gradient-to-r from-yellow-500/5 to-orange-500/5 hover:border-yellow-500/50"
+                              : "border-white/10 bg-zinc-900/50 hover:border-white/20",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={cn(
+                                "flex items-center justify-center w-5 h-5 rounded-full text-[10px]",
+                                tier === "hot"
+                                  ? "bg-orange-500/20 text-orange-400"
+                                  : tier === "warm"
+                                    ? "bg-yellow-500/20 text-yellow-400"
+                                    : "bg-blue-500/20 text-blue-400",
+                              )}
+                            >
+                              {tier === "hot" && <Flame className="h-3 w-3" />}
+                              {tier === "warm" && <TrendingUp className="h-3 w-3" />}
+                              {tier === "cold" && <Snowflake className="h-3 w-3" />}
+                            </span>
+                            <h3 className="font-medium text-white truncate">{niche.niche_name}</h3>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <span className="text-xs text-white/40">
+                              {industryMap.get(niche.industry_id || "")?.name}
+                            </span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-white/60">
+                              {stage?.label || "Research"}
+                            </span>
+                            <span className="text-xs text-white/30">Score: {score.pipelineScore}</span>
+                          </div>
                         </div>
-                        <p className="text-xs text-white/60 mt-1">{industryName}</p>
-                        <div className="flex items-center gap-2 mt-2 flex-wrap">
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/70">
-                            {niche.user_state?.status || "Research"}
-                          </span>
-                          <span
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleFavourite(niche)
+                          }}
+                          className="shrink-0"
+                        >
+                          <Star
                             className={cn(
-                              "text-[10px] px-2 py-0.5 rounded-full font-medium",
-                              tier === "hot"
-                                ? "bg-orange-500/20 text-orange-400"
-                                : tier === "warm"
-                                  ? "bg-yellow-500/20 text-yellow-400"
-                                  : "bg-blue-500/20 text-blue-400",
+                              "h-4 w-4 transition-colors",
+                              niche.user_state?.is_favourite
+                                ? "fill-yellow-400 text-yellow-400"
+                                : "text-white/30 hover:text-white/50",
                             )}
-                          >
-                            Score: {pipelineScore}
-                          </span>
-                          {/* Alert indicator */}
-                          {alerts.some((a) => a.type === "warning") && (
-                            <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+                          />
+                        </button>
+                      </div>
+                    </Card>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Detail Panel - Right */}
+            <div className="col-span-7">
+              {selectedNiche ? (
+                <Card className="border border-white/10 bg-zinc-900/50 p-6 space-y-6 max-h-[calc(100vh-220px)] overflow-y-auto rounded-xl [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full">
+                  {/* Header */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <h2 className="text-xl font-bold text-white">{selectedNiche.niche_name}</h2>
+                        <span
+                          className={cn(
+                            "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold",
+                            selectedNicheTier === "hot"
+                              ? "bg-gradient-to-r from-orange-500 to-red-500 text-white"
+                              : selectedNicheTier === "warm"
+                                ? "bg-gradient-to-r from-yellow-500 to-orange-500 text-black"
+                                : "bg-gradient-to-r from-blue-500 to-cyan-500 text-white",
                           )}
+                        >
+                          {selectedNicheTier === "hot" && <Flame className="h-3 w-3" />}
+                          {selectedNicheTier === "warm" && <TrendingUp className="h-3 w-3" />}
+                          {selectedNicheTier === "cold" && <Snowflake className="h-3 w-3" />}
+                          {selectedNicheTier.toUpperCase()}
+                        </span>
+                      </div>
+                      <p className="text-sm text-white/60 mt-1">{selectedNiche.industry?.name}</p>
+                      {selectedNicheScore && (
+                        <div className="flex items-center gap-4 mt-3 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="text-white/40">Pipeline Score:</span>
+                            <span className="text-white font-semibold">{selectedNicheScore.pipelineScore}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-white/40">
+                            <span>Stage: {selectedNicheScore.stageScore}</span>
+                            <span>+</span>
+                            <span>Activity: {selectedNicheScore.activityScore}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setSelectedNiche(null)}
+                      className="text-white/60 hover:text-white transition-colors"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  {/* Automation Alerts */}
+                  {selectedNicheAlerts.length > 0 && (
+                    <div className="space-y-2">
+                      {selectedNicheAlerts.map((alert, idx) => (
+                        <div
+                          key={idx}
+                          className={cn(
+                            "flex items-center gap-3 px-4 py-3 rounded-lg text-sm",
+                            alert.type === "warning"
+                              ? "bg-amber-500/10 border border-amber-500/30 text-amber-300"
+                              : alert.type === "success"
+                                ? "bg-green-500/10 border border-green-500/30 text-green-300"
+                                : "bg-blue-500/10 border border-blue-500/30 text-blue-300",
+                          )}
+                        >
+                          {alert.type === "warning" && <AlertTriangle className="h-4 w-4 shrink-0" />}
+                          {alert.type === "success" && <CheckCircle className="h-4 w-4 shrink-0" />}
+                          {alert.type === "info" && <Lightbulb className="h-4 w-4 shrink-0" />}
+                          {alert.message}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {PIPELINE_STAGES.map((stage, idx) => {
+                      const isCompleted = idx < currentStageIndex
+                      const isCurrent = idx === currentStageIndex
+                      const isFuture = idx > currentStageIndex
+
+                      let canProgress = true
+                      let disabledReason = ""
+
+                      if (isFuture) {
+                        if (stage.id === "shortlisted") {
+                          canProgress = stageGating.canMoveToShortlisted
+                          disabledReason = stageGating.shortlistedReason
+                        } else if (stage.id === "outreach_in_progress") {
+                          canProgress = stageGating.canMoveToOutreach
+                          disabledReason = stageGating.outreachReason
+                        } else if (stage.id === "coffee_date_demo") {
+                          canProgress = stageGating.canMoveToCoffeeDate
+                          disabledReason = stageGating.coffeeDateReason
+                        } else if (stage.id === "win") {
+                          canProgress = stageGating.canMoveToWin
+                          disabledReason = stageGating.winReason
+                        }
+                      }
+
+                      const StageIcon = stage.icon
+
+                      const stageButton = (
+                        <button
+                          onClick={() => {
+                            if (!isFuture || canProgress) {
+                              progressToStage(stage.id)
+                            }
+                          }}
+                          disabled={isFuture && !canProgress}
+                          className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
+                            isCurrent
+                              ? "bg-primary text-white shadow-lg shadow-primary/20"
+                              : isCompleted
+                                ? "bg-green-500/20 text-green-400"
+                                : isFuture && !canProgress
+                                  ? "bg-white/5 text-white/30 cursor-not-allowed"
+                                  : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60",
+                          )}
+                        >
+                          {isFuture && !canProgress ? <Lock className="h-3 w-3" /> : <StageIcon className="h-3 w-3" />}
+                          {stage.label}
+                        </button>
+                      )
+
+                      return (
+                        <div key={stage.id} className="flex items-center gap-1">
+                          {isFuture && !canProgress ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>{stageButton}</TooltipTrigger>
+                              <TooltipContent side="top" className="bg-zinc-800 text-white border-zinc-700">
+                                <p>{disabledReason}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            stageButton
+                          )}
+                          {idx < PIPELINE_STAGES.length - 1 && <ChevronRight className="h-4 w-4 text-white/20" />}
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* AI Insights Panel */}
+                  <div className="bg-gradient-to-br from-purple-500/10 to-blue-500/10 border border-purple-500/20 rounded-xl p-5 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-purple-400" />
+                      <h3 className="text-sm font-semibold text-white">AI Insights</h3>
+                    </div>
+
+                    {loadingSuggestions ? (
+                      <div className="flex items-center gap-3 py-4">
+                        <Loader2 className="animate-spin h-5 w-5 text-purple-400" />
+                        <span className="text-sm text-white/60">Generating insights...</span>
+                      </div>
+                    ) : aiSuggestions ? (
+                      <div className="space-y-4">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2 text-xs font-medium text-purple-300">
+                            <Target className="h-3.5 w-3.5" />
+                            Top Priority Action
+                          </div>
+                          <p className="text-sm text-white/80 bg-white/5 rounded-lg px-3 py-2">
+                            {aiSuggestions.topPriorityAction}
+                          </p>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2 text-xs font-medium text-blue-300">
+                            <MessageSquare className="h-3.5 w-3.5" />
+                            Message Idea
+                          </div>
+                          <p className="text-sm text-white/80 bg-white/5 rounded-lg px-3 py-2 italic">
+                            {aiSuggestions.messageIdea}
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2 text-xs font-medium text-amber-300">
+                              <AlertTriangle className="h-3.5 w-3.5" />
+                              Risk
+                            </div>
+                            <p className="text-xs text-white/70 bg-amber-500/10 rounded-lg px-3 py-2">
+                              {aiSuggestions.risk}
+                            </p>
+                          </div>
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2 text-xs font-medium text-green-300">
+                              <TrendingUp className="h-3.5 w-3.5" />
+                              Opportunity
+                            </div>
+                            <p className="text-xs text-white/70 bg-green-500/10 rounded-lg px-3 py-2">
+                              {aiSuggestions.opportunity}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleFavourite(niche)
-                        }}
-                        className="shrink-0 transition-transform hover:scale-110"
-                      >
-                        <Star
-                          className={cn(
-                            "h-4 w-4 transition-colors",
-                            niche.user_state?.is_favourite
-                              ? "fill-yellow-400 text-yellow-400"
-                              : "text-white/30 hover:text-white/50",
-                          )}
+                    ) : (
+                      <p className="text-sm text-white/40">No suggestions available</p>
+                    )}
+                  </div>
+
+                  <Collapsible open={researchOpen} onOpenChange={setResearchOpen}>
+                    <Card className="border border-white/10 bg-zinc-800/50 overflow-hidden">
+                      <CollapsibleTrigger className="w-full p-4 flex items-center justify-between hover:bg-white/5 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <BookOpen className="h-5 w-5 text-blue-400" />
+                          <span className="font-semibold text-white">Research Phase</span>
+                          {selectedNiche.user_state?.research_notes_added &&
+                            selectedNiche.user_state?.customer_profile_generated &&
+                            selectedNiche.user_state?.aov_calculator_completed && (
+                              <CheckCircle className="h-4 w-4 text-green-400" />
+                            )}
+                        </div>
+                        <ChevronDown
+                          className={cn("h-5 w-5 text-white/40 transition-transform", researchOpen && "rotate-180")}
                         />
-                      </button>
-                    </div>
-                  </Card>
-                )
-              })}
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="p-4 pt-0 space-y-4 border-t border-white/5">
+                          {/* Research Notes */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm text-white/80">Research Notes</Label>
+                              {savingField === "research_notes" && (
+                                <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                              )}
+                            </div>
+                            <Textarea
+                              placeholder="Add your research notes about this niche..."
+                              value={selectedNiche.user_state?.research_notes || ""}
+                              onChange={(e) => {
+                                setSelectedNiche((prev) =>
+                                  prev
+                                    ? { ...prev, user_state: { ...prev.user_state!, research_notes: e.target.value } }
+                                    : null,
+                                )
+                              }}
+                              onBlur={async (e) => {
+                                await updateField("research_notes", e.target.value, false)
+                                if (e.target.value && !selectedNiche.user_state?.research_notes_added) {
+                                  await updateField("research_notes_added", true)
+                                }
+                              }}
+                              className="bg-zinc-900 border-zinc-700 text-white placeholder:text-white/40 min-h-[80px]"
+                            />
+                          </div>
+
+                          {/* AOV Calculator */}
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <Calculator className="h-4 w-4 text-green-400" />
+                              <Label className="text-sm text-white/80">AOV & Database Snapshot</Label>
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div className="space-y-1">
+                                <Label className="text-xs text-white/60">Database Size</Label>
+                                <Input
+                                  type="number"
+                                  placeholder="e.g. 5000"
+                                  value={selectedNiche.user_state?.database_size_input || ""}
+                                  onChange={(e) => {
+                                    const val = Number.parseInt(e.target.value) || null
+                                    setSelectedNiche((prev) =>
+                                      prev
+                                        ? { ...prev, user_state: { ...prev.user_state!, database_size_input: val } }
+                                        : null,
+                                    )
+                                  }}
+                                  onBlur={(e) =>
+                                    updateField("database_size_input", Number.parseInt(e.target.value) || null, false)
+                                  }
+                                  className="bg-zinc-900 border-zinc-700 text-white"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-white/60">AOV ($)</Label>
+                                <Input
+                                  type="number"
+                                  placeholder="e.g. 250"
+                                  value={selectedNiche.user_state?.aov_input || ""}
+                                  onChange={(e) => {
+                                    const val = Number.parseFloat(e.target.value) || null
+                                    setSelectedNiche((prev) =>
+                                      prev ? { ...prev, user_state: { ...prev.user_state!, aov_input: val } } : null,
+                                    )
+                                  }}
+                                  onBlur={(e) =>
+                                    updateField("aov_input", Number.parseFloat(e.target.value) || null, false)
+                                  }
+                                  className="bg-zinc-900 border-zinc-700 text-white"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-white/60">Target MRR ($)</Label>
+                                <Input
+                                  type="number"
+                                  placeholder="e.g. 3000"
+                                  value={selectedNiche.user_state?.target_monthly_recurring || ""}
+                                  onChange={(e) => {
+                                    const val = Number.parseFloat(e.target.value) || null
+                                    setSelectedNiche((prev) =>
+                                      prev
+                                        ? {
+                                            ...prev,
+                                            user_state: { ...prev.user_state!, target_monthly_recurring: val },
+                                          }
+                                        : null,
+                                    )
+                                  }}
+                                  onBlur={(e) =>
+                                    updateField(
+                                      "target_monthly_recurring",
+                                      Number.parseFloat(e.target.value) || null,
+                                      false,
+                                    )
+                                  }
+                                  className="bg-zinc-900 border-zinc-700 text-white"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                id="aov_complete"
+                                checked={selectedNiche.user_state?.aov_calculator_completed || false}
+                                onCheckedChange={(checked) => updateField("aov_calculator_completed", checked === true)}
+                                className="border-zinc-600 data-[state=checked]:bg-green-500"
+                              />
+                              <Label htmlFor="aov_complete" className="text-sm text-white/80 cursor-pointer">
+                                Mark AOV as Complete
+                              </Label>
+                            </div>
+                          </div>
+
+                          {/* Customer Profile */}
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <UserCheck className="h-4 w-4 text-purple-400" />
+                              <Label className="text-sm text-white/80">Customer Profile Summary</Label>
+                            </div>
+                            <div className="grid grid-cols-1 gap-2">
+                              <div className="space-y-1">
+                                <Label className="text-xs text-white/60">Decision Maker</Label>
+                                <Input
+                                  placeholder="e.g. Owner, Marketing Manager"
+                                  value={selectedNiche.user_state?.customer_profile?.decision_maker || ""}
+                                  onChange={(e) => {
+                                    const profile = {
+                                      ...selectedNiche.user_state?.customer_profile,
+                                      decision_maker: e.target.value,
+                                    }
+                                    setSelectedNiche((prev) =>
+                                      prev
+                                        ? { ...prev, user_state: { ...prev.user_state!, customer_profile: profile } }
+                                        : null,
+                                    )
+                                  }}
+                                  onBlur={(e) => {
+                                    const profile = {
+                                      ...selectedNiche.user_state?.customer_profile,
+                                      decision_maker: e.target.value,
+                                    }
+                                    updateField("customer_profile", profile, false)
+                                  }}
+                                  className="bg-zinc-900 border-zinc-700 text-white"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-white/60">Pain Points</Label>
+                                <Textarea
+                                  placeholder="Main challenges they face..."
+                                  value={selectedNiche.user_state?.customer_profile?.pain_points || ""}
+                                  onChange={(e) => {
+                                    const profile = {
+                                      ...selectedNiche.user_state?.customer_profile,
+                                      pain_points: e.target.value,
+                                    }
+                                    setSelectedNiche((prev) =>
+                                      prev
+                                        ? { ...prev, user_state: { ...prev.user_state!, customer_profile: profile } }
+                                        : null,
+                                    )
+                                  }}
+                                  onBlur={(e) => {
+                                    const profile = {
+                                      ...selectedNiche.user_state?.customer_profile,
+                                      pain_points: e.target.value,
+                                    }
+                                    updateField("customer_profile", profile, false)
+                                  }}
+                                  className="bg-zinc-900 border-zinc-700 text-white min-h-[60px]"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-white/60">Where They Gather</Label>
+                                <Input
+                                  placeholder="e.g. Facebook groups, LinkedIn, trade shows"
+                                  value={selectedNiche.user_state?.customer_profile?.gathering_places || ""}
+                                  onChange={(e) => {
+                                    const profile = {
+                                      ...selectedNiche.user_state?.customer_profile,
+                                      gathering_places: e.target.value,
+                                    }
+                                    setSelectedNiche((prev) =>
+                                      prev
+                                        ? { ...prev, user_state: { ...prev.user_state!, customer_profile: profile } }
+                                        : null,
+                                    )
+                                  }}
+                                  onBlur={(e) => {
+                                    const profile = {
+                                      ...selectedNiche.user_state?.customer_profile,
+                                      gathering_places: e.target.value,
+                                    }
+                                    updateField("customer_profile", profile, false)
+                                  }}
+                                  className="bg-zinc-900 border-zinc-700 text-white"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                id="profile_complete"
+                                checked={selectedNiche.user_state?.customer_profile_generated || false}
+                                onCheckedChange={(checked) =>
+                                  updateField("customer_profile_generated", checked === true)
+                                }
+                                className="border-zinc-600 data-[state=checked]:bg-green-500"
+                              />
+                              <Label htmlFor="profile_complete" className="text-sm text-white/80 cursor-pointer">
+                                Mark Profile as Complete
+                              </Label>
+                            </div>
+                          </div>
+
+                          {/* CTA Button */}
+                          <Button
+                            onClick={() => progressToStage("shortlisted")}
+                            disabled={!stageGating.canMoveToShortlisted || currentStageId !== "research"}
+                            className="w-full bg-primary hover:bg-primary/90 disabled:opacity-50"
+                          >
+                            {currentStageId === "research"
+                              ? "Complete Research & Move to Shortlisted"
+                              : "Research Completed"}
+                          </Button>
+                        </div>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
+
+                  <Collapsible open={messagingOpen} onOpenChange={setMessagingOpen}>
+                    <Card className="border border-white/10 bg-zinc-800/50 overflow-hidden">
+                      <CollapsibleTrigger className="w-full p-4 flex items-center justify-between hover:bg-white/5 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-5 w-5 text-amber-400" />
+                          <span className="font-semibold text-white">Messaging Preparation</span>
+                          {selectedNiche.user_state?.messaging_prepared && (
+                            <CheckCircle className="h-4 w-4 text-green-400" />
+                          )}
+                        </div>
+                        <ChevronDown
+                          className={cn("h-5 w-5 text-white/40 transition-transform", messagingOpen && "rotate-180")}
+                        />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="p-4 pt-0 space-y-4 border-t border-white/5">
+                          <div className="space-y-2">
+                            <Label className="text-sm text-white/80">Messaging Scripts</Label>
+                            <Textarea
+                              placeholder="Add your messaging scripts and outreach templates here..."
+                              value={
+                                typeof selectedNiche.user_state?.messaging_scripts === "string"
+                                  ? selectedNiche.user_state.messaging_scripts
+                                  : JSON.stringify(selectedNiche.user_state?.messaging_scripts || "", null, 2) === '""'
+                                    ? ""
+                                    : JSON.stringify(selectedNiche.user_state?.messaging_scripts || "", null, 2)
+                              }
+                              onChange={(e) => {
+                                setSelectedNiche((prev) =>
+                                  prev
+                                    ? {
+                                        ...prev,
+                                        user_state: { ...prev.user_state!, messaging_scripts: e.target.value },
+                                      }
+                                    : null,
+                                )
+                              }}
+                              onBlur={(e) => updateField("messaging_scripts", e.target.value, false)}
+                              className="bg-zinc-900 border-zinc-700 text-white placeholder:text-white/40 min-h-[120px]"
+                            />
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id="messaging_ready"
+                              checked={selectedNiche.user_state?.messaging_prepared || false}
+                              onCheckedChange={(checked) => updateField("messaging_prepared", checked === true)}
+                              className="border-zinc-600 data-[state=checked]:bg-green-500"
+                            />
+                            <Label htmlFor="messaging_ready" className="text-sm text-white/80 cursor-pointer">
+                              Messaging Created & Ready for Outreach
+                            </Label>
+                          </div>
+
+                          <Button
+                            onClick={() => progressToStage("outreach_in_progress")}
+                            disabled={!stageGating.canMoveToOutreach || currentStageId !== "shortlisted"}
+                            className="w-full bg-primary hover:bg-primary/90 disabled:opacity-50"
+                          >
+                            {currentStageId === "shortlisted"
+                              ? "Complete Messaging & Move to Outreach"
+                              : "Messaging Completed"}
+                          </Button>
+                        </div>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
+
+                  <Collapsible open={outreachOpen} onOpenChange={setOutreachOpen}>
+                    <Card className="border border-white/10 bg-zinc-800/50 overflow-hidden">
+                      <CollapsibleTrigger className="w-full p-4 flex items-center justify-between hover:bg-white/5 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <Send className="h-5 w-5 text-green-400" />
+                          <span className="font-semibold text-white">Outreach Tracker</span>
+                          {(selectedNiche.user_state?.outreach_messages_sent || 0) > 0 && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
+                              {selectedNiche.user_state?.outreach_messages_sent} sent
+                            </span>
+                          )}
+                        </div>
+                        <ChevronDown
+                          className={cn("h-5 w-5 text-white/40 transition-transform", outreachOpen && "rotate-180")}
+                        />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="p-4 pt-0 space-y-4 border-t border-white/5">
+                          {/* Outreach Start Date */}
+                          <div className="space-y-2">
+                            <Label className="text-sm text-white/80">Outreach Start Date</Label>
+                            <Input
+                              type="date"
+                              value={selectedNiche.user_state?.outreach_start_date || ""}
+                              onChange={(e) => {
+                                setSelectedNiche((prev) =>
+                                  prev
+                                    ? {
+                                        ...prev,
+                                        user_state: { ...prev.user_state!, outreach_start_date: e.target.value },
+                                      }
+                                    : null,
+                                )
+                              }}
+                              onBlur={(e) => updateField("outreach_start_date", e.target.value, false)}
+                              className="bg-zinc-900 border-zinc-700 text-white w-48"
+                            />
+                          </div>
+
+                          {/* Channel Counters */}
+                          <div className="grid grid-cols-2 gap-3">
+                            {[
+                              {
+                                key: "linkedin_messages" as const,
+                                label: "LinkedIn",
+                                icon: MessageSquare,
+                                color: "text-blue-400",
+                              },
+                              {
+                                key: "facebook_dms" as const,
+                                label: "Facebook",
+                                icon: Users,
+                                color: "text-indigo-400",
+                              },
+                              { key: "cold_calls" as const, label: "Cold Calls", icon: Phone, color: "text-green-400" },
+                              { key: "emails" as const, label: "Emails", icon: Mail, color: "text-purple-400" },
+                            ].map((channel) => {
+                              const Icon = channel.icon
+                              const count = selectedNiche.user_state?.outreach_channels?.[channel.key] || 0
+                              return (
+                                <div
+                                  key={channel.key}
+                                  className="flex items-center justify-between p-3 bg-zinc-900 rounded-lg"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Icon className={cn("h-4 w-4", channel.color)} />
+                                    <span className="text-sm text-white/80">{channel.label}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => updateOutreachChannel(channel.key, -1)}
+                                      className="p-1 rounded hover:bg-white/10 text-white/60 hover:text-white"
+                                    >
+                                      <Minus className="h-4 w-4" />
+                                    </button>
+                                    <span className="w-8 text-center font-semibold text-white">{count}</span>
+                                    <button
+                                      onClick={() => updateOutreachChannel(channel.key, 1)}
+                                      className="p-1 rounded hover:bg-white/10 text-white/60 hover:text-white"
+                                    >
+                                      <Plus className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+
+                          {/* Objections & Notes */}
+                          <div className="space-y-2">
+                            <Label className="text-sm text-white/80">Objections Heard</Label>
+                            <Textarea
+                              placeholder="Note any objections or pushback..."
+                              value={selectedNiche.user_state?.outreach_notes || ""}
+                              onChange={(e) => {
+                                setSelectedNiche((prev) =>
+                                  prev
+                                    ? { ...prev, user_state: { ...prev.user_state!, outreach_notes: e.target.value } }
+                                    : null,
+                                )
+                              }}
+                              onBlur={(e) => updateField("outreach_notes", e.target.value, false)}
+                              className="bg-zinc-900 border-zinc-700 text-white placeholder:text-white/40 min-h-[60px]"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-sm text-white/80">General Notes</Label>
+                            <Textarea
+                              placeholder="Additional notes about this outreach..."
+                              value={selectedNiche.user_state?.notes || ""}
+                              onChange={(e) => {
+                                setSelectedNiche((prev) =>
+                                  prev ? { ...prev, user_state: { ...prev.user_state!, notes: e.target.value } } : null,
+                                )
+                              }}
+                              onBlur={(e) => updateField("notes", e.target.value, false)}
+                              className="bg-zinc-900 border-zinc-700 text-white placeholder:text-white/40 min-h-[60px]"
+                            />
+                          </div>
+
+                          <p className="text-xs text-white/40">
+                            Outreach complete when you've logged at least one activity.
+                          </p>
+
+                          {/* Coffee Date & Win Controls */}
+                          <div className="flex items-center gap-3 pt-2 border-t border-white/5">
+                            <Button
+                              onClick={async () => {
+                                await updateField("coffee_date_completed", true)
+                                progressToStage("coffee_date_demo")
+                              }}
+                              disabled={
+                                !stageGating.canMoveToCoffeeDate ||
+                                currentStageId === "coffee_date_demo" ||
+                                currentStageId === "win"
+                              }
+                              variant="outline"
+                              className="flex-1 border-zinc-600 text-white hover:bg-white/10"
+                            >
+                              <Coffee className="h-4 w-4 mr-2" />
+                              Log Coffee Date
+                            </Button>
+                            <Button
+                              onClick={() => progressToStage("win")}
+                              disabled={!stageGating.canMoveToWin || currentStageId === "win"}
+                              className="flex-1 bg-green-600 hover:bg-green-700"
+                            >
+                              <Trophy className="h-4 w-4 mr-2" />
+                              Mark as Win
+                            </Button>
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
+                </Card>
+              ) : (
+                <Card className="border border-white/10 bg-zinc-900/50 h-full min-h-[400px] flex flex-col items-center justify-center text-center p-8 rounded-xl">
+                  <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                    <Search className="h-8 w-8 text-white/20" />
+                  </div>
+                  <h3 className="text-lg font-medium text-white/60">Select a niche to view details</h3>
+                  <p className="text-sm text-white/40 mt-2 max-w-sm">
+                    Click on any niche from the list to view its pipeline score, automation alerts, and manage the
+                    workflow.
+                  </p>
+                </Card>
+              )}
             </div>
           </div>
-
-          {/* Detail Panel - Right */}
-          <div className="col-span-7">
-            {selectedNiche ? (
-              <Card className="border border-white/10 bg-zinc-900/50 p-6 space-y-6 max-h-[calc(100vh-220px)] overflow-y-auto rounded-xl [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full">
-                {/* Header with Pipeline Score */}
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <h2 className="text-xl font-bold text-white">{selectedNiche.niche_name}</h2>
-                      <span
-                        className={cn(
-                          "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold",
-                          selectedNicheTier === "hot"
-                            ? "bg-gradient-to-r from-orange-500 to-red-500 text-white"
-                            : selectedNicheTier === "warm"
-                              ? "bg-gradient-to-r from-yellow-500 to-orange-500 text-black"
-                              : "bg-gradient-to-r from-blue-500 to-cyan-500 text-white",
-                        )}
-                      >
-                        {selectedNicheTier === "hot" && <Flame className="h-3 w-3" />}
-                        {selectedNicheTier === "warm" && <TrendingUp className="h-3 w-3" />}
-                        {selectedNicheTier === "cold" && <Snowflake className="h-3 w-3" />}
-                        {selectedNicheTier.toUpperCase()}
-                      </span>
-                    </div>
-                    <p className="text-sm text-white/60 mt-1">{selectedNiche.industry?.name}</p>
-                    {selectedNicheScore && (
-                      <div className="flex items-center gap-4 mt-3 text-sm">
-                        <div className="flex items-center gap-2">
-                          <span className="text-white/40">Pipeline Score:</span>
-                          <span className="text-white font-semibold">{selectedNicheScore.pipelineScore}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-white/40">
-                          <span>Stage: {selectedNicheScore.stageScore}</span>
-                          <span>+</span>
-                          <span>Activity: {selectedNicheScore.activityScore}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => setSelectedNiche(null)}
-                    className="text-white/60 hover:text-white transition-colors"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-
-                {selectedNicheAlerts.length > 0 && (
-                  <div className="space-y-2">
-                    {selectedNicheAlerts.map((alert, idx) => (
-                      <div
-                        key={idx}
-                        className={cn(
-                          "flex items-center gap-3 px-4 py-3 rounded-lg text-sm",
-                          alert.type === "warning"
-                            ? "bg-amber-500/10 border border-amber-500/30 text-amber-300"
-                            : alert.type === "success"
-                              ? "bg-green-500/10 border border-green-500/30 text-green-300"
-                              : "bg-blue-500/10 border border-blue-500/30 text-blue-300",
-                        )}
-                      >
-                        {alert.type === "warning" && <AlertTriangle className="h-4 w-4 shrink-0" />}
-                        {alert.type === "success" && <CheckCircle className="h-4 w-4 shrink-0" />}
-                        {alert.type === "info" && <Lightbulb className="h-4 w-4 shrink-0" />}
-                        {alert.message}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Status Pipeline */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  {STATUSES.map((status, idx) => (
-                    <div key={status} className="flex items-center gap-2">
-                      <button
-                        onClick={() => updateStatus(status)}
-                        className={cn(
-                          "px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105",
-                          currentStatus === status
-                            ? "bg-primary text-white shadow-lg shadow-primary/20"
-                            : currentStatusIndex > idx
-                              ? "bg-green-500/20 text-green-400"
-                              : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60",
-                        )}
-                      >
-                        {status}
-                      </button>
-                      {idx < STATUSES.length - 1 && <ChevronRight className="h-4 w-4 text-white/20" />}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="bg-gradient-to-br from-purple-500/10 to-blue-500/10 border border-purple-500/20 rounded-xl p-5 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Zap className="h-5 w-5 text-purple-400" />
-                    <h3 className="text-sm font-semibold text-white">AI Insights</h3>
-                  </div>
-
-                  {loadingSuggestions ? (
-                    <div className="flex items-center gap-3 py-4">
-                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-purple-400 border-t-transparent"></div>
-                      <span className="text-sm text-white/60">Generating insights...</span>
-                    </div>
-                  ) : aiSuggestions ? (
-                    <div className="space-y-4">
-                      {/* Top Priority Action */}
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2 text-xs font-medium text-purple-300">
-                          <Target className="h-3.5 w-3.5" />
-                          Top Priority Action
-                        </div>
-                        <p className="text-sm text-white/80 bg-white/5 rounded-lg px-3 py-2">
-                          {aiSuggestions.topPriorityAction}
-                        </p>
-                      </div>
-
-                      {/* Suggested Message */}
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2 text-xs font-medium text-blue-300">
-                          <MessageSquare className="h-3.5 w-3.5" />
-                          Message Idea
-                        </div>
-                        <p className="text-sm text-white/80 bg-white/5 rounded-lg px-3 py-2 italic">
-                          {aiSuggestions.messageIdea}
-                        </p>
-                      </div>
-
-                      {/* Risk & Opportunity */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-2 text-xs font-medium text-amber-300">
-                            <AlertTriangle className="h-3.5 w-3.5" />
-                            Risk
-                          </div>
-                          <p className="text-xs text-white/70 bg-amber-500/10 rounded-lg px-3 py-2">
-                            {aiSuggestions.risk}
-                          </p>
-                        </div>
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-2 text-xs font-medium text-green-300">
-                            <TrendingUp className="h-3.5 w-3.5" />
-                            Opportunity
-                          </div>
-                          <p className="text-xs text-white/70 bg-green-500/10 rounded-lg px-3 py-2">
-                            {aiSuggestions.opportunity}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-white/40">No suggestions available</p>
-                  )}
-                </div>
-
-                {/* Outreach Activity Summary */}
-                {selectedNiche.user_state?.outreach_channels && (
-                  <div className="bg-white/5 rounded-xl p-4 space-y-3">
-                    <h3 className="text-sm font-semibold text-white/80">Outreach Activity</h3>
-                    <div className="grid grid-cols-4 gap-3">
-                      <div className="flex flex-col items-center gap-1 p-3 bg-white/5 rounded-lg">
-                        <MessageSquare className="h-4 w-4 text-blue-400" />
-                        <span className="text-lg font-bold text-white">
-                          {selectedNiche.user_state.outreach_channels.linkedin_messages || 0}
-                        </span>
-                        <span className="text-[10px] text-white/50">LinkedIn</span>
-                      </div>
-                      <div className="flex flex-col items-center gap-1 p-3 bg-white/5 rounded-lg">
-                        <Users className="h-4 w-4 text-indigo-400" />
-                        <span className="text-lg font-bold text-white">
-                          {selectedNiche.user_state.outreach_channels.facebook_dms || 0}
-                        </span>
-                        <span className="text-[10px] text-white/50">Facebook</span>
-                      </div>
-                      <div className="flex flex-col items-center gap-1 p-3 bg-white/5 rounded-lg">
-                        <Phone className="h-4 w-4 text-green-400" />
-                        <span className="text-lg font-bold text-white">
-                          {selectedNiche.user_state.outreach_channels.cold_calls || 0}
-                        </span>
-                        <span className="text-[10px] text-white/50">Calls</span>
-                      </div>
-                      <div className="flex flex-col items-center gap-1 p-3 bg-white/5 rounded-lg">
-                        <Mail className="h-4 w-4 text-purple-400" />
-                        <span className="text-lg font-bold text-white">
-                          {selectedNiche.user_state.outreach_channels.emails || 0}
-                        </span>
-                        <span className="text-[10px] text-white/50">Emails</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Notes Section */}
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-white/80">Notes</h3>
-                  <Textarea
-                    placeholder="Add notes about this niche..."
-                    value={selectedNiche.user_state?.notes || ""}
-                    className="bg-zinc-800 border-zinc-700 text-white placeholder:text-white/40 min-h-[100px]"
-                    readOnly
-                  />
-                </div>
-              </Card>
-            ) : (
-              <Card className="border border-white/10 bg-zinc-900/50 h-full min-h-[400px] flex flex-col items-center justify-center text-center p-8 rounded-xl">
-                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
-                  <Search className="h-8 w-8 text-white/20" />
-                </div>
-                <h3 className="text-lg font-medium text-white/60">Select a niche to view details</h3>
-                <p className="text-sm text-white/40 mt-2 max-w-sm">
-                  Click on any niche from the list to view its pipeline score, automation alerts, and AI-powered
-                  insights.
-                </p>
-              </Card>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </TooltipProvider>
   )
 }
