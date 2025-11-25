@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { sessionId, nicheId, nicheName } = body
+    const { sessionId, nicheId, nicheName, action = "win" } = body
 
     if (!sessionId) {
       return NextResponse.json({ error: "Session ID is required" }, { status: 400 })
@@ -30,16 +30,25 @@ export async function POST(request: Request) {
         .eq("user_id", user.id)
         .single()
 
+      const updateData =
+        action === "coffee_date"
+          ? {
+              coffee_date_completed: true,
+              status: "Coffee Date Demo",
+              updated_at: new Date().toISOString(),
+            }
+          : {
+              coffee_date_completed: true,
+              status: "Win",
+              win_completed: true,
+              updated_at: new Date().toISOString(),
+            }
+
       if (existingState) {
         // Update existing niche_user_state
         const { error: updateError } = await supabase
           .from("niche_user_state")
-          .update({
-            coffee_date_completed: true,
-            status: "Win",
-            win_completed: true,
-            updated_at: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq("id", existingState.id)
 
         if (updateError) {
@@ -51,9 +60,7 @@ export async function POST(request: Request) {
         const { error: insertError } = await supabase.from("niche_user_state").insert({
           niche_id: nicheId,
           user_id: user.id,
-          coffee_date_completed: true,
-          status: "Win",
-          win_completed: true,
+          ...updateData,
         })
 
         if (insertError) {
@@ -63,12 +70,13 @@ export async function POST(request: Request) {
       }
     }
 
-    // Update the session to mark it as completed (you can add a completed field to sessions table if needed)
-    // For now, we'll just return success
-
     return NextResponse.json({
       success: true,
-      message: nicheId ? "Niche advanced to Win status" : "Demo marked as complete",
+      message: nicheId
+        ? action === "coffee_date"
+          ? "Niche advanced to Coffee Date Demo status"
+          : "Niche advanced to Win status"
+        : "Demo marked as complete",
     })
   } catch (error) {
     console.error("Error marking demo as complete:", error)

@@ -2,11 +2,11 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus, Trash2, ExternalLink, TrendingUp } from 'lucide-react'
+import { Plus, Trash2, ExternalLink, TrendingUp, Search } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter } from 'next/navigation'
+import { useRouter } from "next/navigation"
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 type GHLConnection = {
   id: string
@@ -40,13 +41,21 @@ export default function DeadLeadRevivalPage() {
   const [loading, setLoading] = useState(true)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [accountToDelete, setAccountToDelete] = useState<string | null>(null)
-  
+
   // Form state
   const [accountName, setAccountName] = useState("")
   const [locationId, setLocationId] = useState("")
   const [privateIntegrationToken, setPrivateIntegrationToken] = useState("")
   const [connecting, setConnecting] = useState(false)
-  
+
+  // Niche assignment modal state
+  const [showNicheAssignmentModal, setShowNicheAssignmentModal] = useState(false)
+  const [nicheAssignmentSearch, setNicheAssignmentSearch] = useState("")
+  const [availableNiches, setAvailableNiches] = useState<
+    Array<{ id: string; niche_name: string; industry_name: string }>
+  >([])
+  const [newlyConnectedAccountName, setNewlyConnectedAccountName] = useState("")
+
   const { toast } = useToast()
   const router = useRouter()
   const supabase = createClient()
@@ -59,9 +68,9 @@ export default function DeadLeadRevivalPage() {
     try {
       setLoading(true)
       const { data, error } = await supabase
-        .from('ghl_connections')
-        .select('*')
-        .order('created_at', { ascending: false })
+        .from("ghl_connections")
+        .select("*")
+        .order("created_at", { ascending: false })
 
       if (error) throw error
       setAccounts(data || [])
@@ -69,10 +78,32 @@ export default function DeadLeadRevivalPage() {
       toast({
         title: "Error",
         description: error.message || "Failed to load accounts",
-        variant: "destructive"
+        variant: "destructive",
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadNichesForAssignment = async () => {
+    try {
+      const { data: niches } = await supabase
+        .from("niches")
+        .select("id, niche_name, industry:industries(name)")
+        .order("niche_name")
+        .limit(1000)
+
+      if (niches) {
+        setAvailableNiches(
+          niches.map((n: any) => ({
+            id: n.id,
+            niche_name: n.niche_name,
+            industry_name: n.industry?.[0]?.name || n.industry?.name || "Unknown",
+          })),
+        )
+      }
+    } catch (error) {
+      console.error("Error loading niches:", error)
     }
   }
 
@@ -81,63 +112,62 @@ export default function DeadLeadRevivalPage() {
       toast({
         title: "Missing Fields",
         description: "Please fill in all required fields",
-        variant: "destructive"
+        variant: "destructive",
       })
       return
     }
 
     setConnecting(true)
     try {
-      console.log('[v0] Testing connection with location ID:', locationId.trim())
-      
-      const testResponse = await fetch('/api/revival/test-connection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          privateIntegrationToken: privateIntegrationToken.trim(), 
-          locationId: locationId.trim() 
-        })
+      const testResponse = await fetch("/api/revival/test-connection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          privateIntegrationToken: privateIntegrationToken.trim(),
+          locationId: locationId.trim(),
+        }),
       })
 
       const responseData = await testResponse.json()
-      console.log('[v0] Test response:', responseData)
 
       if (!testResponse.ok) {
-        throw new Error(responseData.details || responseData.message || 'Invalid credentials')
+        throw new Error(responseData.details || responseData.message || "Invalid credentials")
       }
 
-      // Save connection
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error("Not authenticated")
 
-      const { error } = await supabase.from('ghl_connections').insert({
+      const { error } = await supabase.from("ghl_connections").insert({
         user_id: user.id,
         api_key: privateIntegrationToken.trim(),
         location_id: locationId.trim(),
-        account_name: accountName.trim()
+        account_name: accountName.trim(),
       })
 
       if (error) throw error
 
-      toast({
-        title: "Account Connected",
-        description: `${accountName} connected successfully`
-      })
+      setNewlyConnectedAccountName(accountName.trim())
 
-      // Reset form and reload
+      // Reset form
+      const savedAccountName = accountName.trim()
       setAccountName("")
       setLocationId("")
       setPrivateIntegrationToken("")
       setIsAddModalOpen(false)
-      await loadAccounts()
 
+      // Load niches and show assignment modal
+      await loadNichesForAssignment()
+      await loadAccounts()
+      setShowNicheAssignmentModal(true)
     } catch (error: any) {
-      console.error('[v0] Connection error:', error)
+      console.error("Connection error:", error)
       toast({
         title: "Connection Failed",
         description: error.message,
         variant: "destructive",
-        duration: 10000
+        duration: 10000,
       })
     } finally {
       setConnecting(false)
@@ -149,7 +179,7 @@ export default function DeadLeadRevivalPage() {
 
     try {
       const response = await fetch(`/api/revival/delete-account?id=${accountToDelete}`, {
-        method: 'DELETE'
+        method: "DELETE",
       })
 
       if (!response.ok) {
@@ -159,7 +189,7 @@ export default function DeadLeadRevivalPage() {
 
       toast({
         title: "Account Deleted",
-        description: "Account and all related data removed"
+        description: "Account and all related data removed",
       })
 
       setAccountToDelete(null)
@@ -168,9 +198,45 @@ export default function DeadLeadRevivalPage() {
       toast({
         title: "Delete Failed",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
       })
     }
+  }
+
+  const handleNicheAssignment = async (nicheId: string | null, nicheName: string) => {
+    if (!nicheId) {
+      toast({
+        title: "Account Connected",
+        description: `${newlyConnectedAccountName} connected (no niche assigned)`,
+      })
+      setShowNicheAssignmentModal(false)
+      return
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { error } = await supabase.from("niche_user_state").upsert(
+      {
+        niche_id: nicheId,
+        user_id: user.id,
+        win_completed: true,
+        status: "Win",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "niche_id,user_id" },
+    )
+
+    if (!error) {
+      toast({
+        title: "Win Recorded",
+        description: `Win recorded for ${nicheName}`,
+      })
+    }
+
+    setShowNicheAssignmentModal(false)
   }
 
   if (loading) {
@@ -194,7 +260,7 @@ export default function DeadLeadRevivalPage() {
               Connect multiple client sub-accounts to track revivals and AI conversations
             </p>
           </div>
-          
+
           <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
             <DialogTrigger asChild>
               <Button className="bg-[#00A8FF] text-white hover:bg-[#00A8FF]/90 transition-all">
@@ -212,7 +278,9 @@ export default function DeadLeadRevivalPage() {
 
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="accountName" className="text-sm font-medium text-white">Account Name (Friendly Business Name) *</Label>
+                  <Label htmlFor="accountName" className="text-sm font-medium text-white">
+                    Account Name (Friendly Business Name) *
+                  </Label>
                   <Input
                     id="accountName"
                     placeholder="Friendly Business Name"
@@ -221,13 +289,13 @@ export default function DeadLeadRevivalPage() {
                     autoComplete="off"
                     className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/40"
                   />
-                  <p className="text-xs text-white/50">
-                    This is the label you'll see inside your dashboard.
-                  </p>
+                  <p className="text-xs text-white/50">This is the label you'll see inside your dashboard.</p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="locationId" className="text-sm font-medium text-white">Location ID *</Label>
+                  <Label htmlFor="locationId" className="text-sm font-medium text-white">
+                    Location ID *
+                  </Label>
                   <Input
                     id="locationId"
                     placeholder="Paste your GoHighLevel Location ID"
@@ -242,7 +310,9 @@ export default function DeadLeadRevivalPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="privateIntegrationToken" className="text-sm font-medium text-white">Private Integration Token *</Label>
+                  <Label htmlFor="privateIntegrationToken" className="text-sm font-medium text-white">
+                    Private Integration Token *
+                  </Label>
                   <Input
                     id="privateIntegrationToken"
                     type="password"
@@ -254,7 +324,8 @@ export default function DeadLeadRevivalPage() {
                     className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/40"
                   />
                   <p className="text-xs text-white/50">
-                    In the client sub-account, go to Settings → Private Integrations. Create a new integration and select the required scopes below.
+                    In the client sub-account, go to Settings → Private Integrations. Create a new integration and
+                    select the required scopes below.
                   </p>
                 </div>
 
@@ -295,9 +366,9 @@ export default function DeadLeadRevivalPage() {
                   <ExternalLink className="h-4 w-4 text-white/60 flex-shrink-0" />
                   <p className="text-xs text-white/60">
                     Need help? Visit{" "}
-                    <a 
-                      href="https://help.leadconnectorhq.com/support/solutions/articles/155000002774" 
-                      target="_blank" 
+                    <a
+                      href="https://help.leadconnectorhq.com/support/solutions/articles/155000002774"
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="underline text-[#00A8FF] hover:text-[#00A8FF]/80"
                     >
@@ -306,12 +377,12 @@ export default function DeadLeadRevivalPage() {
                   </p>
                 </div>
 
-                <Button 
-                  onClick={handleAddAccount} 
+                <Button
+                  onClick={handleAddAccount}
                   disabled={connecting}
                   className="w-full h-11 bg-[#00A8FF] text-white hover:bg-[#00A8FF]/90 transition-all"
                 >
-                  {connecting ? 'Connecting...' : 'Connect Account'}
+                  {connecting ? "Connecting..." : "Connect Account"}
                 </Button>
               </div>
             </DialogContent>
@@ -334,7 +405,10 @@ export default function DeadLeadRevivalPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {accounts.map((account) => (
-              <Card key={account.id} className="border border-white/10 bg-white/5 hover:bg-white/10 hover:border-[#00A8FF]/50 transition-all cursor-pointer">
+              <Card
+                key={account.id}
+                className="border border-white/10 bg-white/5 hover:bg-white/10 hover:border-[#00A8FF]/50 transition-all cursor-pointer"
+              >
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -359,10 +433,10 @@ export default function DeadLeadRevivalPage() {
                     Connected {new Date(account.connected_at).toLocaleDateString()}
                   </div>
                   <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
-                      className="flex-1 h-9 border-white/10 text-white hover:bg-[#00A8FF] hover:text-white hover:border-[#00A8FF]"
+                      className="flex-1 h-9 border-white/10 text-white hover:bg-[#00A8FF] hover:text-white hover:border-[#00A8FF] bg-transparent"
                       onClick={() => router.push(`/revival/account/${account.id}`)}
                     >
                       View Data
@@ -379,17 +453,75 @@ export default function DeadLeadRevivalPage() {
             <AlertDialogHeader>
               <AlertDialogTitle className="text-white">Delete Account?</AlertDialogTitle>
               <AlertDialogDescription className="text-white/60">
-                This will permanently delete this GHL account connection and all associated campaign and conversation data. This action cannot be undone.
+                This will permanently delete this GHL account connection and all associated campaign and conversation
+                data. This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="bg-white/5 border-white/10 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
+              <AlertDialogCancel className="bg-white/5 border-white/10 text-white hover:bg-white/10">
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction onClick={handleDeleteAccount} className="bg-red-500 text-white hover:bg-red-600">
                 Delete Account
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <Dialog open={showNicheAssignmentModal} onOpenChange={setShowNicheAssignmentModal}>
+          <DialogContent className="sm:max-w-[500px] bg-zinc-900 border-zinc-700">
+            <DialogHeader>
+              <DialogTitle className="text-white">Which niche does this GHL account belong to?</DialogTitle>
+              <DialogDescription className="text-white/60">
+                Select a niche to mark it as a Win, or choose "Other" to skip
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
+                <Input
+                  placeholder="Search niches..."
+                  value={nicheAssignmentSearch}
+                  onChange={(e) => setNicheAssignmentSearch(e.target.value)}
+                  className="pl-9 bg-zinc-800 border-zinc-700 text-white placeholder:text-white/40"
+                />
+              </div>
+
+              <ScrollArea className="h-[300px] rounded-lg border border-zinc-700 bg-zinc-800">
+                <div className="p-2 space-y-1">
+                  {/* Other option */}
+                  <button
+                    onClick={() => handleNicheAssignment(null, "Other")}
+                    className="w-full text-left p-3 rounded-lg hover:bg-white/10 transition-colors border border-zinc-600"
+                  >
+                    <div className="font-medium text-white">Other</div>
+                    <div className="text-sm text-white/60">Not in the list</div>
+                  </button>
+
+                  {/* Filtered niches */}
+                  {availableNiches
+                    .filter(
+                      (n) =>
+                        n.niche_name.toLowerCase().includes(nicheAssignmentSearch.toLowerCase()) ||
+                        n.industry_name.toLowerCase().includes(nicheAssignmentSearch.toLowerCase()),
+                    )
+                    .slice(0, 30)
+                    .map((niche) => (
+                      <button
+                        key={niche.id}
+                        onClick={() => handleNicheAssignment(niche.id, niche.niche_name)}
+                        className="w-full text-left p-3 rounded-lg hover:bg-white/10 transition-colors"
+                      >
+                        <div className="font-medium text-white">{niche.niche_name}</div>
+                        <div className="text-sm text-white/60">{niche.industry_name}</div>
+                      </button>
+                    ))}
+                </div>
+              </ScrollArea>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )

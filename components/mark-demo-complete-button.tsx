@@ -33,12 +33,20 @@ export default function MarkDemoCompleteButton({ sessionId }: MarkDemoCompleteBu
   const [isLoading, setIsLoading] = useState(false)
   const [niches, setNiches] = useState<Niche[]>([])
   const [searchQuery, setSearchQuery] = useState("")
+  const [step, setStep] = useState<"type" | "niche">("type")
   const router = useRouter()
   const { toast } = useToast()
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && step === "niche") {
       fetchNiches()
+    }
+  }, [isOpen, step])
+
+  useEffect(() => {
+    if (!isOpen) {
+      setStep("type")
+      setSearchQuery("")
     }
   }, [isOpen])
 
@@ -65,16 +73,15 @@ export default function MarkDemoCompleteButton({ sessionId }: MarkDemoCompleteBu
         body: JSON.stringify({
           sessionId,
           nicheId,
-          nicheName: nicheId ? undefined : nicheName, // Only send nicheName if it's "Other"
+          nicheName: nicheId ? undefined : nicheName,
+          action: "coffee_date",
         }),
       })
 
       if (response.ok) {
         toast({
-          title: "Success",
-          description: nicheId
-            ? `Demo marked as complete and ${nicheName} advanced to Win!`
-            : "Demo marked as complete for Other niche",
+          title: "Coffee Date Logged",
+          description: nicheId ? `Coffee date logged for ${nicheName}` : "Demo marked as complete for Other niche",
         })
         setIsOpen(false)
         router.refresh()
@@ -117,53 +124,93 @@ export default function MarkDemoCompleteButton({ sessionId }: MarkDemoCompleteBu
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px] bg-black border-white/10">
         <DialogHeader>
-          <DialogTitle className="text-white">Mark Demo as Complete</DialogTitle>
+          <DialogTitle className="text-white">
+            {step === "type" ? "How would you classify this Coffee Date session?" : "Which niche was this demo for?"}
+          </DialogTitle>
           <DialogDescription className="text-white/60">
-            Select the business niche for this demo. The niche will automatically advance to Win status.
+            {step === "type"
+              ? "Select whether this was a test or a real client demo"
+              : "Select the niche to update its pipeline status to Coffee Date Demo"}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
-            <Input
-              placeholder="Search niches..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/40"
-            />
+        {step === "type" ? (
+          <div className="flex flex-col gap-3 py-4">
+            <Button
+              onClick={() => {
+                setIsOpen(false)
+                toast({
+                  title: "Test Session",
+                  description: "No pipeline changes made",
+                })
+              }}
+              variant="outline"
+              className="h-16 border-white/20 text-white hover:bg-white/10 bg-white/5"
+            >
+              <div className="text-left w-full">
+                <div className="font-semibold">Test Only</div>
+                <div className="text-sm text-white/60">Practice session, no pipeline update</div>
+              </div>
+            </Button>
+            <Button onClick={() => setStep("niche")} className="h-16 bg-[#00A8FF] hover:bg-[#00A8FF]/90">
+              <div className="text-left w-full">
+                <div className="font-semibold">Client Demo</div>
+                <div className="text-sm text-white/80">Real demo, update niche to Coffee Date stage</div>
+              </div>
+            </Button>
           </div>
-
-          <ScrollArea className="h-[300px] rounded-lg border border-white/10 bg-white/5">
-            <div className="p-2 space-y-1">
-              {/* Other option at the top */}
-              <button
-                onClick={() => handleNicheSelect(null, "Other")}
-                disabled={isLoading}
-                className="w-full text-left p-3 rounded-lg hover:bg-white/10 transition-colors border border-white/20 bg-white/5"
-              >
-                <div className="font-medium text-white">Other</div>
-                <div className="text-sm text-white/60">Not in the list</div>
-              </button>
-
-              {filteredNiches.length === 0 ? (
-                <div className="p-4 text-center text-white/60">No niches found</div>
-              ) : (
-                filteredNiches.map((niche) => (
-                  <button
-                    key={niche.id}
-                    onClick={() => handleNicheSelect(niche.id, niche.niche_name)}
-                    disabled={isLoading}
-                    className="w-full text-left p-3 rounded-lg hover:bg-white/10 transition-colors"
-                  >
-                    <div className="font-medium text-white">{niche.niche_name}</div>
-                    <div className="text-sm text-white/60">{niche.industry.name}</div>
-                  </button>
-                ))
-              )}
+        ) : (
+          /* Step 2: Niche Selection */
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
+              <Input
+                placeholder="Search niches..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+              />
             </div>
-          </ScrollArea>
-        </div>
+
+            <ScrollArea className="h-[300px] rounded-lg border border-white/10 bg-white/5">
+              <div className="p-2 space-y-1">
+                {/* Other option at the top */}
+                <button
+                  onClick={() => handleNicheSelect(null, "Other")}
+                  disabled={isLoading}
+                  className="w-full text-left p-3 rounded-lg hover:bg-white/10 transition-colors border border-white/20 bg-white/5"
+                >
+                  <div className="font-medium text-white">Other</div>
+                  <div className="text-sm text-white/60">Not in the list</div>
+                </button>
+
+                {filteredNiches.length === 0 ? (
+                  <div className="p-4 text-center text-white/60">No niches found</div>
+                ) : (
+                  filteredNiches.map((niche) => (
+                    <button
+                      key={niche.id}
+                      onClick={() => handleNicheSelect(niche.id, niche.niche_name)}
+                      disabled={isLoading}
+                      className="w-full text-left p-3 rounded-lg hover:bg-white/10 transition-colors"
+                    >
+                      <div className="font-medium text-white">{niche.niche_name}</div>
+                      <div className="text-sm text-white/60">{niche.industry.name}</div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+
+            <Button
+              variant="outline"
+              onClick={() => setStep("type")}
+              className="w-full border-white/20 text-white hover:bg-white/10"
+            >
+              Back
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )

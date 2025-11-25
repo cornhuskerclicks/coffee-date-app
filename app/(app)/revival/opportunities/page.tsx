@@ -1,48 +1,124 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { createBrowserClient } from "@supabase/ssr"
-import { Card } from "@/components/ui/card"
+import type React from "react"
+
+import { useState, useEffect, useCallback, useRef } from "react"
+import { createClient } from "@/lib/supabase/client"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { cn } from "@/lib/utils"
-import {
-  Star,
-  X,
-  Search,
-  ChevronRight,
-  ChevronDown,
-  CheckCircle,
-  Target,
-  MessageSquare,
-  Mail,
-  Phone,
-  Users,
-  TrendingUp,
-  AlertTriangle,
-  Lightbulb,
-  Zap,
-  Flame,
-  Snowflake,
-  BookOpen,
-  FileText,
-  Send,
-  Trophy,
-  Lock,
-  Minus,
-  Plus,
-  Coffee,
-  Calculator,
-  UserCheck,
-  Loader2,
-} from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Card } from "@/components/ui/card"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { toast } from "sonner"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { useToast } from "@/hooks/use-toast"
+import {
+  Search,
+  Star,
+  ChevronDown,
+  Flame,
+  TrendingUp,
+  Snowflake,
+  AlertTriangle,
+  Lightbulb,
+  MessageSquare,
+  Users,
+  Phone,
+  Mail,
+  Coffee,
+  Trophy,
+  FileText,
+  Calculator,
+  Minus,
+  Plus,
+  Loader2,
+  Target,
+  Zap,
+  BookOpen,
+  Send,
+  X,
+  CheckCircle,
+  ChevronRight,
+  UserCheck,
+  Lock,
+} from "lucide-react"
+import { cn } from "@/lib/utils"
+
+function EditableCounter({
+  value,
+  onChange,
+  channelKey,
+  isUpdating,
+}: {
+  value: number
+  onChange: (channel: keyof OutreachChannels, newValue: number) => Promise<void>
+  channelKey: keyof OutreachChannels
+  isUpdating: boolean
+}) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(value.toString())
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setEditValue(value.toString())
+  }, [value])
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [isEditing])
+
+  const handleSave = async () => {
+    const parsed = Number.parseInt(editValue, 10)
+    const newValue = isNaN(parsed) || parsed < 0 ? 0 : parsed
+    setIsEditing(false)
+    if (newValue !== value) {
+      await onChange(channelKey, newValue)
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSave()
+    } else if (e.key === "Escape") {
+      setEditValue(value.toString())
+      setIsEditing(false)
+    }
+  }
+
+  if (isEditing) {
+    return (
+      <input
+        ref={inputRef}
+        type="number"
+        min="0"
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        onBlur={handleSave}
+        onKeyDown={handleKeyDown}
+        className="w-12 text-center font-semibold text-white bg-zinc-800 border border-zinc-600 rounded px-1 py-0.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00A8FF]"
+        disabled={isUpdating}
+      />
+    )
+  }
+
+  return (
+    <button
+      onClick={() => setIsEditing(true)}
+      disabled={isUpdating}
+      className="w-8 text-center font-semibold text-white hover:bg-white/10 rounded cursor-pointer transition-colors"
+      title="Click to edit"
+    >
+      {isUpdating ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : value}
+    </button>
+  )
+}
 
 const PIPELINE_STAGES = [
   { id: "research", label: "Research", icon: BookOpen },
@@ -143,6 +219,8 @@ type Niche = {
   default_priority: number | null
   industry?: Industry
   user_state: NicheUserState | null
+  // Temporary for modal filtering
+  industry_name?: string
 }
 
 type AISuggestions = {
@@ -276,7 +354,7 @@ function getAutomationAlerts(
   return alerts
 }
 
-export default function OpportunitiesV2() {
+export default function OpportunitiesPage() {
   const [industries, setIndustries] = useState<Industry[]>([])
   const [industryMap, setIndustryMap] = useState<Map<string, Industry>>(new Map())
   const [allNiches, setAllNiches] = useState<Niche[]>([])
@@ -298,10 +376,18 @@ export default function OpportunitiesV2() {
 
   const [savingField, setSavingField] = useState<string | null>(null)
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
+  const { toast } = useToast()
+  const supabase = createClient()
+
+  const [updatingChannel, setUpdatingChannel] = useState<string | null>(null)
+
+  const [showCoffeeDateModal, setShowCoffeeDateModal] = useState(false)
+  const [coffeeDateStep, setCoffeeDateStep] = useState<"type" | "niche">("type")
+  const [coffeeDateType, setCoffeeDateType] = useState<"test" | "client" | null>(null)
+  const [coffeeDateNicheSearch, setCoffeeDateNicheSearch] = useState("")
+
+  const [showWinModal, setShowWinModal] = useState(false)
+  const [winNicheSearch, setWinNicheSearch] = useState("")
 
   const fetchAiSuggestions = useCallback(async (niche: Niche) => {
     setLoadingSuggestions(true)
@@ -350,7 +436,7 @@ export default function OpportunitiesV2() {
 
     const { data: niches, error } = await supabase
       .from("niches")
-      .select(`id, niche_name, industry_id, scale, database_size, default_priority`)
+      .select(`id, niche_name, industry_id, scale, database_size, default_priority, industries (name)`)
       .order("niche_name")
       .limit(1000)
 
@@ -366,23 +452,23 @@ export default function OpportunitiesV2() {
 
     const enrichedNiches: Niche[] = niches.map((niche) => ({
       ...niche,
-      industry: industryMap.get(niche.industry_id) || undefined,
+      // @ts-ignore
+      industry_name: niche.industries?.name || "Unknown",
       user_state: stateMap.get(niche.id) || null,
     }))
 
     setAllNiches(enrichedNiches)
     setLoading(false)
-  }, [supabase, industryMap])
+  }, [supabase])
+
+  const loadData = useCallback(async () => {
+    await loadIndustries()
+    await loadNiches()
+  }, [loadIndustries, loadNiches])
 
   useEffect(() => {
-    loadIndustries()
-  }, [loadIndustries])
-
-  useEffect(() => {
-    if (industryMap.size > 0) {
-      loadNiches()
-    }
-  }, [industryMap, loadNiches])
+    loadData()
+  }, [loadData])
 
   useEffect(() => {
     if (selectedNiche) {
@@ -398,9 +484,7 @@ export default function OpportunitiesV2() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(
-        (n) =>
-          n.niche_name.toLowerCase().includes(query) ||
-          (industryMap.get(n.industry_id || "")?.name || "").toLowerCase().includes(query),
+        (n) => n.niche_name.toLowerCase().includes(query) || (n.industry_name || "").toLowerCase().includes(query),
       )
     }
 
@@ -433,7 +517,7 @@ export default function OpportunitiesV2() {
     }
 
     setFilteredNiches(filtered)
-  }, [allNiches, searchQuery, industryFilter, statusFilter, favouritesOnly, sortBy, industryMap])
+  }, [allNiches, searchQuery, industryFilter, statusFilter, favouritesOnly, sortBy])
 
   const handleNicheSelect = (niche: Niche) => {
     setSelectedNiche(niche)
@@ -513,10 +597,16 @@ export default function OpportunitiesV2() {
       setSelectedNiche(updatedNiche)
       setAllNiches((prev) => prev.map((n) => (n.id === selectedNiche.id ? updatedNiche : n)))
       if (showToast) {
-        toast.success("Changes saved")
+        toast({
+          title: "Changes saved",
+        })
       }
     } else {
-      toast.error("Failed to save changes")
+      toast({
+        title: "Error saving changes",
+        description: error.message,
+        variant: "destructive",
+      })
     }
   }
 
@@ -535,19 +625,35 @@ export default function OpportunitiesV2() {
     // Check if we can move forward
     if (targetIdx > currentIdx) {
       if (targetStageId === "shortlisted" && !gating.canMoveToShortlisted) {
-        toast.error(gating.shortlistedReason)
+        toast({
+          title: "Cannot proceed",
+          description: gating.shortlistedReason,
+          variant: "destructive",
+        })
         return
       }
       if (targetStageId === "outreach_in_progress" && !gating.canMoveToOutreach) {
-        toast.error(gating.outreachReason)
+        toast({
+          title: "Cannot proceed",
+          description: gating.outreachReason,
+          variant: "destructive",
+        })
         return
       }
       if (targetStageId === "coffee_date_demo" && !gating.canMoveToCoffeeDate) {
-        toast.error(gating.coffeeDateReason)
+        toast({
+          title: "Cannot proceed",
+          description: gating.coffeeDateReason,
+          variant: "destructive",
+        })
         return
       }
       if (targetStageId === "win" && !gating.canMoveToWin) {
-        toast.error(gating.winReason)
+        toast({
+          title: "Cannot proceed",
+          description: gating.winReason,
+          variant: "destructive",
+        })
         return
       }
     }
@@ -579,7 +685,10 @@ export default function OpportunitiesV2() {
       setSelectedNiche(updatedNiche)
       setAllNiches((prev) => prev.map((n) => (n.id === selectedNiche.id ? updatedNiche : n)))
       fetchAiSuggestions(updatedNiche)
-      toast.success(`Moved to ${STAGE_TO_DB_STATUS[targetStageId]}`)
+      toast({
+        title: "Pipeline Updated",
+        description: `Moved to ${STAGE_TO_DB_STATUS[targetStageId]}`,
+      })
 
       // Open the appropriate card
       if (targetStageId === "shortlisted") {
@@ -595,20 +704,28 @@ export default function OpportunitiesV2() {
         setMessagingOpen(false)
         setOutreachOpen(true)
       }
+    } else {
+      toast({
+        title: "Error updating pipeline",
+        description: error.message,
+        variant: "destructive",
+      })
     }
   }
 
-  const updateOutreachChannel = async (channel: keyof OutreachChannels, delta: number) => {
+  const setOutreachChannelValue = async (channel: keyof OutreachChannels, newValue: number) => {
     if (!selectedNiche) return
+    setUpdatingChannel(channel)
+
     const {
       data: { user },
     } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) {
+      setUpdatingChannel(null)
+      return
+    }
 
     const currentChannels = selectedNiche.user_state?.outreach_channels || {}
-    const currentValue = (currentChannels[channel] as number) || 0
-    const newValue = Math.max(0, currentValue + delta)
-
     const newChannels = { ...currentChannels, [channel]: newValue }
 
     // Calculate total messages sent
@@ -641,7 +758,143 @@ export default function OpportunitiesV2() {
       }
       setSelectedNiche(updatedNiche)
       setAllNiches((prev) => prev.map((n) => (n.id === selectedNiche.id ? updatedNiche : n)))
+      toast({
+        title: "Saved",
+        description: `${channel.replace("_", " ")} updated to ${newValue}`,
+      })
+    } else {
+      toast({
+        title: "Error updating channel value",
+        description: error.message,
+        variant: "destructive",
+      })
     }
+
+    setUpdatingChannel(null)
+  }
+
+  const handleCoffeeDateComplete = async (nicheId: string | null, nicheName: string) => {
+    if (!nicheId) {
+      // "Other" selected - no pipeline update
+      toast({
+        title: "Demo Logged",
+        description: "Coffee date logged for other niche (no pipeline update)",
+      })
+      setShowCoffeeDateModal(false)
+      setCoffeeDateStep("type")
+      setCoffeeDateType(null)
+      return
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    // Update the niche_user_state
+    const { error } = await supabase.from("niche_user_state").upsert(
+      {
+        niche_id: nicheId,
+        user_id: user.id,
+        coffee_date_completed: true,
+        status: "Coffee Date Demo",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "niche_id,user_id" },
+    )
+
+    if (!error) {
+      // Update local state if this is the selected niche
+      if (selectedNiche?.id === nicheId) {
+        const updatedNiche = {
+          ...selectedNiche,
+          user_state: {
+            ...selectedNiche.user_state!,
+            coffee_date_completed: true,
+            status: "Coffee Date Demo" as any,
+            updated_at: new Date().toISOString(),
+          },
+        }
+        setSelectedNiche(updatedNiche)
+        setAllNiches((prev) => prev.map((n) => (n.id === nicheId ? updatedNiche : n)))
+      } else {
+        // Reload to get updated data
+        loadData()
+      }
+
+      toast({
+        title: "Coffee Date Logged",
+        description: `Coffee date logged for ${nicheName}`,
+      })
+    } else {
+      toast({
+        title: "Error logging coffee date",
+        description: error.message,
+        variant: "destructive",
+      })
+    }
+
+    setShowCoffeeDateModal(false)
+    setCoffeeDateStep("type")
+    setCoffeeDateType(null)
+  }
+
+  const handleWinComplete = async (nicheId: string | null, nicheName: string) => {
+    if (!nicheId) {
+      toast({
+        title: "Win Recorded",
+        description: "Win recorded for other niche (no pipeline update)",
+      })
+      setShowWinModal(false)
+      return
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { error } = await supabase.from("niche_user_state").upsert(
+      {
+        niche_id: nicheId,
+        user_id: user.id,
+        win_completed: true,
+        status: "Win",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "niche_id,user_id" },
+    )
+
+    if (!error) {
+      if (selectedNiche?.id === nicheId) {
+        const updatedNiche = {
+          ...selectedNiche,
+          user_state: {
+            ...selectedNiche.user_state!,
+            win_completed: true,
+            status: "Win" as any,
+            updated_at: new Date().toISOString(),
+          },
+        }
+        setSelectedNiche(updatedNiche)
+        setAllNiches((prev) => prev.map((n) => (n.id === nicheId ? updatedNiche : n)))
+      } else {
+        loadData()
+      }
+
+      toast({
+        title: "Win Recorded",
+        description: `Win recorded for ${nicheName}`,
+      })
+    } else {
+      toast({
+        title: "Error recording win",
+        description: error.message,
+        variant: "destructive",
+      })
+    }
+
+    setShowWinModal(false)
   }
 
   const currentStageId = DB_STATUS_TO_STAGE[selectedNiche?.user_state?.status || "Research"] || "research"
@@ -654,9 +907,9 @@ export default function OpportunitiesV2() {
 
   return (
     <TooltipProvider>
-      <div className="flex-1 p-6 space-y-6">
+      <div className="min-h-screen bg-black p-6">
         {/* Filter Bar */}
-        <div className="flex flex-wrap items-center gap-4 p-4 bg-zinc-900/50 rounded-xl border border-white/10">
+        <div className="flex flex-wrap items-center gap-4 p-4 bg-zinc-900/50 rounded-xl border border-white/10 mb-6">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
             <Input
@@ -784,9 +1037,7 @@ export default function OpportunitiesV2() {
                             <h3 className="font-medium text-white truncate">{niche.niche_name}</h3>
                           </div>
                           <div className="flex items-center gap-2 mt-1.5">
-                            <span className="text-xs text-white/40">
-                              {industryMap.get(niche.industry_id || "")?.name}
-                            </span>
+                            <span className="text-xs text-white/40">{niche.industry_name}</span>
                             <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-white/60">
                               {stage?.label || "Research"}
                             </span>
@@ -841,7 +1092,7 @@ export default function OpportunitiesV2() {
                           {selectedNicheTier.toUpperCase()}
                         </span>
                       </div>
-                      <p className="text-sm text-white/60 mt-1">{selectedNiche.industry?.name}</p>
+                      <p className="text-sm text-white/60 mt-1">{selectedNiche.industry_name}</p>
                       {selectedNicheScore && (
                         <div className="flex items-center gap-4 mt-3 text-sm">
                           <div className="flex items-center gap-2">
@@ -1053,10 +1304,10 @@ export default function OpportunitiesV2() {
                                     : null,
                                 )
                               }}
-                              onBlur={async (e) => {
-                                await updateField("research_notes", e.target.value, false)
+                              onBlur={(e) => {
+                                updateField("research_notes", e.target.value, false)
                                 if (e.target.value && !selectedNiche.user_state?.research_notes_added) {
-                                  await updateField("research_notes_added", true)
+                                  updateField("research_notes_added", true)
                                 }
                               }}
                               className="bg-zinc-900 border-zinc-700 text-white placeholder:text-white/40 min-h-[80px]"
@@ -1401,17 +1652,24 @@ export default function OpportunitiesV2() {
                                     <Icon className={cn("h-4 w-4", channel.color)} />
                                     <span className="text-sm text-white/80">{channel.label}</span>
                                   </div>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-1">
                                     <button
-                                      onClick={() => updateOutreachChannel(channel.key, -1)}
-                                      className="p-1 rounded hover:bg-white/10 text-white/60 hover:text-white"
+                                      onClick={() => setOutreachChannelValue(channel.key, Math.max(0, count - 1))}
+                                      disabled={updatingChannel === channel.key}
+                                      className="p-1 rounded hover:bg-white/10 text-white/60 hover:text-white disabled:opacity-50"
                                     >
                                       <Minus className="h-4 w-4" />
                                     </button>
-                                    <span className="w-8 text-center font-semibold text-white">{count}</span>
+                                    <EditableCounter
+                                      value={count}
+                                      onChange={setOutreachChannelValue}
+                                      channelKey={channel.key}
+                                      isUpdating={updatingChannel === channel.key}
+                                    />
                                     <button
-                                      onClick={() => updateOutreachChannel(channel.key, 1)}
-                                      className="p-1 rounded hover:bg-white/10 text-white/60 hover:text-white"
+                                      onClick={() => setOutreachChannelValue(channel.key, count + 1)}
+                                      disabled={updatingChannel === channel.key}
+                                      className="p-1 rounded hover:bg-white/10 text-white/60 hover:text-white disabled:opacity-50"
                                     >
                                       <Plus className="h-4 w-4" />
                                     </button>
@@ -1458,12 +1716,12 @@ export default function OpportunitiesV2() {
                             Outreach complete when you've logged at least one activity.
                           </p>
 
-                          {/* Coffee Date & Win Controls */}
                           <div className="flex items-center gap-3 pt-2 border-t border-white/5">
                             <Button
-                              onClick={async () => {
-                                await updateField("coffee_date_completed", true)
-                                progressToStage("coffee_date_demo")
+                              onClick={() => {
+                                setCoffeeDateStep("type")
+                                setCoffeeDateType(null)
+                                setShowCoffeeDateModal(true)
                               }}
                               disabled={
                                 !stageGating.canMoveToCoffeeDate ||
@@ -1471,19 +1729,30 @@ export default function OpportunitiesV2() {
                                 currentStageId === "win"
                               }
                               variant="outline"
-                              className="flex-1 border-zinc-600 text-white hover:bg-white/10"
+                              className="flex-1 border-zinc-600 text-white hover:bg-white/10 disabled:opacity-50"
                             >
                               <Coffee className="h-4 w-4 mr-2" />
                               Log Coffee Date
                             </Button>
-                            <Button
-                              onClick={() => progressToStage("win")}
-                              disabled={!stageGating.canMoveToWin || currentStageId === "win"}
-                              className="flex-1 bg-green-600 hover:bg-green-700"
-                            >
-                              <Trophy className="h-4 w-4 mr-2" />
-                              Mark as Win
-                            </Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="flex-1">
+                                  <Button
+                                    onClick={() => setShowWinModal(true)}
+                                    disabled={!stageGating.canMoveToWin || currentStageId === "win"}
+                                    className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                                  >
+                                    <Trophy className="h-4 w-4 mr-2" />
+                                    Mark as Win
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              {!stageGating.canMoveToWin && stageGating.winReason && (
+                                <TooltipContent side="top" className="bg-zinc-800 text-white border-zinc-700">
+                                  <p>{stageGating.winReason}</p>
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
                           </div>
                         </div>
                       </CollapsibleContent>
@@ -1505,6 +1774,188 @@ export default function OpportunitiesV2() {
             </div>
           </div>
         )}
+
+        <Dialog open={showCoffeeDateModal} onOpenChange={setShowCoffeeDateModal}>
+          <DialogContent className="sm:max-w-[500px] bg-zinc-900 border-zinc-700">
+            <DialogHeader>
+              <DialogTitle className="text-white">
+                {coffeeDateStep === "type"
+                  ? "How would you classify this Coffee Date session?"
+                  : "Which niche was this demo for?"}
+              </DialogTitle>
+              <DialogDescription className="text-white/60">
+                {coffeeDateStep === "type"
+                  ? "Select whether this was a test or a real client demo"
+                  : "Select the niche to update its pipeline status"}
+              </DialogDescription>
+            </DialogHeader>
+
+            {coffeeDateStep === "type" ? (
+              <div className="flex flex-col gap-3 py-4">
+                <Button
+                  onClick={() => {
+                    setShowCoffeeDateModal(false)
+                    toast({
+                      title: "Test Session",
+                      description: "No pipeline changes made",
+                    })
+                  }}
+                  variant="outline"
+                  className="h-16 border-zinc-600 text-white hover:bg-white/10"
+                >
+                  <div className="text-left">
+                    <div className="font-semibold">Test Only</div>
+                    <div className="text-sm text-white/60">Practice session, no pipeline update</div>
+                  </div>
+                </Button>
+                <Button
+                  onClick={() => {
+                    setCoffeeDateType("client")
+                    setCoffeeDateStep("niche")
+                  }}
+                  className="h-16 bg-[#00A8FF] hover:bg-[#00A8FF]/90"
+                >
+                  <div className="text-left">
+                    <div className="font-semibold">Client Demo</div>
+                    <div className="text-sm text-white/80">Real demo, update niche pipeline</div>
+                  </div>
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4 py-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
+                  <Input
+                    placeholder="Search niches..."
+                    value={coffeeDateNicheSearch}
+                    onChange={(e) => setCoffeeDateNicheSearch(e.target.value)}
+                    className="pl-9 bg-zinc-800 border-zinc-700 text-white placeholder:text-white/40"
+                  />
+                </div>
+
+                <ScrollArea className="h-[300px] rounded-lg border border-zinc-700 bg-zinc-800">
+                  <div className="p-2 space-y-1">
+                    {/* Pre-select current niche if available */}
+                    {selectedNiche && (
+                      <button
+                        onClick={() => handleCoffeeDateComplete(selectedNiche.id, selectedNiche.niche_name)}
+                        className="w-full text-left p-3 rounded-lg bg-[#00A8FF]/20 border border-[#00A8FF]/50 hover:bg-[#00A8FF]/30 transition-colors"
+                      >
+                        <div className="font-medium text-white">{selectedNiche.niche_name}</div>
+                        <div className="text-sm text-white/60">{selectedNiche.industry_name} (currently selected)</div>
+                      </button>
+                    )}
+
+                    {/* Other option */}
+                    <button
+                      onClick={() => handleCoffeeDateComplete(null, "Other")}
+                      className="w-full text-left p-3 rounded-lg hover:bg-white/10 transition-colors border border-zinc-600"
+                    >
+                      <div className="font-medium text-white">Other</div>
+                      <div className="text-sm text-white/60">Not in the list</div>
+                    </button>
+
+                    {/* Filtered niches */}
+                    {allNiches
+                      .filter(
+                        (n) =>
+                          n.id !== selectedNiche?.id &&
+                          (n.niche_name.toLowerCase().includes(coffeeDateNicheSearch.toLowerCase()) ||
+                            n.industry_name.toLowerCase().includes(coffeeDateNicheSearch.toLowerCase())),
+                      )
+                      .slice(0, 20)
+                      .map((niche) => (
+                        <button
+                          key={niche.id}
+                          onClick={() => handleCoffeeDateComplete(niche.id, niche.niche_name)}
+                          className="w-full text-left p-3 rounded-lg hover:bg-white/10 transition-colors"
+                        >
+                          <div className="font-medium text-white">{niche.niche_name}</div>
+                          <div className="text-sm text-white/60">{niche.industry_name}</div>
+                        </button>
+                      ))}
+                  </div>
+                </ScrollArea>
+
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setCoffeeDateStep("type")
+                    setCoffeeDateType(null)
+                  }}
+                  className="w-full border-zinc-600 text-white hover:bg-white/10"
+                >
+                  Back
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showWinModal} onOpenChange={setShowWinModal}>
+          <DialogContent className="sm:max-w-[500px] bg-zinc-900 border-zinc-700">
+            <DialogHeader>
+              <DialogTitle className="text-white">Mark as Win</DialogTitle>
+              <DialogDescription className="text-white/60">Confirm which niche to mark as a win</DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
+                <Input
+                  placeholder="Search niches..."
+                  value={winNicheSearch}
+                  onChange={(e) => setWinNicheSearch(e.target.value)}
+                  className="pl-9 bg-zinc-800 border-zinc-700 text-white placeholder:text-white/40"
+                />
+              </div>
+
+              <ScrollArea className="h-[300px] rounded-lg border border-zinc-700 bg-zinc-800">
+                <div className="p-2 space-y-1">
+                  {/* Pre-select current niche if available */}
+                  {selectedNiche && (
+                    <button
+                      onClick={() => handleWinComplete(selectedNiche.id, selectedNiche.niche_name)}
+                      className="w-full text-left p-3 rounded-lg bg-green-500/20 border border-green-500/50 hover:bg-green-500/30 transition-colors"
+                    >
+                      <div className="font-medium text-white">{selectedNiche.niche_name}</div>
+                      <div className="text-sm text-white/60">{selectedNiche.industry_name} (currently selected)</div>
+                    </button>
+                  )}
+
+                  {/* Other option */}
+                  <button
+                    onClick={() => handleWinComplete(null, "Other")}
+                    className="w-full text-left p-3 rounded-lg hover:bg-white/10 transition-colors border border-zinc-600"
+                  >
+                    <div className="font-medium text-white">Other</div>
+                    <div className="text-sm text-white/60">Not in the list</div>
+                  </button>
+
+                  {/* Filtered niches */}
+                  {allNiches
+                    .filter(
+                      (n) =>
+                        n.id !== selectedNiche?.id &&
+                        (n.niche_name.toLowerCase().includes(winNicheSearch.toLowerCase()) ||
+                          n.industry_name.toLowerCase().includes(winNicheSearch.toLowerCase())),
+                    )
+                    .slice(0, 20)
+                    .map((niche) => (
+                      <button
+                        key={niche.id}
+                        onClick={() => handleWinComplete(niche.id, niche.niche_name)}
+                        className="w-full text-left p-3 rounded-lg hover:bg-white/10 transition-colors"
+                      >
+                        <div className="font-medium text-white">{niche.niche_name}</div>
+                        <div className="text-sm text-white/60">{niche.industry_name}</div>
+                      </button>
+                    ))}
+                </div>
+              </ScrollArea>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   )
