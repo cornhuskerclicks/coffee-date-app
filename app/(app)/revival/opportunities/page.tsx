@@ -1011,9 +1011,9 @@ export default function OpportunitiesPage() {
                         selectedNiche?.id === niche.id
                           ? "border-primary bg-primary/10"
                           : tier === "hot"
-                            ? "border-orange-500/30 bg-gradient-to-r from-orange-500/5 to-red-500/5 hover:border-orange-500/50"
+                            ? "border-orange-500/30 bg-gradient-to-r from-orange-500 to-red-500/5 hover:border-orange-500/50"
                             : tier === "warm"
-                              ? "border-yellow-500/30 bg-gradient-to-r from-yellow-500/5 to-orange-500/5 hover:border-yellow-500/50"
+                              ? "border-yellow-500/30 bg-gradient-to-r from-yellow-500 to-orange-500/5 hover:border-yellow-500/50"
                               : "border-white/10 bg-zinc-900/50 hover:border-white/20",
                       )}
                     >
@@ -1716,44 +1716,11 @@ export default function OpportunitiesPage() {
                             Outreach complete when you've logged at least one activity.
                           </p>
 
-                          <div className="flex items-center gap-3 pt-2 border-t border-white/5">
-                            <Button
-                              onClick={() => {
-                                setCoffeeDateStep("type")
-                                setCoffeeDateType(null)
-                                setShowCoffeeDateModal(true)
-                              }}
-                              disabled={
-                                !stageGating.canMoveToCoffeeDate ||
-                                currentStageId === "coffee_date_demo" ||
-                                currentStageId === "win"
-                              }
-                              variant="outline"
-                              className="flex-1 border-zinc-600 text-white hover:bg-white/10 disabled:opacity-50"
-                            >
-                              <Coffee className="h-4 w-4 mr-2" />
-                              Log Coffee Date
-                            </Button>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="flex-1">
-                                  <Button
-                                    onClick={() => setShowWinModal(true)}
-                                    disabled={!stageGating.canMoveToWin || currentStageId === "win"}
-                                    className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50"
-                                  >
-                                    <Trophy className="h-4 w-4 mr-2" />
-                                    Mark as Win
-                                  </Button>
-                                </span>
-                              </TooltipTrigger>
-                              {!stageGating.canMoveToWin && stageGating.winReason && (
-                                <TooltipContent side="top" className="bg-zinc-800 text-white border-zinc-700">
-                                  <p>{stageGating.winReason}</p>
-                                </TooltipContent>
-                              )}
-                            </Tooltip>
-                          </div>
+                          {/* CHANGE Removed Log Coffee Date and Mark as Win buttons. Added helper text instead. */}
+                          <p className="text-xs text-white/50 pt-2 border-t border-white/5">
+                            Coffee Date demos and Wins are updated automatically from the Coffee Date Demo and GHL
+                            tools.
+                          </p>
                         </div>
                       </CollapsibleContent>
                     </Card>

@@ -218,13 +218,15 @@ export default function DeadLeadRevivalPage() {
     } = await supabase.auth.getUser()
     if (!user) return
 
+    const now = new Date().toISOString()
     const { error } = await supabase.from("niche_user_state").upsert(
       {
         niche_id: nicheId,
         user_id: user.id,
         win_completed: true,
+        win_completed_at: now,
         status: "Win",
-        updated_at: new Date().toISOString(),
+        updated_at: now,
       },
       { onConflict: "niche_id,user_id" },
     )

@@ -30,18 +30,22 @@ export async function POST(request: Request) {
         .eq("user_id", user.id)
         .single()
 
+      const now = new Date().toISOString()
       const updateData =
         action === "coffee_date"
           ? {
               coffee_date_completed: true,
+              coffee_date_completed_at: now,
               status: "Coffee Date Demo",
-              updated_at: new Date().toISOString(),
+              updated_at: now,
             }
           : {
               coffee_date_completed: true,
+              coffee_date_completed_at: now,
               status: "Win",
               win_completed: true,
-              updated_at: new Date().toISOString(),
+              win_completed_at: now,
+              updated_at: now,
             }
 
       if (existingState) {
