@@ -3,11 +3,10 @@ import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Coffee, Sparkles, Plus, Pencil, BarChart3, Clock, Users, Target } from "lucide-react"
-import DemoStartButton from "@/components/demo-start-button"
 import Link from "next/link"
 import DeleteAndroidButton from "@/components/delete-android-button"
-import LogDemoButton from "@/components/log-demo-button"
 import DemoModeCards from "@/components/demo-mode-cards"
+import StartDemoButtons from "@/components/start-demo-buttons"
 
 export default async function DemoPage() {
   const supabase = await createClient()
@@ -115,7 +114,6 @@ export default async function DemoPage() {
                 Create Android
               </Link>
             </Button>
-            <DemoStartButton androids={androids || []} />
           </div>
         </div>
 
@@ -149,7 +147,11 @@ export default async function DemoPage() {
                   {androids.map((android) => {
                     const companyName =
                       android.business_context?.company_name || android.business_context?.businessName || "My Business"
-                    const niche = android.business_context?.niche || android.business_context?.industry || "General"
+                    const niche =
+                      android.business_context?.niche ||
+                      android.business_context?.serviceType ||
+                      android.business_context?.industry ||
+                      null
                     const counts = androidDemoCounts[android.id] || { total: 0, client: 0, test: 0 }
 
                     return (
@@ -167,7 +169,8 @@ export default async function DemoPage() {
                                 </span>
                               </div>
                               <p className="text-sm text-white/50 truncate">
-                                {companyName} • {niche}
+                                {companyName}
+                                {niche ? ` · ${niche}` : ""}
                               </p>
                               <div className="flex items-center gap-3 mt-2 text-xs text-white/40">
                                 <span>{counts.total} demos</span>
@@ -176,14 +179,13 @@ export default async function DemoPage() {
                               </div>
                             </div>
 
-                            {/* Action Icons */}
+                            {/* Action Icons - Edit and Delete only */}
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <LogDemoButton androidId={android.id} androidName={android.name} />
                               <Button
                                 asChild
                                 size="icon"
                                 variant="ghost"
-                                className="h-8 w-8 text-white/40 hover:text-white hover:bg-white/10"
+                                className="h-8 w-8 text-white/50 hover:text-white hover:bg-white/10"
                               >
                                 <Link href="/prompt-generator">
                                   <Pencil className="h-4 w-4" />
@@ -193,13 +195,7 @@ export default async function DemoPage() {
                             </div>
                           </div>
 
-                          {/* Start Demo Button */}
-                          <Button asChild className="w-full mt-4 bg-[#00A8FF] text-white hover:bg-[#00A8FF]/90">
-                            <Link href={`/demo/${android.id}`}>
-                              <Coffee className="h-4 w-4 mr-2" />
-                              Start Demo
-                            </Link>
-                          </Button>
+                          <StartDemoButtons androidId={android.id} androidName={android.name} />
                         </CardContent>
                       </Card>
                     )
