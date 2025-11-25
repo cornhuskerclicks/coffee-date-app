@@ -93,7 +93,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to create demo log" }, { status: 500 })
     }
 
-    // If it's a client demo with a niche, update the niche_user_state
     if (type === "client" && nicheId) {
       const now = new Date().toISOString()
 
@@ -106,6 +105,7 @@ export async function POST(request: Request) {
 
       const updateData = {
         coffee_date_completed: true,
+        coffee_date_completed_at: now, // Added timestamp
         status: "Coffee Date Demo",
         updated_at: now,
       }
