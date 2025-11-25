@@ -32,7 +32,7 @@ const menuSections = [
     items: [
       { icon: Coffee, label: "Coffee Date Demo", href: "/demo" },
       { icon: ClipboardList, label: "AI Readiness Quiz", href: "/quiz" },
-      { icon: MessageSquareHeart, label: "GHL Dead Lead Accounts", href: "/revival" },
+      { icon: MessageSquareHeart, label: "GHL Dead Lead Accounts", href: "/revival", exact: true },
       { icon: FileSearch, label: "AI Audit", href: "/audit" },
     ],
   },
@@ -61,6 +61,28 @@ export function AppSidebar() {
     const newState = !isCollapsed
     setIsCollapsed(newState)
     localStorage.setItem("sidebar-collapsed", String(newState))
+  }
+
+  const isActiveLink = (href: string, exact?: boolean) => {
+    if (!pathname) return false
+
+    // Special handling for /revival routes to prevent double-highlighting
+    if (href === "/revival" && exact) {
+      // Only highlight GHL Dead Leads when exactly on /revival (not /revival/opportunities)
+      return pathname === "/revival" || pathname === "/revival/"
+    }
+
+    if (href === "/revival/opportunities") {
+      // Highlight Opportunities for /revival/opportunities and its sub-routes
+      return pathname.startsWith("/revival/opportunities")
+    }
+
+    // Default behavior for other routes
+    if (exact) {
+      return pathname === href || pathname === href + "/"
+    }
+
+    return pathname === href || pathname.startsWith(href + "/")
   }
 
   return (
@@ -101,16 +123,14 @@ export function AppSidebar() {
       <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
         {menuSections.map((section) => (
           <div key={section.label} className="space-y-1">
-            {/* Section header - hidden when collapsed */}
             {!isCollapsed && (
               <div className="px-3 py-2 text-xs font-semibold text-white/40 uppercase tracking-wider">
                 {section.label}
               </div>
             )}
-            {/* Section items */}
             {section.items.map((item) => {
               const Icon = item.icon
-              const isActive = pathname === item.href || pathname?.startsWith(item.href + "/")
+              const isActive = isActiveLink(item.href, (item as any).exact)
 
               return (
                 <Link
