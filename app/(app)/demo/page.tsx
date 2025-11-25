@@ -2,11 +2,12 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Coffee, Sparkles, Share2, Plus, Calendar, Pencil, BarChart3, Clock, Users, Target } from "lucide-react"
+import { Coffee, Sparkles, Plus, Pencil, BarChart3, Clock, Users, Target } from "lucide-react"
 import DemoStartButton from "@/components/demo-start-button"
 import Link from "next/link"
 import DeleteAndroidButton from "@/components/delete-android-button"
-import MarkDemoCompleteButton from "@/components/mark-demo-complete-button"
+import LogDemoButton from "@/components/log-demo-button"
+import DemoModeCards from "@/components/demo-mode-cards"
 
 export default async function DemoPage() {
   const supabase = await createClient()
@@ -19,6 +20,7 @@ export default async function DemoPage() {
     redirect("/login")
   }
 
+  // Fetch androids
   const { data: androids, error } = await supabase
     .from("androids")
     .select("*")
@@ -29,68 +31,76 @@ export default async function DemoPage() {
     console.error("Error fetching androids:", error)
   }
 
-  const { data: sessions, error: sessionsError } = await supabase
-    .from("sessions")
+  // Fetch demo logs for accurate counting
+  const { data: demoLogs, error: logsError } = await supabase
+    .from("demo_logs")
     .select(`
       *,
-      androids (
-        id,
-        name,
-        business_context
-      )
+      androids (id, name),
+      niches (id, niche_name)
     `)
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 
-  if (sessionsError) {
-    console.error("Error fetching sessions:", sessionsError)
+  if (logsError) {
+    console.error("Error fetching demo logs:", logsError)
   }
 
-  const totalDemos = sessions?.length || 0
-  const clientDemos = sessions?.filter((s) => s.status === "completed")?.length || 0
-  const testSessions = totalDemos - clientDemos
-  const lastDemo = sessions?.[0]?.created_at ? new Date(sessions[0].created_at) : null
+  // Calculate stats from demo_logs
+  const allLogs = demoLogs || []
+  const totalDemos = allLogs.length
+  const clientDemos = allLogs.filter((log) => log.type === "client").length
+  const testSessions = allLogs.filter((log) => log.type === "test").length
+  const lastDemoLog = allLogs[0]
 
-  const androidSessionCounts: Record<string, number> = {}
-  const androidClientCounts: Record<string, number> = {}
-  sessions?.forEach((session) => {
-    const aid = session.android_id
-    androidSessionCounts[aid] = (androidSessionCounts[aid] || 0) + 1
-    if (session.status === "completed") {
-      androidClientCounts[aid] = (androidClientCounts[aid] || 0) + 1
+  // Per-android counts
+  const androidDemoCounts: Record<string, { total: number; client: number; test: number }> = {}
+  allLogs.forEach((log) => {
+    const aid = log.android_id
+    if (!androidDemoCounts[aid]) {
+      androidDemoCounts[aid] = { total: 0, client: 0, test: 0 }
+    }
+    androidDemoCounts[aid].total++
+    if (log.type === "client") {
+      androidDemoCounts[aid].client++
+    } else {
+      androidDemoCounts[aid].test++
     }
   })
 
-  const recentClientDemos = sessions?.filter((s) => s.status === "completed")?.slice(0, 5) || []
+  // Recent client demos (last 5)
+  const recentClientDemos = allLogs.filter((log) => log.type === "client").slice(0, 5)
 
-  // Demo modes data
-  const demoModes = [
-    {
-      id: "interactive",
-      icon: Coffee,
-      title: "Interactive Demos",
-      description: "Live AI-powered conversations with prospects",
-      isDefault: true,
-    },
-    {
-      id: "spin",
-      icon: Sparkles,
-      title: "SPIN Selling",
-      description: "Guided by proven sales methodologies",
-      isDefault: false,
-    },
-    {
-      id: "save",
-      icon: Share2,
-      title: "Save & Share",
-      description: "Record and share demos with your team",
-      isDefault: false,
-    },
-  ]
+  // Format last demo display
+  const formatLastDemo = () => {
+    if (!lastDemoLog) return "No demos yet"
+    const date = new Date(lastDemoLog.created_at)
+    const android = lastDemoLog.androids as any
+    const niche = lastDemoLog.niches as any
+    const type = lastDemoLog.type === "client" ? "Client" : "Test"
+    const name = lastDemoLog.type === "client" && niche?.niche_name ? niche.niche_name : android?.name || "Unknown"
+
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    const diffDays = Math.floor(diffHours / 24)
+
+    let timeAgo = ""
+    if (diffDays > 0) {
+      timeAgo = `${diffDays}d ago`
+    } else if (diffHours > 0) {
+      timeAgo = `${diffHours}h ago`
+    } else {
+      timeAgo = "Just now"
+    }
+
+    return `${type} · ${name.substring(0, 20)} · ${timeAgo}`
+  }
 
   return (
     <div className="bg-black min-h-screen">
       <div className="p-8 space-y-8 max-w-7xl mx-auto">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-[32px] font-bold text-white">Coffee Date Demo</h1>
@@ -113,39 +123,13 @@ export default async function DemoPage() {
           {/* Left Column - Androids & Modes (55-60%) */}
           <div className="lg:col-span-7 space-y-6">
             {/* Demo Modes Row */}
-            <div>
-              <h2 className="text-lg font-semibold text-white mb-4">Demo Modes</h2>
-              <div className="grid grid-cols-3 gap-4">
-                {demoModes.map((mode) => (
-                  <Card
-                    key={mode.id}
-                    className={`border bg-white/5 hover:bg-white/10 hover:border-[#00A8FF]/50 transition-all cursor-pointer ${
-                      mode.isDefault ? "border-[#00A8FF]/50 bg-[#00A8FF]/5" : "border-white/10"
-                    }`}
-                  >
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center gap-2">
-                        <mode.icon className={`h-5 w-5 ${mode.isDefault ? "text-[#00A8FF]" : "text-white/60"}`} />
-                        {mode.isDefault && (
-                          <span className="text-[10px] font-medium text-[#00A8FF] bg-[#00A8FF]/10 px-2 py-0.5 rounded-full">
-                            DEFAULT
-                          </span>
-                        )}
-                      </div>
-                      <CardTitle className="text-sm text-white">{mode.title}</CardTitle>
-                      <CardDescription className="text-xs text-white/50">{mode.description}</CardDescription>
-                    </CardHeader>
-                  </Card>
-                ))}
-              </div>
-            </div>
+            <DemoModeCards />
 
             {/* Your Androids Section */}
             <div>
               <h2 className="text-lg font-semibold text-white mb-4">Your Androids</h2>
 
               {!androids || androids.length === 0 ? (
-                /* Empty State */
                 <Card className="border border-white/10 bg-white/5">
                   <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                     <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
@@ -161,14 +145,12 @@ export default async function DemoPage() {
                   </CardContent>
                 </Card>
               ) : (
-                /* Androids List */
                 <div className="space-y-3">
                   {androids.map((android) => {
                     const companyName =
                       android.business_context?.company_name || android.business_context?.businessName || "My Business"
                     const niche = android.business_context?.niche || android.business_context?.industry || "General"
-                    const sessionCount = androidSessionCounts[android.id] || 0
-                    const clientCount = androidClientCounts[android.id] || 0
+                    const counts = androidDemoCounts[android.id] || { total: 0, client: 0, test: 0 }
 
                     return (
                       <Card
@@ -187,14 +169,16 @@ export default async function DemoPage() {
                               <p className="text-sm text-white/50 truncate">
                                 {companyName} • {niche}
                               </p>
-                              <div className="flex items-center gap-4 mt-2 text-xs text-white/40">
-                                <span>{sessionCount} demos</span>
-                                <span>{clientCount} client</span>
+                              <div className="flex items-center gap-3 mt-2 text-xs text-white/40">
+                                <span>{counts.total} demos</span>
+                                <span className="text-[#00A8FF]">{counts.client} client</span>
+                                <span>{counts.test} test</span>
                               </div>
                             </div>
 
                             {/* Action Icons */}
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <LogDemoButton androidId={android.id} androidName={android.name} />
                               <Button
                                 asChild
                                 size="icon"
@@ -265,11 +249,7 @@ export default async function DemoPage() {
                       <Clock className="h-3 w-3" />
                       Last Demo
                     </div>
-                    <p className="text-sm font-medium text-white">
-                      {lastDemo
-                        ? lastDemo.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-                        : "No demos yet"}
-                    </p>
+                    <p className="text-xs font-medium text-white leading-tight">{formatLastDemo()}</p>
                   </div>
                 </div>
               </CardContent>
@@ -283,18 +263,20 @@ export default async function DemoPage() {
               <CardContent>
                 {recentClientDemos.length === 0 ? (
                   <p className="text-sm text-white/50 text-center py-6">
-                    No client demos logged yet. Run a live demo and mark it as a client session to see it here.
+                    No client demos logged yet. Run a live demo and classify it as a client session to see it here.
                   </p>
                 ) : (
                   <div className="space-y-2">
-                    {recentClientDemos.map((session) => {
-                      const android = session.androids as any
+                    {recentClientDemos.map((log) => {
+                      const android = log.androids as any
+                      const niche = log.niches as any
                       const androidName = android?.name || "Unknown"
-                      const date = new Date(session.created_at)
+                      const nicheName = niche?.niche_name || log.niche_name || "Other"
+                      const date = new Date(log.created_at)
 
                       return (
                         <div
-                          key={session.id}
+                          key={log.id}
                           className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
                         >
                           <div className="flex items-center gap-3">
@@ -303,18 +285,20 @@ export default async function DemoPage() {
                             </div>
                             <div>
                               <p className="text-sm font-medium text-white">{androidName}</p>
-                              <p className="text-xs text-white/50">
-                                {date.toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                })}
-                              </p>
+                              <p className="text-xs text-white/50">{nicheName}</p>
                             </div>
                           </div>
-                          <span className="text-[10px] font-medium text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-full">
-                            Completed
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-white/40">
+                              {date.toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                              })}
+                            </span>
+                            <span className="text-[10px] font-medium text-[#00A8FF] bg-[#00A8FF]/10 px-2 py-1 rounded-full">
+                              Client
+                            </span>
+                          </div>
                         </div>
                       )
                     })}
@@ -349,62 +333,6 @@ export default async function DemoPage() {
             </Card>
           </div>
         </div>
-
-        {/* Saved Demo Sessions - Full Width Below */}
-        {sessions && sessions.length > 0 && (
-          <Card className="border border-white/10 bg-white/5">
-            <CardHeader>
-              <CardTitle className="text-white">Saved Demo Sessions</CardTitle>
-              <CardDescription className="text-white/50">
-                View and manage your previous demo conversations
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {sessions.slice(0, 10).map((session) => {
-                  const android = session.androids as any
-                  const companyName =
-                    android?.business_context?.company_name || android?.business_context?.businessName || "Unknown"
-                  const androidName = android?.name || "Unknown Android"
-
-                  return (
-                    <div
-                      key={session.id}
-                      className="flex items-center justify-between p-4 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 hover:border-[#00A8FF]/30 transition-all"
-                    >
-                      <div className="flex items-start gap-3 flex-1">
-                        <Calendar className="h-5 w-5 text-[#00A8FF] mt-0.5" />
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium truncate text-white">{session.title || "Untitled Session"}</h4>
-                          <p className="text-sm text-white/50">
-                            {androidName} — {companyName}
-                          </p>
-                          <p className="text-xs text-white/40 mt-1">{new Date(session.created_at).toLocaleString()}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {session.status === "completed" && (
-                          <span className="text-[10px] font-medium text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-full mr-2">
-                            Client Demo
-                          </span>
-                        )}
-                        <MarkDemoCompleteButton sessionId={session.id} />
-                        <Button
-                          asChild
-                          size="sm"
-                          variant="outline"
-                          className="border-white/20 text-white hover:bg-white/10 bg-transparent"
-                        >
-                          <Link href={`/demo/${session.android_id}`}>View</Link>
-                        </Button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   )
