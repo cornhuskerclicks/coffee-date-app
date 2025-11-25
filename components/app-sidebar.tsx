@@ -19,15 +19,31 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 
-const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-  { icon: Coffee, label: "Coffee Date Demo", href: "/demo" },
-  { icon: ClipboardList, label: "AI Readiness Quiz", href: "/quiz" },
-  { icon: MessageSquareHeart, label: "GHL Dead Lead Accounts", href: "/revival" },
-  { icon: Target, label: "Opportunities", href: "/revival/opportunities" },
-  { icon: FileSearch, label: "AI Audit", href: "/audit" },
-  { icon: Library, label: "Prompt Library", href: "/library" },
-  { icon: Settings2, label: "Settings", href: "/settings" },
+const menuSections = [
+  {
+    label: "Core",
+    items: [
+      { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+      { icon: Target, label: "Opportunities", href: "/revival/opportunities" },
+    ],
+  },
+  {
+    label: "Tools",
+    items: [
+      { icon: Coffee, label: "Coffee Date Demo", href: "/demo" },
+      { icon: ClipboardList, label: "AI Readiness Quiz", href: "/quiz" },
+      { icon: MessageSquareHeart, label: "GHL Dead Lead Accounts", href: "/revival" },
+      { icon: FileSearch, label: "AI Audit", href: "/audit" },
+    ],
+  },
+  {
+    label: "Resources",
+    items: [{ icon: Library, label: "Prompt Library", href: "/library" }],
+  },
+  {
+    label: "Account",
+    items: [{ icon: Settings2, label: "Settings", href: "/settings" }],
+  },
 ]
 
 export function AppSidebar() {
@@ -82,27 +98,40 @@ export function AppSidebar() {
         </Button>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1">
-        {menuItems.map((item) => {
-          const Icon = item.icon
-          const isActive = pathname === item.href || pathname?.startsWith(item.href + "/")
+      <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
+        {menuSections.map((section) => (
+          <div key={section.label} className="space-y-1">
+            {/* Section header - hidden when collapsed */}
+            {!isCollapsed && (
+              <div className="px-3 py-2 text-xs font-semibold text-white/40 uppercase tracking-wider">
+                {section.label}
+              </div>
+            )}
+            {/* Section items */}
+            {section.items.map((item) => {
+              const Icon = item.icon
+              const isActive = pathname === item.href || pathname?.startsWith(item.href + "/")
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              title={isCollapsed ? item.label : undefined}
-              className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-sm font-medium",
-                isActive ? "bg-primary text-white" : "text-white/70 hover:bg-white/5 hover:text-white",
-                isCollapsed && "justify-center px-0",
-              )}
-            >
-              <Icon className="h-5 w-5 flex-shrink-0" />
-              {!isCollapsed && item.label}
-            </Link>
-          )
-        })}
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  title={isCollapsed ? item.label : undefined}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-medium",
+                    isActive
+                      ? "bg-[#00A8FF] text-white shadow-lg shadow-[#00A8FF]/20"
+                      : "text-white/70 hover:bg-white/5 hover:text-white",
+                    isCollapsed && "justify-center px-0",
+                  )}
+                >
+                  <Icon className={cn("h-5 w-5 flex-shrink-0 transition-colors", isActive && "text-white")} />
+                  {!isCollapsed && item.label}
+                </Link>
+              )
+            })}
+          </div>
+        ))}
       </nav>
     </aside>
   )
