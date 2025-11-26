@@ -1290,8 +1290,8 @@ export default function OpportunitiesPage() {
                       )
                     })}
 
-                    <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/10">
-                      <span className="text-xs text-white/50">Bonus:</span>
+                    {/* CHANGE: Remove "Bonus:" label and properly separate AI Audit Win on its own row */}
+                    <div className="flex items-center mt-3 pt-3 border-t border-white/10">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div
