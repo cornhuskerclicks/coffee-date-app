@@ -26,17 +26,16 @@ const DEFAULT_CATEGORIES = ["Marketing", "Sales", "Business Leadership", "Operat
 export default function PromptLibraryPage() {
   const [prompts, setPrompts] = useState<Prompt[]>([])
   const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES)
+  const [customCategories, setCustomCategories] = useState<string[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string>("All")
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
 
-  // Form state
   const [editName, setEditName] = useState("")
   const [editContent, setEditContent] = useState("")
   const [editCategory, setEditCategory] = useState("")
 
-  // Modal state
   const [showNewCategoryModal, setShowNewCategoryModal] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState("")
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -50,16 +49,28 @@ export default function PromptLibraryPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   )
 
+  const filteredPrompts = useMemo(() => {
+    return prompts.filter((prompt) => {
+      if (selectedCategory !== "All" && prompt.category !== selectedCategory) {
+        return false
+      }
+      if (searchQuery.trim()) {
+        return prompt.name.toLowerCase().includes(searchQuery.toLowerCase())
+      }
+      return true
+    })
+  }, [prompts, selectedCategory, searchQuery])
+
   useEffect(() => {
     loadPrompts()
+    loadCustomCategories()
   }, [])
 
-  // Extract unique categories from prompts and merge with defaults
   useEffect(() => {
     const promptCategories = [...new Set(prompts.map((p) => p.category).filter(Boolean))]
-    const allCategories = [...new Set([...DEFAULT_CATEGORIES, ...promptCategories])]
+    const allCategories = [...new Set([...DEFAULT_CATEGORIES, ...customCategories, ...promptCategories])]
     setCategories(allCategories.sort())
-  }, [prompts])
+  }, [prompts, customCategories])
 
   const loadPrompts = async () => {
     try {
@@ -79,23 +90,20 @@ export default function PromptLibraryPage() {
     }
   }
 
-  // Filter prompts by category and search
-  const filteredPrompts = useMemo(() => {
-    let filtered = prompts
+  const loadCustomCategories = async () => {
+    try {
+      const { data, error } = await supabase.from("prompt_categories").select("name").order("name", { ascending: true })
 
-    if (selectedCategory !== "All") {
-      filtered = filtered.filter((p) => p.category === selectedCategory)
+      if (error) {
+        console.log("prompt_categories table not found, using defaults")
+        return
+      }
+
+      setCustomCategories(data?.map((c) => c.name) || [])
+    } catch (error) {
+      console.error("Error loading custom categories:", error)
     }
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(
-        (p) => p.name.toLowerCase().includes(query) || p.content?.toLowerCase().includes(query),
-      )
-    }
-
-    return filtered
-  }, [prompts, selectedCategory, searchQuery])
+  }
 
   const handleSelectPrompt = (prompt: Prompt) => {
     setSelectedPrompt(prompt)
@@ -131,7 +139,6 @@ export default function PromptLibraryPage() {
       if (!user) throw new Error("Not authenticated")
 
       if (isCreating) {
-        // Create new prompt
         const newPrompt = {
           user_id: user.id,
           name: editName.trim(),
@@ -152,7 +159,6 @@ export default function PromptLibraryPage() {
           description: "Prompt saved to library",
         })
       } else if (selectedPrompt) {
-        // Update existing prompt
         const updateData = {
           name: editName.trim(),
           content: editContent,
@@ -220,21 +226,60 @@ export default function PromptLibraryPage() {
     }
   }
 
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     if (!newCategoryName.trim()) return
 
     const trimmed = newCategoryName.trim()
-    if (!categories.includes(trimmed)) {
-      setCategories([...categories, trimmed].sort())
-    }
-    setNewCategoryName("")
-    setShowNewCategoryModal(false)
-    setSelectedCategory(trimmed)
 
-    toast({
-      title: "Category added",
-      description: `"${trimmed}" is now available`,
-    })
+    if (categories.includes(trimmed)) {
+      toast({
+        title: "Category exists",
+        description: `"${trimmed}" already exists`,
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error("Not authenticated")
+
+      const { error } = await supabase.from("prompt_categories").insert([{ user_id: user.id, name: trimmed }])
+
+      if (error) {
+        if (error.code === "42P01") {
+          setCustomCategories([...customCategories, trimmed])
+        } else {
+          throw error
+        }
+      } else {
+        setCustomCategories([...customCategories, trimmed])
+      }
+
+      setNewCategoryName("")
+      setShowNewCategoryModal(false)
+      setSelectedCategory(trimmed)
+
+      toast({
+        title: "Category added",
+        description: `"${trimmed}" is now available`,
+      })
+    } catch (error) {
+      console.error("Error adding category:", error)
+      if (!categories.includes(trimmed)) {
+        setCustomCategories([...customCategories, trimmed])
+      }
+      setNewCategoryName("")
+      setShowNewCategoryModal(false)
+      setSelectedCategory(trimmed)
+
+      toast({
+        title: "Category added",
+        description: `"${trimmed}" is now available`,
+      })
+    }
   }
 
   const handleCancel = () => {
@@ -258,13 +303,11 @@ export default function PromptLibraryPage() {
 
   return (
     <div className="flex h-screen bg-black overflow-hidden">
-      {/* Left Sidebar - Categories */}
       <div className="w-56 border-r border-white/10 flex flex-col">
         <div className="p-4 border-b border-white/10">
           <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wide">Categories</h2>
         </div>
         <div className="flex-1 overflow-y-auto p-2">
-          {/* All category */}
           <button
             onClick={() => setSelectedCategory("All")}
             className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
@@ -274,7 +317,6 @@ export default function PromptLibraryPage() {
             All Prompts
           </button>
 
-          {/* Category list */}
           {categories.map((cat) => (
             <button
               key={cat}
@@ -288,7 +330,6 @@ export default function PromptLibraryPage() {
           ))}
         </div>
 
-        {/* New Category button */}
         <div className="p-3 border-t border-white/10">
           <button
             onClick={() => setShowNewCategoryModal(true)}
@@ -300,9 +341,7 @@ export default function PromptLibraryPage() {
         </div>
       </div>
 
-      {/* Center Panel - Prompt List */}
       <div className="w-80 border-r border-white/10 flex flex-col">
-        {/* Top bar with search and new prompt */}
         <div className="p-4 border-b border-white/10 space-y-3">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
@@ -320,7 +359,6 @@ export default function PromptLibraryPage() {
           </div>
         </div>
 
-        {/* Prompt list */}
         <div className="flex-1 overflow-y-auto p-2">
           {filteredPrompts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-6">
@@ -384,11 +422,9 @@ export default function PromptLibraryPage() {
         </div>
       </div>
 
-      {/* Right Panel - Prompt Details */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {selectedPrompt || isCreating ? (
           <>
-            {/* Header */}
             <div className="p-4 border-b border-white/10 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">{isCreating ? "New Prompt" : "Edit Prompt"}</h2>
               <button onClick={handleCancel} className="p-1 text-white/40 hover:text-white">
@@ -396,7 +432,6 @@ export default function PromptLibraryPage() {
               </button>
             </div>
 
-            {/* Form */}
             <div className="flex-1 overflow-y-auto p-6 space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-white/80 text-sm">
@@ -444,7 +479,6 @@ export default function PromptLibraryPage() {
               </div>
             </div>
 
-            {/* Actions */}
             <div className="p-4 border-t border-white/10 flex items-center gap-3">
               <Button
                 onClick={handleSave}
@@ -489,7 +523,6 @@ export default function PromptLibraryPage() {
         )}
       </div>
 
-      {/* New Category Modal */}
       <Dialog open={showNewCategoryModal} onOpenChange={setShowNewCategoryModal}>
         <DialogContent className="bg-zinc-900 border-white/10 text-white">
           <DialogHeader>
@@ -527,7 +560,6 @@ export default function PromptLibraryPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Modal */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent className="bg-zinc-900 border-white/10 text-white">
           <DialogHeader>
