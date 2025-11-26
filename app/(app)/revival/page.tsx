@@ -215,6 +215,7 @@ export default function DeadLeadRevivalPage() {
               coffee_date_completed_at: now,
               win_completed: true,
               win_completed_at: now,
+              win_type: "revival", // Set win type to revival
               status: "Win",
               updated_at: now,
             },
@@ -314,6 +315,7 @@ export default function DeadLeadRevivalPage() {
         user_id: user.id,
         win_completed: true,
         win_completed_at: now,
+        win_type: "revival", // Set win type to revival
         status: "Win",
         updated_at: now,
       },

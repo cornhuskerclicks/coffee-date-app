@@ -1,80 +1,104 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Updated to Aether AI Lab design system with improved contrast and hierarchy */
-  /* Aether AI Lab brand colors - pure black with soft greys and electric blue accent */
-  --background: 0 0% 0%; /* Pure Black #000000 */
-  --foreground: 0 0% 90%; /* Off-white #e6e6e6 for primary text */
-  
-  --card: 0 0% 7%; /* Soft grey #111 for raised cards */
+  /* Aether AI Lab design system - pure black with soft greys and electric blue accent */
+  --background: 0 0% 0%;
+  --foreground: 0 0% 90%;
+
+  --card: 0 0% 7%;
   --card-foreground: 0 0% 90%;
-  
-  --popover: 0 0% 6%; /* #0f0f0f */
+
+  --popover: 0 0% 6%;
   --popover-foreground: 0 0% 90%;
-  
-  --primary: 218 100% 62%; /* Electric Blue #3a8bff */
+
+  --primary: 218 100% 62%;
   --primary-foreground: 0 0% 100%;
-  
-  --secondary: 0 0% 10%; /* #1a1a1a */
+
+  --secondary: 0 0% 10%;
   --secondary-foreground: 0 0% 90%;
-  
-  --muted: 0 0% 11%; /* #1b1b1b for input backgrounds */
-  --muted-foreground: 0 0% 60%; /* Mid grey #9a9a9a for secondary labels */
-  
+
+  --muted: 0 0% 11%;
+  --muted-foreground: 0 0% 60%;
+
   --accent: 218 100% 62%;
   --accent-foreground: 0 0% 100%;
-  
+
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  
-  --border: 0 0% 20%; /* #333 for borders */
-  --input: 0 0% 11%; /* #1b1b1b for input backgrounds */
+
+  --border: 0 0% 20%;
+  --input: 0 0% 11%;
   --ring: 218 100% 62%;
-  
-  --radius: 0.625rem; /* 10px rounded corners */
-  
-  /* Added typography color tokens for hierarchy */
-  --text-primary: 0 0% 90%; /* Off-white #e6e6e6 */
-  --text-secondary: 0 0% 60%; /* Mid grey #9a9a9a */
-  --text-helper: 0 0% 48%; /* Light grey #7a7a7a */
+
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+
+  --radius: 0.625rem;
+
+  --sidebar: 0 0% 5%;
+  --sidebar-foreground: 0 0% 90%;
+  --sidebar-primary: 218 100% 62%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 0 0% 10%;
+  --sidebar-accent-foreground: 0 0% 90%;
+  --sidebar-border: 0 0% 20%;
+  --sidebar-ring: 218 100% 62%;
 }
 
 .dark {
   --background: 0 0% 0%;
   --foreground: 0 0% 90%;
-  
+
   --card: 0 0% 7%;
   --card-foreground: 0 0% 90%;
-  
+
   --popover: 0 0% 6%;
   --popover-foreground: 0 0% 90%;
-  
+
   --primary: 218 100% 62%;
   --primary-foreground: 0 0% 100%;
-  
+
   --secondary: 0 0% 10%;
   --secondary-foreground: 0 0% 90%;
-  
+
   --muted: 0 0% 11%;
   --muted-foreground: 0 0% 60%;
-  
+
   --accent: 218 100% 62%;
   --accent-foreground: 0 0% 100%;
-  
+
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  
+
   --border: 0 0% 20%;
   --input: 0 0% 11%;
   --ring: 218 100% 62%;
+
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+
+  --sidebar: 0 0% 5%;
+  --sidebar-foreground: 0 0% 90%;
+  --sidebar-primary: 218 100% 62%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 0 0% 10%;
+  --sidebar-accent-foreground: 0 0% 90%;
+  --sidebar-border: 0 0% 20%;
+  --sidebar-ring: 218 100% 62%;
 }
 
 @theme inline {
-  /* Inter font family matching Aether Consulting */
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -94,49 +118,50 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  
-  /* Updated radius values for premium feel */
-  --radius-sm: calc(var(--radius) - 4px); /* 6px */
-  --radius-md: var(--radius); /* 10px */
-  --radius-lg: calc(var(--radius) + 2px); /* 12px */
-  --radius-xl: calc(var(--radius) + 6px); /* 16px */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  
   body {
-    @apply bg-black text-foreground;
+    @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
-    /* Set medium font weight as default for premium feel */
     font-weight: 500;
   }
-  
-  /* Improved heading styles - bold white headings */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply text-white font-bold;
   }
-  
-  /* Fixed hover states with proper contrast */
-  a:hover, button:hover {
-    color: hsl(var(--primary)) !important;
+  input,
+  textarea,
+  select {
+    caret-color: hsl(218 100% 62%);
   }
-  
-  /* Added flashing cursor to all input fields for better visibility */
-  input, textarea, select {
-    @apply bg-muted border-border text-foreground;
-    caret-color: hsl(218 100% 62%); /* Electric blue cursor */
-  }
-  
-  input::placeholder, textarea::placeholder {
-    color: hsl(0 0% 40%) !important; /* #666 for placeholder text */
-  }
-  
-  input:focus, textarea:focus, select:focus {
-    @apply border-primary ring-2 ring-primary/20;
-    caret-color: hsl(218 100% 62%); /* Maintain blue cursor on focus */
+  input::placeholder,
+  textarea::placeholder {
+    color: hsl(0 0% 40%);
   }
 }
 
@@ -148,85 +173,9 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
-  
-  /* Premium card styling with soft shadows */
-  .card-raised {
-    background: hsl(0 0% 7%);
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-    padding: 24px;
-  }
-  
-  .card-preview {
-    background: hsl(0 0% 6%);
-    border: 1px solid hsl(0 0% 13%);
-    border-radius: 12px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-    padding: 24px;
-  }
-  
-  /* Typography utilities for hierarchy */
-  .text-primary {
-    color: hsl(0 0% 90%);
-  }
-  
-  .text-secondary {
-    color: hsl(0 0% 60%);
-  }
-  
-  .text-helper {
-    color: hsl(0 0% 48%);
-  }
-  
-  /* Aether glass effects for modern UI */
-  .glass {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-  }
-  
-  .glass-border {
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  
-  /* Background glow effects only - matching REVIVE MVP with #00A8FF blue */
-  .bg-glow-blue {
-    position: relative;
-  }
-  
-  .bg-glow-blue::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 800px;
-    height: 800px;
-    background: radial-gradient(circle, rgba(0, 168, 255, 0.15) 0%, rgba(0, 168, 255, 0.05) 40%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-  }
-  
-  .bg-glow-blue-sm {
-    position: relative;
-  }
-  
-  .bg-glow-blue-sm::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 400px;
-    height: 400px;
-    background: radial-gradient(circle, rgba(0, 168, 255, 0.12) 0%, rgba(0, 168, 255, 0.04) 50%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-    filter: blur(60px);
-  }
 }
 
-/* Demo Animations */
+/* Animations */
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -248,7 +197,8 @@
 }
 
 @keyframes pulse-slow {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -256,14 +206,27 @@
   }
 }
 
+@keyframes pulse-once {
+  0% {
+    box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(234, 179, 8, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(234, 179, 8, 0);
+  }
+}
+
 .animate-fade-in {
   animation: fade-in 0.6s ease-out;
 }
-
 .animate-slide-up {
   animation: slide-up 0.4s ease-out;
 }
-
 .animate-pulse-slow {
   animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.animate-pulse-once {
+  animation: pulse-once 0.6s ease-out;
 }
