@@ -127,12 +127,12 @@ function EditableCounter({
   )
 }
 
+// Removed Win from pipeline stages - wins are now tracked separately via Revival Win and AI Audit Win badges
 const PIPELINE_STAGES = [
   { id: "research", label: "Research", icon: BookOpen },
   { id: "shortlisted", label: "Shortlisted", icon: Target },
   { id: "outreach_in_progress", label: "Outreach in Progress", icon: Send },
   { id: "coffee_date_demo", label: "Coffee Date Demo", icon: Coffee },
-  { id: "win", label: "Win", icon: Trophy },
 ]
 
 const STAGE_TO_DB_STATUS: Record<string, string> = {
@@ -140,7 +140,6 @@ const STAGE_TO_DB_STATUS: Record<string, string> = {
   shortlisted: "Shortlisted",
   outreach_in_progress: "Outreach in Progress",
   coffee_date_demo: "Coffee Date Demo",
-  win: "Win",
 }
 
 const DB_STATUS_TO_STAGE: Record<string, string> = {
@@ -148,7 +147,7 @@ const DB_STATUS_TO_STAGE: Record<string, string> = {
   Shortlisted: "shortlisted",
   "Outreach in Progress": "outreach_in_progress",
   "Coffee Date Demo": "coffee_date_demo",
-  Win: "win",
+  Win: "coffee_date_demo", // Map Win to coffee_date_demo since win is now separate
 }
 
 const STAGE_SCORES: Record<string, number> = {
@@ -156,7 +155,6 @@ const STAGE_SCORES: Record<string, number> = {
   shortlisted: 25,
   outreach_in_progress: 40,
   coffee_date_demo: 70,
-  win: 100,
 }
 
 // Define the structure for industry
@@ -247,11 +245,11 @@ function getStageGating(userState: NicheUserState | null): {
   canMoveToShortlisted: boolean
   canMoveToOutreach: boolean
   canMoveToCoffeeDate: boolean
-  canMoveToWin: boolean
+  canMoveToWin: boolean // This will be unused after the change, but kept for now for logic clarity before refactor
   shortlistedReason: string
   outreachReason: string
   coffeeDateReason: string
-  winReason: string
+  winReason: string // This will be unused after the change
 } {
   if (!userState) {
     return {
@@ -281,13 +279,13 @@ function getStageGating(userState: NicheUserState | null): {
     canMoveToShortlisted: researchComplete,
     canMoveToOutreach: messagingComplete,
     canMoveToCoffeeDate: outreachComplete,
-    canMoveToWin: coffeeDateComplete,
+    canMoveToWin: coffeeDateComplete, // This field is still present but will not be used for direct stage progression
     shortlistedReason: researchComplete
       ? ""
       : "Add research notes, complete AOV calculator, and generate customer profile first",
     outreachReason: messagingComplete ? "" : "Mark messaging as prepared to move to Outreach",
     coffeeDateReason: outreachComplete ? "" : "Log at least one outreach activity to move forward",
-    winReason: coffeeDateComplete ? "" : "Complete coffee date demo first",
+    winReason: coffeeDateComplete ? "" : "Complete coffee date demo first", // This reason will not be directly displayed for stage gating
   }
 }
 
@@ -661,14 +659,15 @@ export default function OpportunitiesPage() {
         })
         return
       }
-      if (targetStageId === "win" && !gating.canMoveToWin) {
-        toast({
-          title: "Cannot proceed",
-          description: gating.winReason,
-          variant: "destructive",
-        })
-        return
-      }
+      // Win progression is handled differently now, not by direct stage change to 'Win'
+      // if (targetStageId === "win" && !gating.canMoveToWin) {
+      //   toast({
+      //     title: "Cannot proceed",
+      //     description: gating.winReason,
+      //     variant: "destructive",
+      //   })
+      //   return
+      // }
     }
 
     const dbStatus = STAGE_TO_DB_STATUS[targetStageId]
@@ -681,9 +680,10 @@ export default function OpportunitiesPage() {
     }
 
     // Set boolean flags based on target stage
-    if (targetStageId === "win") {
-      updateData.win_completed = true
-    }
+    // Win completion is now handled by specific win type flags or dedicated modals, not directly here.
+    // if (targetStageId === "win") {
+    //   updateData.win_completed = true
+    // }
 
     const { error } = await supabase.from("niche_user_state").upsert(updateData, { onConflict: "niche_id,user_id" })
 
@@ -692,7 +692,8 @@ export default function OpportunitiesPage() {
         ...selectedNiche.user_state!,
         status: dbStatus,
         updated_at: new Date().toISOString(),
-        ...(targetStageId === "win" ? { win_completed: true } : {}),
+        // Remove direct win_completed update from here
+        // ...(targetStageId === "win" ? { win_completed: true } : {}),
       }
       const updatedNiche = { ...selectedNiche, user_state: updatedUserState }
       setSelectedNiche(updatedNiche)
@@ -710,8 +711,8 @@ export default function OpportunitiesPage() {
         setOutreachOpen(false)
       } else if (
         targetStageId === "outreach_in_progress" ||
-        targetStageId === "coffee_date_demo" ||
-        targetStageId === "win"
+        targetStageId === "coffee_date_demo"
+        // Removed win stage from this logic
       ) {
         setResearchOpen(false)
         setMessagingOpen(false)
@@ -871,8 +872,8 @@ export default function OpportunitiesPage() {
       {
         niche_id: nicheId,
         user_id: user.id,
-        win_completed: true,
-        status: "Win",
+        win_completed: true, // This will now be a general win flag, with win_type determining specifics
+        status: "Win", // Setting status to Win, although it might be overridden by Coffee Date logic if needed. Consider if status should be solely Coffee Date Demo.
         updated_at: new Date().toISOString(),
       },
       { onConflict: "niche_id,user_id" },
@@ -885,7 +886,7 @@ export default function OpportunitiesPage() {
           user_state: {
             ...selectedNiche.user_state!,
             win_completed: true,
-            status: "Win" as any,
+            status: "Win" as any, // Setting status to "Win"
             updated_at: new Date().toISOString(),
           },
         }
@@ -1204,73 +1205,54 @@ export default function OpportunitiesPage() {
                       const isCurrent = index === currentStageIndex
                       const isFuture = index > currentStageIndex
 
-                      // Special handling for Win stage
-                      const isWinStage = stage.id === "win"
-                      const hasAnyWin =
-                        selectedNiche?.user_state?.win_completed ||
-                        selectedNiche?.user_state?.revival_win_completed ||
-                        selectedNiche?.user_state?.audit_win_completed
-                      const isWinCompleted = isWinStage && hasAnyWin
-
-                      // Gate logic (only for non-win stages)
+                      // Gate logic
                       let canProgress = true
                       let disabledReason = ""
 
-                      if (!isWinStage) {
-                        if (stage.id === "shortlisted" && !selectedNiche?.user_state?.research_notes_added) {
-                          canProgress = false
-                          disabledReason = "Complete Research phase first"
-                        } else if (
-                          stage.id === "outreach_in_progress" &&
-                          !selectedNiche?.user_state?.messaging_prepared
-                        ) {
-                          canProgress = false
-                          disabledReason = "Prepare messaging first"
-                        } else if (
-                          stage.id === "coffee_date_demo" &&
-                          !((selectedNiche?.user_state?.outreach_messages_sent || 0) > 0)
-                        ) {
-                          canProgress = false
-                          disabledReason = "Log at least one outreach activity first"
-                        }
+                      if (stage.id === "shortlisted" && !selectedNiche?.user_state?.research_notes_added) {
+                        canProgress = false
+                        disabledReason = "Complete Research phase first"
+                      } else if (
+                        stage.id === "outreach_in_progress" &&
+                        !selectedNiche?.user_state?.messaging_prepared
+                      ) {
+                        canProgress = false
+                        disabledReason = "Prepare messaging first"
+                      } else if (
+                        stage.id === "coffee_date_demo" &&
+                        !((selectedNiche?.user_state?.outreach_messages_sent || 0) > 0)
+                      ) {
+                        canProgress = false
+                        disabledReason = "Log at least one outreach activity first"
                       }
 
                       const stageButton = (
                         <button
-                          onClick={() => !isWinStage && !isFuture && canProgress && progressToStage(stage.id)}
-                          disabled={(isFuture && !canProgress) || isWinStage}
+                          onClick={() => !isFuture && canProgress && progressToStage(stage.id)}
+                          disabled={isFuture && !canProgress}
                           className={cn(
                             "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
-                            // Win stage special styling
-                            isWinCompleted
-                              ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-md"
-                              : isWinStage && !hasAnyWin
-                                ? "bg-white/5 text-white/40 border border-white/10"
-                                : // Completed stages - solid green
-                                  isCompleted
-                                  ? "bg-green-500 text-white"
-                                  : // Current stage - green outline with glow
-                                    isCurrent
-                                    ? "bg-green-500/20 text-green-400 border border-green-500 shadow-sm shadow-green-500/20"
-                                    : // Future locked stages
-                                      isFuture && !canProgress
-                                      ? "bg-white/5 text-white/30 cursor-not-allowed border border-white/5"
-                                      : // Future unlocked stages
-                                        "bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60",
+                            // Completed stages - solid green
+                            isCompleted
+                              ? "bg-green-500 text-white"
+                              : // Current stage - green outline with glow
+                                isCurrent
+                                ? "bg-green-500/20 text-green-400 border border-green-500 shadow-sm shadow-green-500/20"
+                                : // Future locked stages
+                                  isFuture && !canProgress
+                                  ? "bg-white/5 text-white/30 cursor-not-allowed border border-white/5"
+                                  : // Future unlocked stages
+                                    "bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60",
                           )}
                         >
-                          {isFuture && !canProgress && !isWinStage ? (
-                            <Lock className="h-3 w-3" />
-                          ) : (
-                            <StageIcon className="h-3 w-3" />
-                          )}
+                          {isFuture && !canProgress ? <Lock className="h-3 w-3" /> : <StageIcon className="h-3 w-3" />}
                           {stage.label}
                         </button>
                       )
 
                       return (
                         <div key={stage.id} className="flex items-center gap-1">
-                          {isFuture && !canProgress && !isWinStage ? (
+                          {isFuture && !canProgress ? (
                             <Tooltip>
                               <TooltipTrigger asChild>{stageButton}</TooltipTrigger>
                               <TooltipContent side="top" className="bg-zinc-800 text-white border-zinc-700">
@@ -1285,46 +1267,21 @@ export default function OpportunitiesPage() {
                       )
                     })}
 
-                    {/* Separator before win type badges */}
-                    <div className="w-px h-6 bg-white/10 mx-2" />
+                    <ChevronRight className="h-4 w-4 text-white/20" />
 
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div
                           className={cn(
-                            "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all duration-200",
-                            selectedNiche?.user_state?.revival_win_completed ||
-                              selectedNiche?.user_state?.win_type === "revival"
-                              ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-sm"
-                              : "bg-transparent text-white/40 border border-white/20",
-                          )}
-                        >
-                          <Trophy className="h-3 w-3" />
-                          Revival Win
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="bg-zinc-800 text-white border-zinc-700 text-xs">
-                        <p>
-                          {selectedNiche?.user_state?.revival_win_completed ||
-                          selectedNiche?.user_state?.win_type === "revival"
-                            ? "Client secured via GHL Dead Lead Revival"
-                            : "Connect a GHL Dead Lead account to record this win"}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div
-                          className={cn(
-                            "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all duration-200",
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
                             selectedNiche?.user_state?.audit_win_completed ||
                               selectedNiche?.user_state?.win_type === "audit"
-                              ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-sm"
-                              : "bg-transparent text-white/40 border border-white/20",
+                              ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-md"
+                              : "bg-white/5 text-white/40 border border-white/10",
                           )}
                         >
-                          <Trophy className="h-3 w-3" />
+                          <FileSpreadsheet className="h-3 w-3" />{" "}
+                          {/* Changed from BarChart3 to FileSpreadsheet for AI Audit */}
                           AI Audit Win
                         </div>
                       </TooltipTrigger>
@@ -1333,13 +1290,44 @@ export default function OpportunitiesPage() {
                           {selectedNiche?.user_state?.audit_win_completed ||
                           selectedNiche?.user_state?.win_type === "audit"
                             ? "Client secured via AI Readiness Audit"
-                            : "Complete an AI Audit to record this win"}
+                            : "Complete an AI Audit with this niche to record win"}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <ChevronRight className="h-4 w-4 text-white/20" />
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div
+                          className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
+                            selectedNiche?.user_state?.revival_win_completed ||
+                              selectedNiche?.user_state?.win_completed ||
+                              selectedNiche?.user_state?.win_type === "revival"
+                              ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-md"
+                              : "bg-white/5 text-white/40 border border-white/10",
+                          )}
+                        >
+                          <RefreshCcw className="h-3 w-3" />
+                          Dead Lead Revival
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="bg-zinc-800 text-white border-zinc-700 text-xs">
+                        <p>
+                          {selectedNiche?.user_state?.revival_win_completed ||
+                          selectedNiche?.user_state?.win_completed ||
+                          selectedNiche?.user_state?.win_type === "revival"
+                            ? "Client secured via GHL Dead Lead Revival"
+                            : "Connect a GHL Dead Lead account with this niche to record win"}
                         </p>
                       </TooltipContent>
                     </Tooltip>
                   </div>
 
-                  {selectedNiche?.user_state?.win_completed && (
+                  {(selectedNiche?.user_state?.win_completed ||
+                    selectedNiche?.user_state?.revival_win_completed ||
+                    selectedNiche?.user_state?.audit_win_completed) && (
                     <div className="flex items-center gap-3 pt-2">
                       <span className="text-xs text-white/40">
                         Won{" "}
