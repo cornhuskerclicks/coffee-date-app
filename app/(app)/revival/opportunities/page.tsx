@@ -1,5 +1,7 @@
 "use client"
 
+import { DialogTrigger } from "@/components/ui/dialog"
+
 import type React from "react"
 
 import { useState, useEffect, useCallback, useRef } from "react"
@@ -47,7 +49,7 @@ import {
   Lock,
   RefreshCcw,
   BarChart3,
-  Sparkles,
+  ExternalLink,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
@@ -213,6 +215,8 @@ type NicheUserState = {
   win_completed: boolean | null
   win_completed_at?: string | null
   win_type?: "revival" | "audit" | null
+  revival_win_completed?: boolean | null // Added for win type detection
+  audit_win_completed?: boolean | null // Added for win type detection
   updated_at?: string
 }
 
@@ -1042,23 +1046,25 @@ export default function OpportunitiesPage() {
                               {tier === "warm" && <TrendingUp className="h-3 w-3" />}
                               {tier === "cold" && <Snowflake className="h-3 w-3" />}
                             </span>
-                            {niche.user_state?.win_completed && niche.user_state?.win_type && (
-                              <span className="mr-1.5 flex-shrink-0">
-                                {niche.user_state.win_type === "revival" ? (
-                                  <RefreshCcw className="h-3.5 w-3.5 text-teal-400" />
-                                ) : (
-                                  <BarChart3 className="h-3.5 w-3.5 text-purple-400" />
+                            {niche.user_state?.win_completed && (
+                              <span className="mr-1 flex-shrink-0 flex items-center gap-0.5">
+                                {(niche.user_state.win_type === "revival" ||
+                                  niche.user_state.revival_win_completed) && (
+                                  <RefreshCcw className="h-3 w-3 text-teal-400" />
+                                )}
+                                {(niche.user_state.win_type === "audit" || niche.user_state.audit_win_completed) && (
+                                  <BarChart3 className="h-3 w-3 text-purple-400" />
                                 )}
                               </span>
                             )}
-                            <span className="truncate">{niche.niche_name}</span>
+                            <span className="truncate text-[#F5F5F5] font-medium">{niche.niche_name}</span>
                           </div>
                           <div className="flex items-center gap-2 mt-1.5">
-                            <span className="text-xs text-white/40">{niche.industry_name}</span>
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-white/60">
+                            <span className="text-xs text-[#B0B0B0]">{niche.industry_name}</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-[#B0B0B0]">
                               {stage?.label || "Research"}
                             </span>
-                            <span className="text-xs text-white/30">Score: {score.pipelineScore}</span>
+                            <span className="text-xs text-[#808080]">Score: {score.pipelineScore}</span>
                           </div>
                         </div>
                         <button
@@ -1156,82 +1162,54 @@ export default function OpportunitiesPage() {
                     </div>
                   )}
 
+                  {/* Pipeline Stages */}
                   <div className="flex items-center gap-1 flex-wrap">
-                    {PIPELINE_STAGES.map((stage, idx) => {
-                      const isCompleted = idx < currentStageIndex
-                      const isCurrent = idx === currentStageIndex
-                      const isFuture = idx > currentStageIndex
-                      const isWinCompleted = stage.id === "win" && selectedNiche?.user_state?.win_completed === true
-                      const winType = selectedNiche?.user_state?.win_type
+                    {PIPELINE_STAGES.slice(0, -1).map((stage, index) => {
+                      const StageIcon = stage.icon
+                      const currentStageIndex = PIPELINE_STAGES.findIndex(
+                        (s) => s.id === (selectedNiche?.user_state?.status || "research"),
+                      )
+                      const isCompleted = index < currentStageIndex
+                      const isCurrent = index === currentStageIndex
+                      const isFuture = index > currentStageIndex
 
+                      // Gate logic
                       let canProgress = true
                       let disabledReason = ""
 
-                      if (isFuture) {
-                        if (stage.id === "shortlisted") {
-                          canProgress = stageGating.canMoveToShortlisted
-                          disabledReason = stageGating.shortlistedReason
-                        } else if (stage.id === "outreach_in_progress") {
-                          canProgress = stageGating.canMoveToOutreach
-                          disabledReason = stageGating.outreachReason
-                        } else if (stage.id === "coffee_date_demo") {
-                          canProgress = stageGating.canMoveToCoffeeDate
-                          disabledReason = stageGating.coffeeDateReason
-                        } else if (stage.id === "win") {
-                          canProgress = stageGating.canMoveToWin
-                          disabledReason = stageGating.winReason
-                        }
+                      if (stage.id === "shortlisted" && !selectedNiche?.user_state?.research_notes_added) {
+                        canProgress = false
+                        disabledReason = "Complete Research phase first"
+                      } else if (
+                        stage.id === "outreach_in_progress" &&
+                        !selectedNiche?.user_state?.messaging_prepared
+                      ) {
+                        canProgress = false
+                        disabledReason = "Prepare messaging first"
+                      } else if (
+                        stage.id === "coffee_date_demo" &&
+                        !((selectedNiche?.user_state?.outreach_messages_sent || 0) > 0)
+                      ) {
+                        canProgress = false
+                        disabledReason = "Log at least one outreach activity first"
                       }
-
-                      const StageIcon = stage.icon
 
                       const stageButton = (
                         <button
-                          onClick={() => {
-                            if (!isFuture || canProgress) {
-                              progressToStage(stage.id)
-                            }
-                          }}
+                          onClick={() => !isFuture && canProgress && progressToStage(stage.id)}
                           disabled={isFuture && !canProgress}
                           className={cn(
                             "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
-                            isWinCompleted
-                              ? cn(
-                                  "bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-lg animate-pulse-once",
-                                  winType === "revival" && "ring-2 ring-teal-400/50 shadow-teal-400/20",
-                                  winType === "audit" && "ring-2 ring-purple-400/50 shadow-purple-400/20",
-                                )
-                              : isCurrent
-                                ? "bg-primary text-white shadow-lg shadow-primary/20"
-                                : isCompleted
-                                  ? "bg-green-500/20 text-green-400"
-                                  : isFuture && !canProgress
-                                    ? "bg-white/5 text-white/30 cursor-not-allowed"
-                                    : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60",
+                            isCurrent
+                              ? "bg-primary text-white shadow-lg shadow-primary/20"
+                              : isCompleted
+                                ? "bg-green-500/20 text-green-400"
+                                : isFuture && !canProgress
+                                  ? "bg-white/5 text-white/30 cursor-not-allowed"
+                                  : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60",
                           )}
-                          title={
-                            isWinCompleted
-                              ? winType === "revival"
-                                ? "Client secured for Dead Lead Revival"
-                                : winType === "audit"
-                                  ? "Client secured for AI Readiness Audit"
-                                  : "Win achieved"
-                              : undefined
-                          }
                         >
-                          {isWinCompleted ? (
-                            winType === "revival" ? (
-                              <RefreshCcw className="h-3 w-3" />
-                            ) : winType === "audit" ? (
-                              <BarChart3 className="h-3 w-3" />
-                            ) : (
-                              <Trophy className="h-3 w-3" />
-                            )
-                          ) : isFuture && !canProgress ? (
-                            <Lock className="h-3 w-3" />
-                          ) : (
-                            <StageIcon className="h-3 w-3" />
-                          )}
+                          {isFuture && !canProgress ? <Lock className="h-3 w-3" /> : <StageIcon className="h-3 w-3" />}
                           {stage.label}
                         </button>
                       )
@@ -1248,84 +1226,177 @@ export default function OpportunitiesPage() {
                           ) : (
                             stageButton
                           )}
-                          {idx < PIPELINE_STAGES.length - 1 && <ChevronRight className="h-4 w-4 text-white/20" />}
+                          {index < PIPELINE_STAGES.length - 2 && <ChevronRight className="h-4 w-4 text-white/20" />}
                         </div>
                       )
                     })}
+
+                    <ChevronRight className="h-4 w-4 text-white/20" />
+
+                    {/* Revival Win Badge */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
+                            selectedNiche?.user_state?.revival_win_completed ||
+                              selectedNiche?.user_state?.win_type === "revival"
+                              ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-lg ring-2 ring-teal-400/50 shadow-teal-400/20"
+                              : "bg-white/5 text-white/40 border border-white/10 hover:bg-white/10",
+                          )}
+                        >
+                          <RefreshCcw className="h-3 w-3" />
+                          Revival Win
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="bg-zinc-800 text-white border-zinc-700">
+                        <p>
+                          {selectedNiche?.user_state?.revival_win_completed ||
+                          selectedNiche?.user_state?.win_type === "revival"
+                            ? "Client secured via GHL Dead Lead Revival"
+                            : "Connect a GHL Dead Lead account to record this win"}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    {/* AI Audit Win Badge */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
+                            selectedNiche?.user_state?.audit_win_completed ||
+                              selectedNiche?.user_state?.win_type === "audit"
+                              ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-lg ring-2 ring-purple-400/50 shadow-purple-400/20"
+                              : "bg-white/5 text-white/40 border border-white/10 hover:bg-white/10",
+                          )}
+                        >
+                          <BarChart3 className="h-3 w-3" />
+                          AI Audit Win
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="bg-zinc-800 text-white border-zinc-700">
+                        <p>
+                          {selectedNiche?.user_state?.audit_win_completed ||
+                          selectedNiche?.user_state?.win_type === "audit"
+                            ? "Client secured via AI Readiness Audit"
+                            : "Complete an AI Audit to record this win"}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
 
                   {/* Win Details Section */}
                   {selectedNiche?.user_state?.win_completed && (
                     <div className="rounded-xl border border-yellow-500/30 bg-gradient-to-br from-yellow-500/10 to-amber-500/10 p-4">
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
-                          {selectedNiche.user_state.win_type === "revival" ? (
-                            <>
-                              <div className="p-2 rounded-lg bg-teal-500/20">
-                                <RefreshCcw className="h-5 w-5 text-teal-400" />
-                              </div>
-                              <div>
-                                <h4 className="text-sm font-semibold text-yellow-400">Revival Win</h4>
-                                <p className="text-xs text-white/50">Client secured for Dead Lead Revival</p>
-                              </div>
-                            </>
-                          ) : selectedNiche.user_state.win_type === "audit" ? (
-                            <>
-                              <div className="p-2 rounded-lg bg-purple-500/20">
-                                <BarChart3 className="h-5 w-5 text-purple-400" />
-                              </div>
-                              <div>
-                                <h4 className="text-sm font-semibold text-yellow-400">Audit Win</h4>
-                                <p className="text-xs text-white/50">Client secured for AI Readiness Audit</p>
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <div className="p-2 rounded-lg bg-yellow-500/20">
-                                <Trophy className="h-5 w-5 text-yellow-400" />
-                              </div>
-                              <div>
-                                <h4 className="text-sm font-semibold text-yellow-400">Win</h4>
-                                <p className="text-xs text-white/50">Client secured</p>
-                              </div>
-                            </>
-                          )}
+                          <div className="p-2 rounded-lg bg-yellow-500/20">
+                            <Trophy className="h-5 w-5 text-yellow-400" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-semibold text-yellow-400">Win</h4>
+                            <p className="text-xs text-[#B0B0B0]">Client secured</p>
+                          </div>
                         </div>
                         {selectedNiche.user_state.win_completed_at && (
-                          <span className="text-xs text-white/40">
+                          <span className="text-xs text-[#808080]">
                             Won • {new Date(selectedNiche.user_state.win_completed_at).toLocaleDateString("en-GB")}
                           </span>
                         )}
                       </div>
 
-                      {/* Post-Win CTA */}
-                      <div className="mt-3 pt-3 border-t border-yellow-500/20">
-                        {selectedNiche.user_state.win_type === "revival" ? (
-                          <Button
-                            className="w-full bg-teal-600 hover:bg-teal-700 text-white"
-                            onClick={() => router.push("/revival")}
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center justify-between p-2 rounded-lg bg-white/5">
+                          <div className="flex items-center gap-2">
+                            <RefreshCcw className="h-4 w-4 text-teal-400" />
+                            <span className="text-sm text-[#F5F5F5]">Revival Win</span>
+                          </div>
+                          <span
+                            className={cn(
+                              "text-xs px-2 py-0.5 rounded-full",
+                              selectedNiche.user_state.revival_win_completed ||
+                                selectedNiche.user_state.win_type === "revival"
+                                ? "bg-teal-500/20 text-teal-400"
+                                : "bg-white/10 text-[#808080]",
+                            )}
                           >
-                            <FileText className="h-4 w-4 mr-2" />
-                            Create Revival Campaign Plan
-                          </Button>
-                        ) : selectedNiche.user_state.win_type === "audit" ? (
-                          <Button
-                            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-                            onClick={() => router.push("/audit")}
+                            {selectedNiche.user_state.revival_win_completed ||
+                            selectedNiche.user_state.win_type === "revival"
+                              ? "Secured"
+                              : "Not yet"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between p-2 rounded-lg bg-white/5">
+                          <div className="flex items-center gap-2">
+                            <BarChart3 className="h-4 w-4 text-purple-400" />
+                            <span className="text-sm text-[#F5F5F5]">AI Audit Win</span>
+                          </div>
+                          <span
+                            className={cn(
+                              "text-xs px-2 py-0.5 rounded-full",
+                              selectedNiche.user_state.audit_win_completed ||
+                                selectedNiche.user_state.win_type === "audit"
+                                ? "bg-purple-500/20 text-purple-400"
+                                : "bg-white/10 text-[#808080]",
+                            )}
                           >
-                            <Sparkles className="h-4 w-4 mr-2" />
-                            Generate Audit Proposal
-                          </Button>
-                        ) : (
-                          <Button
-                            className="w-full bg-yellow-600 hover:bg-yellow-700 text-black"
-                            onClick={() => router.push("/revival")}
-                          >
-                            <Trophy className="h-4 w-4 mr-2" />
-                            View Win Dashboard
-                          </Button>
-                        )}
+                            {selectedNiche.user_state.audit_win_completed ||
+                            selectedNiche.user_state.win_type === "audit"
+                              ? "Secured"
+                              : "Not yet"}
+                          </span>
+                        </div>
                       </div>
+
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button className="w-full bg-yellow-600 hover:bg-yellow-700 text-black font-medium">
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Open Client Data
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="bg-zinc-900 border-zinc-700">
+                          <DialogHeader>
+                            <DialogTitle className="text-white">View Client Data</DialogTitle>
+                            <DialogDescription className="text-[#B0B0B0]">
+                              Choose which data you'd like to view for this client
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-3 py-4">
+                            {(selectedNiche.user_state.revival_win_completed ||
+                              selectedNiche.user_state.win_type === "revival") && (
+                              <Button
+                                variant="outline"
+                                className="w-full justify-start border-teal-500/30 hover:bg-teal-500/10 text-[#F5F5F5] bg-transparent"
+                                onClick={() => router.push("/revival")}
+                              >
+                                <RefreshCcw className="h-4 w-4 mr-3 text-teal-400" />
+                                View GHL Revival Data
+                              </Button>
+                            )}
+                            {(selectedNiche.user_state.audit_win_completed ||
+                              selectedNiche.user_state.win_type === "audit") && (
+                              <Button
+                                variant="outline"
+                                className="w-full justify-start border-purple-500/30 hover:bg-purple-500/10 text-[#F5F5F5] bg-transparent"
+                                onClick={() => router.push("/audit")}
+                              >
+                                <BarChart3 className="h-4 w-4 mr-3 text-purple-400" />
+                                View Audit Report
+                              </Button>
+                            )}
+                            {!selectedNiche.user_state.revival_win_completed &&
+                              !selectedNiche.user_state.audit_win_completed &&
+                              selectedNiche.user_state.win_type !== "revival" &&
+                              selectedNiche.user_state.win_type !== "audit" && (
+                                <p className="text-sm text-[#808080] text-center py-4">
+                                  No specific client data available yet.
+                                </p>
+                              )}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                   )}
 
