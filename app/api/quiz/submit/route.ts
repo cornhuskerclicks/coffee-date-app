@@ -29,8 +29,8 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error
 
-    // Sync to GHL asynchronously
-    fetch(`${process.env.NEXT_PUBLIC_APP_URL || ""}/api/quiz/ghl-sync`, {
+    const origin = request.headers.get("origin") || request.nextUrl.origin
+    fetch(`${origin}/api/quiz/ghl-sync`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
