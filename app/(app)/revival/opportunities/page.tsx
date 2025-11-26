@@ -1,7 +1,5 @@
 "use client"
 
-import { DialogTrigger } from "@/components/ui/dialog"
-
 import type React from "react"
 
 import { useState, useEffect, useCallback, useRef } from "react"
@@ -47,9 +45,6 @@ import {
   ChevronRight,
   UserCheck,
   Lock,
-  RefreshCcw,
-  BarChart3,
-  ExternalLink,
   FileSpreadsheet,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -1291,7 +1286,7 @@ export default function OpportunitiesPage() {
                     })}
                   </div>
 
-                  <div className="mt-2 flex justify-end pr-1">
+                  <div className="flex justify-end mt-1">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div
@@ -1317,71 +1312,6 @@ export default function OpportunitiesPage() {
                       </TooltipContent>
                     </Tooltip>
                   </div>
-
-                  {(selectedNiche?.user_state?.win_completed ||
-                    selectedNiche?.user_state?.revival_win_completed ||
-                    selectedNiche?.user_state?.audit_win_completed) && (
-                    <div className="flex items-center gap-3 pt-2">
-                      <span className="text-xs text-white/40">
-                        Won{" "}
-                        {selectedNiche.user_state.win_completed_at
-                          ? new Date(selectedNiche.user_state.win_completed_at).toLocaleDateString("en-GB")
-                          : ""}
-                      </span>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-xs bg-transparent border-primary/50 text-primary hover:bg-primary/10"
-                          >
-                            <ExternalLink className="h-3 w-3 mr-1.5" />
-                            Open Client Data
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="bg-zinc-900 border-zinc-700">
-                          <DialogHeader>
-                            <DialogTitle className="text-white">View Client Data</DialogTitle>
-                            <DialogDescription className="text-[#B0B0B0]">
-                              Choose which data you'd like to view for this client
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="space-y-3 py-4">
-                            {(selectedNiche.user_state.revival_win_completed ||
-                              selectedNiche.user_state.win_type === "revival") && (
-                              <Button
-                                variant="outline"
-                                className="w-full justify-start border-teal-500/30 hover:bg-teal-500/10 text-[#F5F5F5] bg-transparent"
-                                onClick={() => router.push("/revival")}
-                              >
-                                <RefreshCcw className="h-4 w-4 mr-3 text-teal-400" />
-                                View GHL Revival Data
-                              </Button>
-                            )}
-                            {(selectedNiche.user_state.audit_win_completed ||
-                              selectedNiche.user_state.win_type === "audit") && (
-                              <Button
-                                variant="outline"
-                                className="w-full justify-start border-purple-500/30 hover:bg-purple-500/10 text-[#F5F5F5] bg-transparent"
-                                onClick={() => router.push("/audit")}
-                              >
-                                <BarChart3 className="h-4 w-4 mr-3 text-purple-400" />
-                                View Audit Report
-                              </Button>
-                            )}
-                            {!selectedNiche.user_state.revival_win_completed &&
-                              !selectedNiche.user_state.audit_win_completed &&
-                              selectedNiche.user_state.win_type !== "revival" &&
-                              selectedNiche.user_state.win_type !== "audit" && (
-                                <p className="text-sm text-[#808080] text-center py-4">
-                                  No specific client data available yet.
-                                </p>
-                              )}
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  )}
 
                   {/* AI Insights Panel */}
                   <div className="bg-gradient-to-br from-purple-500/10 to-blue-500/10 border border-purple-500/20 rounded-xl p-5 space-y-4">
