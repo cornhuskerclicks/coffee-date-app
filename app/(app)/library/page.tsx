@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Copy, Trash2, Edit, FolderOpen, Search, FileText, X } from "lucide-react"
+import { Plus, Copy, Trash2, Edit, FolderOpen, Search, FileText, X, Book } from "lucide-react"
 import { useState, useEffect, useMemo } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { createBrowserClient } from "@supabase/ssr"
@@ -39,6 +39,8 @@ export default function PromptLibraryPage() {
   const [showNewCategoryModal, setShowNewCategoryModal] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState("")
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showDeleteCategoryConfirm, setShowDeleteCategoryConfirm] = useState(false)
+  const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null)
 
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -282,6 +284,43 @@ export default function PromptLibraryPage() {
     }
   }
 
+  const handleDeleteCategory = async (categoryName: string) => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error("Not authenticated")
+
+      // Delete from database
+      await supabase.from("prompt_categories").delete().eq("user_id", user.id).eq("name", categoryName)
+
+      // Remove from local state
+      setCustomCategories(customCategories.filter((c) => c !== categoryName))
+
+      // If currently viewing deleted category, switch to All
+      if (selectedCategory === categoryName) {
+        setSelectedCategory("All")
+      }
+
+      setShowDeleteCategoryConfirm(false)
+      setCategoryToDelete(null)
+
+      toast({
+        title: "Category deleted",
+        description: `"${categoryName}" has been removed`,
+      })
+    } catch (error) {
+      console.error("Error deleting category:", error)
+      // Still remove locally even if DB fails
+      setCustomCategories(customCategories.filter((c) => c !== categoryName))
+      if (selectedCategory === categoryName) {
+        setSelectedCategory("All")
+      }
+      setShowDeleteCategoryConfirm(false)
+      setCategoryToDelete(null)
+    }
+  }
+
   const handleCancel = () => {
     if (isCreating) {
       setIsCreating(false)
@@ -302,11 +341,15 @@ export default function PromptLibraryPage() {
   }
 
   return (
-    <div className="flex h-screen bg-black overflow-hidden">
+    <div className="flex h-[calc(100vh-4rem)] bg-[#0A0A0A]">
       <div className="w-56 border-r border-white/10 flex flex-col">
         <div className="p-4 border-b border-white/10">
-          <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wide">Categories</h2>
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Book className="h-5 w-5 text-[#00A8FF]" />
+            Prompt Library
+          </h2>
         </div>
+
         <div className="flex-1 overflow-y-auto p-2">
           <button
             onClick={() => setSelectedCategory("All")}
@@ -317,7 +360,7 @@ export default function PromptLibraryPage() {
             All Prompts
           </button>
 
-          {categories.map((cat) => (
+          {DEFAULT_CATEGORIES.map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
@@ -328,6 +371,34 @@ export default function PromptLibraryPage() {
               {cat}
             </button>
           ))}
+
+          {customCategories.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-white/10">
+              <p className="px-3 py-1 text-xs text-white/40 uppercase tracking-wide">Custom</p>
+              {customCategories.map((cat) => (
+                <div
+                  key={cat}
+                  className={`group flex items-center justify-between rounded-md text-sm transition-colors ${
+                    selectedCategory === cat ? "bg-[#00A8FF] text-white" : "text-white/80 hover:bg-white/10"
+                  }`}
+                >
+                  <button onClick={() => setSelectedCategory(cat)} className="flex-1 text-left px-3 py-2">
+                    {cat}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setCategoryToDelete(cat)
+                      setShowDeleteCategoryConfirm(true)
+                    }}
+                    className="p-1.5 mr-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-white/60 hover:text-red-400 transition-all"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="p-3 border-t border-white/10">
@@ -582,6 +653,36 @@ export default function PromptLibraryPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Category Confirmation Modal */}
+      {showDeleteCategoryConfirm && categoryToDelete && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-[#1A1A1A] border border-white/10 rounded-lg p-6 w-full max-w-sm">
+            <h3 className="text-lg font-semibold text-white mb-2">Delete Category</h3>
+            <p className="text-white/60 text-sm mb-4">
+              Are you sure you want to delete "{categoryToDelete}"? Prompts in this category will not be deleted.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowDeleteCategoryConfirm(false)
+                  setCategoryToDelete(null)
+                }}
+                className="text-white/60 hover:text-white hover:bg-white/10"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => handleDeleteCategory(categoryToDelete)}
+                className="bg-red-600 text-white hover:bg-red-700"
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
