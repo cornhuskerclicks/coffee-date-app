@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus, Trash2, ExternalLink, TrendingUp, Search } from "lucide-react"
+import { Plus, Trash2, ExternalLink, TrendingUp, Search, CheckCircle2, X } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
@@ -56,6 +56,12 @@ export default function DeadLeadRevivalPage() {
   >([])
   const [newlyConnectedAccountName, setNewlyConnectedAccountName] = useState("")
 
+  // State for niche selection in Add Account modal
+  const [selectedNicheId, setSelectedNicheId] = useState<string | null>(null)
+  const [selectedNicheName, setSelectedNicheName] = useState<string>("")
+  const [nicheSearch, setNicheSearch] = useState("")
+  const [nichesLoaded, setNichesLoaded] = useState(false)
+
   const { toast } = useToast()
   const router = useRouter()
   const supabase = createClient()
@@ -107,7 +113,32 @@ export default function DeadLeadRevivalPage() {
     }
   }
 
+  const loadNichesForModal = async () => {
+    if (nichesLoaded) return
+    try {
+      const { data: niches } = await supabase
+        .from("niches")
+        .select("id, niche_name, industry:industries(name)")
+        .order("niche_name")
+        .limit(1000)
+
+      if (niches) {
+        setAvailableNiches(
+          niches.map((n: any) => ({
+            id: n.id,
+            niche_name: n.niche_name,
+            industry_name: n.industry?.[0]?.name || n.industry?.name || "Unknown",
+          })),
+        )
+        setNichesLoaded(true)
+      }
+    } catch (error) {
+      console.error("Error loading niches:", error)
+    }
+  }
+
   const handleAddAccount = async () => {
+    // Validate all required fields including niche
     if (!accountName.trim() || !locationId.trim() || !privateIntegrationToken.trim()) {
       toast({
         title: "Missing Fields",
@@ -117,8 +148,18 @@ export default function DeadLeadRevivalPage() {
       return
     }
 
+    if (!selectedNicheId) {
+      toast({
+        title: "Niche Required",
+        description: "Please select a business niche",
+        variant: "destructive",
+      })
+      return
+    }
+
     setConnecting(true)
     try {
+      // Test connection first
       const testResponse = await fetch("/api/revival/test-connection", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -139,28 +180,76 @@ export default function DeadLeadRevivalPage() {
       } = await supabase.auth.getUser()
       if (!user) throw new Error("Not authenticated")
 
-      const { error } = await supabase.from("ghl_connections").insert({
+      // Insert GHL connection
+      const { error: connectionError } = await supabase.from("ghl_connections").insert({
         user_id: user.id,
         api_key: privateIntegrationToken.trim(),
         location_id: locationId.trim(),
         account_name: accountName.trim(),
       })
 
-      if (error) throw error
+      if (connectionError) throw connectionError
 
-      setNewlyConnectedAccountName(accountName.trim())
+      if (selectedNicheId !== "other") {
+        // Check if niche already has a WIN
+        const { data: existingState } = await supabase
+          .from("niche_user_state")
+          .select("win_completed")
+          .eq("niche_id", selectedNicheId)
+          .eq("user_id", user.id)
+          .single()
+
+        // Only create WIN if not already won
+        if (!existingState?.win_completed) {
+          const now = new Date().toISOString()
+          const { error: winError } = await supabase.from("niche_user_state").upsert(
+            {
+              niche_id: selectedNicheId,
+              user_id: user.id,
+              // Mark all stages complete
+              research_notes_added: true,
+              aov_calculator_completed: true,
+              customer_profile_generated: true,
+              messaging_prepared: true,
+              coffee_date_completed: true,
+              coffee_date_completed_at: now,
+              win_completed: true,
+              win_completed_at: now,
+              status: "Win",
+              updated_at: now,
+            },
+            { onConflict: "niche_id,user_id" },
+          )
+
+          if (!winError) {
+            toast({
+              title: "Win Recorded!",
+              description: `${selectedNicheName} has been marked as a WIN in Opportunities`,
+            })
+          }
+        }
+      }
+
+      // Show success toast
+      toast({
+        title: "Account Connected Successfully",
+        description:
+          selectedNicheId !== "other"
+            ? `${accountName} connected. This niche has been marked as a WIN in Opportunities.`
+            : `${accountName} connected successfully.`,
+      })
 
       // Reset form
-      const savedAccountName = accountName.trim()
       setAccountName("")
       setLocationId("")
       setPrivateIntegrationToken("")
+      setSelectedNicheId(null)
+      setSelectedNicheName("")
+      setNicheSearch("")
       setIsAddModalOpen(false)
 
-      // Load niches and show assignment modal
-      await loadNichesForAssignment()
+      // Reload accounts
       await loadAccounts()
-      setShowNicheAssignmentModal(true)
     } catch (error: any) {
       console.error("Connection error:", error)
       toast({
@@ -263,14 +352,26 @@ export default function DeadLeadRevivalPage() {
             </p>
           </div>
 
-          <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+          {/* Update the Add Account modal dialog to include niche selector */}
+          <Dialog
+            open={isAddModalOpen}
+            onOpenChange={(open) => {
+              setIsAddModalOpen(open)
+              if (open) loadNichesForModal()
+              if (!open) {
+                setSelectedNicheId(null)
+                setSelectedNicheName("")
+                setNicheSearch("")
+              }
+            }}
+          >
             <DialogTrigger asChild>
               <Button className="bg-[#00A8FF] text-white hover:bg-[#00A8FF]/90 transition-all">
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4 mr-2 text-white" />
                 Add GHL Dead Lead Account
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl bg-[#0A0A0A] border border-white/10">
+            <DialogContent className="max-w-2xl bg-[#0A0A0A] border border-white/10 max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-[20px] font-semibold text-white">Add GHL Dead Lead Account</DialogTitle>
                 <DialogDescription className="text-[15px] text-white/60">
@@ -292,6 +393,79 @@ export default function DeadLeadRevivalPage() {
                     className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/40"
                   />
                   <p className="text-xs text-white/50">This is the label you'll see inside your dashboard.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-white">Business Niche *</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
+                    <Input
+                      placeholder="Search and select a niche..."
+                      value={nicheSearch}
+                      onChange={(e) => setNicheSearch(e.target.value)}
+                      className="h-11 pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                    />
+                  </div>
+                  {selectedNicheName && (
+                    <div className="flex items-center gap-2 p-2 bg-[#00A8FF]/10 border border-[#00A8FF]/30 rounded-lg">
+                      <CheckCircle2 className="h-4 w-4 text-[#00A8FF]" />
+                      <span className="text-sm text-white">{selectedNicheName}</span>
+                      <button
+                        onClick={() => {
+                          setSelectedNicheId(null)
+                          setSelectedNicheName("")
+                        }}
+                        className="ml-auto text-white/60 hover:text-white"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+                  {!selectedNicheId && (
+                    <ScrollArea className="h-[150px] rounded-lg border border-white/10 bg-white/5">
+                      <div className="p-2 space-y-1">
+                        {/* Other option at top */}
+                        <button
+                          onClick={() => {
+                            setSelectedNicheId("other")
+                            setSelectedNicheName("Other")
+                            setNicheSearch("")
+                          }}
+                          className="w-full text-left p-2 rounded-lg hover:bg-white/10 transition-colors border border-white/10"
+                        >
+                          <div className="font-medium text-white">Other</div>
+                          <div className="text-xs text-white/50">Not in the list (no WIN recorded)</div>
+                        </button>
+
+                        {/* Filtered niches */}
+                        {availableNiches
+                          .filter(
+                            (n) =>
+                              n.niche_name.toLowerCase().includes(nicheSearch.toLowerCase()) ||
+                              n.industry_name.toLowerCase().includes(nicheSearch.toLowerCase()),
+                          )
+                          .slice(0, 20)
+                          .map((niche) => (
+                            <button
+                              key={niche.id}
+                              onClick={() => {
+                                setSelectedNicheId(niche.id)
+                                setSelectedNicheName(niche.niche_name)
+                                setNicheSearch("")
+                              }}
+                              className="w-full text-left p-2 rounded-lg hover:bg-white/10 transition-colors"
+                            >
+                              <div className="font-medium text-white">{niche.niche_name}</div>
+                              <div className="text-xs text-white/50">{niche.industry_name}</div>
+                            </button>
+                          ))}
+                      </div>
+                    </ScrollArea>
+                  )}
+                  {!selectedNicheId && <p className="text-xs text-amber-400">Please select a niche to continue</p>}
+                  <p className="text-xs text-white/50">
+                    Selecting a niche will automatically mark it as a WIN in Opportunities
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -381,8 +555,8 @@ export default function DeadLeadRevivalPage() {
 
                 <Button
                   onClick={handleAddAccount}
-                  disabled={connecting}
-                  className="w-full h-11 bg-[#00A8FF] text-white hover:bg-[#00A8FF]/90 transition-all"
+                  disabled={connecting || !selectedNicheId}
+                  className="w-full h-11 bg-[#00A8FF] text-white hover:bg-[#00A8FF]/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {connecting ? "Connecting..." : "Connect Account"}
                 </Button>
