@@ -133,6 +133,7 @@ const PIPELINE_STAGES = [
   { id: "shortlisted", label: "Shortlisted", icon: Target },
   { id: "outreach_in_progress", label: "Outreach in Progress", icon: Send },
   { id: "coffee_date_demo", label: "Coffee Date Demo", icon: Coffee },
+  { id: "dead_lead_revival", label: "Dead Lead Revival", icon: RefreshCcw },
 ]
 
 const STAGE_TO_DB_STATUS: Record<string, string> = {
@@ -140,6 +141,8 @@ const STAGE_TO_DB_STATUS: Record<string, string> = {
   shortlisted: "Shortlisted",
   outreach_in_progress: "Outreach in Progress",
   coffee_date_demo: "Coffee Date Demo",
+  // Win maps to dead_lead_revival status
+  dead_lead_revival: "Win",
 }
 
 const DB_STATUS_TO_STAGE: Record<string, string> = {
@@ -147,7 +150,7 @@ const DB_STATUS_TO_STAGE: Record<string, string> = {
   Shortlisted: "shortlisted",
   "Outreach in Progress": "outreach_in_progress",
   "Coffee Date Demo": "coffee_date_demo",
-  Win: "coffee_date_demo", // Map Win to coffee_date_demo since win is now separate
+  Win: "dead_lead_revival",
 }
 
 const STAGE_SCORES: Record<string, number> = {
@@ -155,6 +158,8 @@ const STAGE_SCORES: Record<string, number> = {
   shortlisted: 25,
   outreach_in_progress: 40,
   coffee_date_demo: 70,
+  // Increased score for dead_lead_revival
+  dead_lead_revival: 100,
 }
 
 // Define the structure for industry
@@ -659,15 +664,16 @@ export default function OpportunitiesPage() {
         })
         return
       }
-      // Win progression is handled differently now, not by direct stage change to 'Win'
-      // if (targetStageId === "win" && !gating.canMoveToWin) {
-      //   toast({
-      //     title: "Cannot proceed",
-      //     description: gating.winReason,
-      //     variant: "destructive",
-      //   })
-      //   return
-      // }
+      // Win progression is now handled by specific win types, not direct stage change.
+      // Check if moving to dead_lead_revival stage and if user has coffee_date_completed
+      if (targetStageId === "dead_lead_revival" && !selectedNiche?.user_state?.coffee_date_completed) {
+        toast({
+          title: "Cannot proceed",
+          description: "Complete a Coffee Date Demo first",
+          variant: "destructive",
+        })
+        return
+      }
     }
 
     const dbStatus = STAGE_TO_DB_STATUS[targetStageId]
@@ -680,7 +686,7 @@ export default function OpportunitiesPage() {
     }
 
     // Set boolean flags based on target stage
-    // Win completion is now handled by specific win type flags or dedicated modals, not directly here.
+    // removed direct win_completed update from here, handled by specific modals/logic
     // if (targetStageId === "win") {
     //   updateData.win_completed = true
     // }
@@ -692,7 +698,7 @@ export default function OpportunitiesPage() {
         ...selectedNiche.user_state!,
         status: dbStatus,
         updated_at: new Date().toISOString(),
-        // Remove direct win_completed update from here
+        // Removed direct win_completed update from here
         // ...(targetStageId === "win" ? { win_completed: true } : {}),
       }
       const updatedNiche = { ...selectedNiche, user_state: updatedUserState }
@@ -711,8 +717,9 @@ export default function OpportunitiesPage() {
         setOutreachOpen(false)
       } else if (
         targetStageId === "outreach_in_progress" ||
-        targetStageId === "coffee_date_demo"
-        // Removed win stage from this logic
+        targetStageId === "coffee_date_demo" ||
+        // Handle opening outreach panel for dead_lead_revival too
+        targetStageId === "dead_lead_revival"
       ) {
         setResearchOpen(false)
         setMessagingOpen(false)
@@ -1205,6 +1212,13 @@ export default function OpportunitiesPage() {
                       const isCurrent = index === currentStageIndex
                       const isFuture = index > currentStageIndex
 
+                      const isRevivalStage = stage.id === "dead_lead_revival"
+                      const isRevivalWon =
+                        isRevivalStage &&
+                        (selectedNiche?.user_state?.revival_win_completed ||
+                          selectedNiche?.user_state?.win_completed ||
+                          selectedNiche?.user_state?.win_type === "revival")
+
                       // Gate logic
                       let canProgress = true
                       let disabledReason = ""
@@ -1224,6 +1238,13 @@ export default function OpportunitiesPage() {
                       ) {
                         canProgress = false
                         disabledReason = "Log at least one outreach activity first"
+                      } else if (
+                        // Added gate for Dead Lead Revival stage
+                        stage.id === "dead_lead_revival" &&
+                        !selectedNiche?.user_state?.coffee_date_completed
+                      ) {
+                        canProgress = false
+                        disabledReason = "Complete a Coffee Date Demo first"
                       }
 
                       const stageButton = (
@@ -1232,17 +1253,19 @@ export default function OpportunitiesPage() {
                           disabled={isFuture && !canProgress}
                           className={cn(
                             "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
-                            // Completed stages - solid green
-                            isCompleted
-                              ? "bg-green-500 text-white"
-                              : // Current stage - green outline with glow
-                                isCurrent
-                                ? "bg-green-500/20 text-green-400 border border-green-500 shadow-sm shadow-green-500/20"
-                                : // Future locked stages
-                                  isFuture && !canProgress
-                                  ? "bg-white/5 text-white/30 cursor-not-allowed border border-white/5"
-                                  : // Future unlocked stages
-                                    "bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60",
+                            isRevivalWon
+                              ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-md shadow-yellow-500/30"
+                              : // Completed stages - solid green
+                                isCompleted
+                                ? "bg-green-500 text-white"
+                                : // Current stage - green outline with glow
+                                  isCurrent
+                                  ? "bg-green-500/20 text-green-400 border border-green-500 shadow-sm shadow-green-500/20"
+                                  : // Future locked stages
+                                    isFuture && !canProgress
+                                    ? "bg-white/5 text-white/30 cursor-not-allowed border border-white/5"
+                                    : // Future unlocked stages
+                                      "bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60",
                           )}
                         >
                           {isFuture && !canProgress ? <Lock className="h-3 w-3" /> : <StageIcon className="h-3 w-3" />}
@@ -1267,62 +1290,33 @@ export default function OpportunitiesPage() {
                       )
                     })}
 
-                    <ChevronRight className="h-4 w-4 text-white/20" />
-
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div
-                          className={cn(
-                            "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
-                            selectedNiche?.user_state?.audit_win_completed ||
-                              selectedNiche?.user_state?.win_type === "audit"
-                              ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-md"
-                              : "bg-white/5 text-white/40 border border-white/10",
-                          )}
-                        >
-                          <FileSpreadsheet className="h-3 w-3" />{" "}
-                          {/* Changed from BarChart3 to FileSpreadsheet for AI Audit */}
-                          AI Audit Win
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="bg-zinc-800 text-white border-zinc-700 text-xs">
-                        <p>
-                          {selectedNiche?.user_state?.audit_win_completed ||
-                          selectedNiche?.user_state?.win_type === "audit"
-                            ? "Client secured via AI Readiness Audit"
-                            : "Complete an AI Audit with this niche to record win"}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-
-                    <ChevronRight className="h-4 w-4 text-white/20" />
-
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div
-                          className={cn(
-                            "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
-                            selectedNiche?.user_state?.revival_win_completed ||
-                              selectedNiche?.user_state?.win_completed ||
-                              selectedNiche?.user_state?.win_type === "revival"
-                              ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-md"
-                              : "bg-white/5 text-white/40 border border-white/10",
-                          )}
-                        >
-                          <RefreshCcw className="h-3 w-3" />
-                          Dead Lead Revival
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="bg-zinc-800 text-white border-zinc-700 text-xs">
-                        <p>
-                          {selectedNiche?.user_state?.revival_win_completed ||
-                          selectedNiche?.user_state?.win_completed ||
-                          selectedNiche?.user_state?.win_type === "revival"
-                            ? "Client secured via GHL Dead Lead Revival"
-                            : "Connect a GHL Dead Lead account with this niche to record win"}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
+                    <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/10">
+                      <span className="text-xs text-white/50">Bonus:</span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
+                            className={cn(
+                              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
+                              selectedNiche?.user_state?.audit_win_completed ||
+                                selectedNiche?.user_state?.win_type === "audit"
+                                ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-md shadow-yellow-500/30"
+                                : "bg-white/5 text-white/40 border border-white/10",
+                            )}
+                          >
+                            <FileSpreadsheet className="h-3 w-3" />
+                            AI Audit Win
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="bg-zinc-800 text-white border-zinc-700 text-xs">
+                          <p>
+                            {selectedNiche?.user_state?.audit_win_completed ||
+                            selectedNiche?.user_state?.win_type === "audit"
+                              ? "Client secured via AI Readiness Audit"
+                              : "Complete an AI Audit with this niche to record win"}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                   </div>
 
                   {(selectedNiche?.user_state?.win_completed ||
