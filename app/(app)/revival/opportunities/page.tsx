@@ -1291,7 +1291,7 @@ export default function OpportunitiesPage() {
                     })}
                   </div>
 
-                  <div className="mt-3 pt-3 border-t border-white/10">
+                  <div className="mt-2 flex justify-end pr-1">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div
