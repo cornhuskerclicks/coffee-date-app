@@ -1284,33 +1284,33 @@ export default function OpportunitiesPage() {
                         </div>
                       )
                     })}
-                  </div>
 
-                  <div className="flex justify-end mt-1">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div
-                          className={cn(
-                            "inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium transition-all duration-200",
-                            selectedNiche?.user_state?.audit_win_completed ||
-                              selectedNiche?.user_state?.win_type === "audit"
-                              ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-md shadow-yellow-500/30"
-                              : "bg-white/5 text-white/40 border border-white/10",
-                          )}
-                        >
-                          <Trophy className="h-3 w-3 shrink-0" />
-                          <span className="hidden sm:inline">Audit</span>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="bg-zinc-800 text-white border-zinc-700 text-xs">
-                        <p>
-                          {selectedNiche?.user_state?.audit_win_completed ||
-                          selectedNiche?.user_state?.win_type === "audit"
-                            ? "Client secured via AI Readiness Audit"
-                            : "Complete an AI Audit with this niche to record win"}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
+                    <div className="ml-3 pl-3 border-l border-white/10">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
+                            className={cn(
+                              "inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium transition-all duration-200",
+                              selectedNiche?.user_state?.audit_win_completed ||
+                                selectedNiche?.user_state?.win_type === "audit"
+                                ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-md shadow-yellow-500/30"
+                                : "bg-white/5 text-white/40 border border-white/10",
+                            )}
+                          >
+                            <Trophy className="h-3 w-3 shrink-0" />
+                            <span className="hidden sm:inline">Audit</span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="bg-zinc-800 text-white border-zinc-700 text-xs">
+                          <p>
+                            {selectedNiche?.user_state?.audit_win_completed ||
+                            selectedNiche?.user_state?.win_type === "audit"
+                              ? "Client secured via AI Readiness Audit"
+                              : "Complete an AI Audit with this niche to record win"}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                   </div>
 
                   {/* AI Insights Panel */}
