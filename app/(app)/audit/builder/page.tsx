@@ -27,6 +27,7 @@ import {
   TrendingUp,
   AlertTriangle,
   RotateCcw,
+  FileText,
 } from "lucide-react"
 import { useState, useEffect, Suspense, useCallback, useRef } from "react"
 import { useToast } from "@/hooks/use-toast"
@@ -34,7 +35,6 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import Link from "next/link"
 import { AI_AUDIT_QUESTIONS, getQuestionsByCategory, type AuditQuestion } from "@/lib/audit-questions"
-import FileText from "lucide-react/dist/esm/icons/FileText"
 
 const STEP_ICONS: Record<string, React.ElementType> = {
   "Business Overview": Building2,
