@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, GripVertical, Trash2, Save, ArrowLeft, Copy, FileCode } from 'lucide-react'
+import { Plus, GripVertical, Trash2, Save, ArrowLeft, Copy, FileCode } from "lucide-react"
 import { useState, useEffect, Suspense } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { DEFAULT_AI_READINESS_QUESTIONS, type QuizQuestion } from "@/lib/default-quiz-questions"
-import { createBrowserClient } from '@supabase/ssr'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { createBrowserClient } from "@supabase/ssr"
+import { useRouter, useSearchParams } from "next/navigation"
 
 function QuizBuilderContent() {
   const [quizName, setQuizName] = useState("")
@@ -26,11 +26,11 @@ function QuizBuilderContent() {
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   )
 
   useEffect(() => {
-    const id = searchParams.get('id')
+    const id = searchParams.get("id")
     if (id) {
       loadQuiz(id)
     }
@@ -39,11 +39,7 @@ function QuizBuilderContent() {
   const loadQuiz = async (id: string) => {
     setIsLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('quiz_templates')
-        .select('*')
-        .eq('id', id)
-        .single()
+      const { data, error } = await supabase.from("quiz_templates").select("*").eq("id", id).single()
 
       if (error) throw error
 
@@ -59,7 +55,7 @@ function QuizBuilderContent() {
         })
       }
     } catch (error) {
-      console.error('Error loading quiz:', error)
+      console.error("Error loading quiz:", error)
       toast({
         title: "Error",
         description: "Failed to load quiz",
@@ -108,9 +104,9 @@ function QuizBuilderContent() {
 
       if (quizId) {
         const { error } = await supabase
-          .from('quiz_templates')
+          .from("quiz_templates")
           .update({ ...quizData, updated_at: new Date().toISOString() })
-          .eq('id', quizId)
+          .eq("id", quizId)
 
         if (error) throw error
         toast({
@@ -118,7 +114,9 @@ function QuizBuilderContent() {
           description: `"${quizName}" has been updated`,
         })
       } else {
-        const { data: { user } } = await supabase.auth.getUser()
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
         if (!user) {
           toast({
             title: "Authentication Required",
@@ -129,7 +127,7 @@ function QuizBuilderContent() {
         }
 
         const { data, error } = await supabase
-          .from('quiz_templates')
+          .from("quiz_templates")
           .insert({ ...quizData, user_id: user.id })
           .select()
           .single()
@@ -140,11 +138,11 @@ function QuizBuilderContent() {
           title: "Quiz Saved",
           description: `"${quizName}" has been saved`,
         })
-        
+
         router.push(`/quiz/builder?id=${data.id}`)
       }
     } catch (error) {
-      console.error('Error saving quiz:', error)
+      console.error("Error saving quiz:", error)
       toast({
         title: "Error",
         description: "Failed to save quiz. Please try again.",
@@ -154,7 +152,6 @@ function QuizBuilderContent() {
       setIsSaving(false)
     }
   }
-
 
   const addQuestion = () => {
     const newQuestion: QuizQuestion = {
@@ -206,15 +203,15 @@ function QuizBuilderContent() {
 
   const copyQuizQuestions = () => {
     let output = `${quizTitle || "AI Readiness Quiz"}\n\n`
-    
+
     questions.forEach((q, index) => {
       output += `${index + 1}. ${q.text}\n`
-      if (q.type === 'multiple-choice' && q.options) {
+      if (q.type === "multiple-choice" && q.options) {
         q.options.forEach((opt, optIndex) => {
           output += `   ${String.fromCharCode(97 + optIndex)}) ${opt.text}\n`
         })
       }
-      output += '\n'
+      output += "\n"
     })
 
     navigator.clipboard.writeText(output)
@@ -227,15 +224,15 @@ function QuizBuilderContent() {
   const generateAIPrompt = () => {
     const quizTitleText = quizTitle || "AI Readiness Audit"
     const quizDescText = quizDescription || "Discover your AI readiness score in under 3 minutes"
-    
+
     let questionsPrompt = ""
     questions.forEach((q, index) => {
       questionsPrompt += `Q${index + 1}. ${q.text}\n`
-      if (q.type === 'multiple-choice' && q.options) {
+      if (q.type === "multiple-choice" && q.options) {
         q.options.forEach((opt) => {
           questionsPrompt += `▢ ${opt.text} (${opt.value}) `
         })
-        questionsPrompt += '\n\n'
+        questionsPrompt += "\n\n"
       }
     })
 
@@ -331,24 +328,30 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/quiz')}>
+          <Button variant="ghost" size="icon" onClick={() => router.push("/quiz")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-white">
-              {quizId ? 'Edit Quiz' : 'Create New Quiz'}
-            </h1>
+            <h1 className="text-3xl font-bold text-white">{quizId ? "Edit Quiz" : "Create New Quiz"}</h1>
             <p className="text-secondary mt-1">
-              {quizId ? 'Update your quiz settings and questions' : 'Start with AI Readiness questions'}
+              {quizId ? "Update your quiz settings and questions" : "Start with AI Readiness questions"}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={copyQuizQuestions} className="border-border hover:border-primary">
+          <Button
+            variant="outline"
+            onClick={copyQuizQuestions}
+            className="border-border hover:border-primary bg-transparent"
+          >
             <Copy className="h-4 w-4 mr-2" />
             Copy Questions
           </Button>
-          <Button variant="outline" onClick={generateAIPrompt} className="border-border hover:border-primary">
+          <Button
+            variant="outline"
+            onClick={generateAIPrompt}
+            className="border-border hover:border-primary bg-transparent"
+          >
             <FileCode className="h-4 w-4 mr-2" />
             Generate AI Prompt
           </Button>
@@ -367,7 +370,9 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-3">
-                <Label htmlFor="name" className="text-white text-sm font-medium">Quiz Name (Internal)</Label>
+                <Label htmlFor="name" className="text-white text-sm font-medium">
+                  Quiz Name (Internal)
+                </Label>
                 <Input
                   id="name"
                   placeholder="e.g., Q1 2025 AI Audit"
@@ -375,13 +380,13 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
                   onChange={(e) => setQuizName(e.target.value)}
                   className="bg-muted border-border focus:border-primary"
                 />
-                <p className="text-helper text-xs mt-2">
-                  Internal name for organizing your quizzes
-                </p>
+                <p className="text-helper text-xs mt-2">Internal name for organizing your quizzes</p>
               </div>
 
               <div className="space-y-3">
-                <Label htmlFor="title" className="text-white text-sm font-medium">Website Title</Label>
+                <Label htmlFor="title" className="text-white text-sm font-medium">
+                  Website Title
+                </Label>
                 <Input
                   id="title"
                   placeholder="AI Readiness Audit"
@@ -389,13 +394,13 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
                   onChange={(e) => setQuizTitle(e.target.value)}
                   className="bg-muted border-border focus:border-primary"
                 />
-                <p className="text-helper text-xs mt-2">
-                  This heading will appear on your website
-                </p>
+                <p className="text-helper text-xs mt-2">This heading will appear on your website</p>
               </div>
 
               <div className="space-y-3">
-                <Label htmlFor="description" className="text-white text-sm font-medium">Description</Label>
+                <Label htmlFor="description" className="text-white text-sm font-medium">
+                  Description
+                </Label>
                 <Textarea
                   id="description"
                   placeholder="Discover your AI readiness score in under 3 minutes"
@@ -420,19 +425,19 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
               {questions.map((question, qIndex) => (
                 <div key={question.id} className="p-6 border border-border rounded-lg bg-muted/30 space-y-4">
                   <div className="flex items-start gap-3">
-                    <GripVertical className="h-5 w-5 text-secondary cursor-move mt-2" />
+                    <GripVertical className="h-5 w-5 text-white/40 cursor-move mt-2" />
                     <div className="flex-1 space-y-4">
                       <div className="flex items-start gap-3">
                         <span className="text-sm font-medium text-white mt-2">Q{qIndex + 1}</span>
                         <Input
                           placeholder="Enter question"
                           value={question.text}
-                          onChange={(e) => updateQuestion(qIndex, 'text', e.target.value)}
+                          onChange={(e) => updateQuestion(qIndex, "text", e.target.value)}
                           className="bg-muted border-border focus:border-primary"
                         />
                       </div>
 
-                      {question.type === 'multiple-choice' && (
+                      {question.type === "multiple-choice" && (
                         <div className="space-y-3 ml-8">
                           <Label className="text-secondary text-xs">Answer Options</Label>
                           {question.options?.map((option, oIndex) => (
@@ -440,18 +445,14 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
                               <Input
                                 placeholder="Option text"
                                 value={option.text}
-                                onChange={(e) =>
-                                  updateOption(qIndex, oIndex, 'text', e.target.value)
-                                }
+                                onChange={(e) => updateOption(qIndex, oIndex, "text", e.target.value)}
                                 className="flex-1 bg-muted border-border focus:border-primary"
                               />
                               <Input
                                 type="number"
                                 placeholder="Value"
                                 value={option.value}
-                                onChange={(e) =>
-                                  updateOption(qIndex, oIndex, 'value', parseInt(e.target.value))
-                                }
+                                onChange={(e) => updateOption(qIndex, oIndex, "value", Number.parseInt(e.target.value))}
                                 className="w-20 bg-muted border-border focus:border-primary"
                               />
                               <Button
@@ -499,9 +500,7 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
             <CardContent>
               <div className="space-y-6">
                 <div>
-                  <h3 className="font-semibold text-lg text-white text-balance">
-                    {quizTitle || "AI Readiness Audit"}
-                  </h3>
+                  <h3 className="font-semibold text-lg text-white text-balance">{quizTitle || "AI Readiness Audit"}</h3>
                   <p className="text-secondary text-sm text-pretty mt-2">
                     {quizDescription || "Discover your AI readiness score"}
                   </p>
@@ -512,23 +511,16 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
                   </div>
                   <div className="text-sm font-medium text-white">Question 1 of {questions.length}</div>
                   <div className="p-5 border border-border rounded-lg bg-muted/50">
-                    <p className="text-sm font-medium text-white mb-4">
-                      {questions[0]?.text || "Your question"}
-                    </p>
-                    {questions[0]?.type === 'multiple-choice' && questions[0]?.options && (
+                    <p className="text-sm font-medium text-white mb-4">{questions[0]?.text || "Your question"}</p>
+                    {questions[0]?.type === "multiple-choice" && questions[0]?.options && (
                       <div className="space-y-2">
                         {questions[0].options.slice(0, 2).map((option, i) => (
-                          <div
-                            key={i}
-                            className="p-3 border border-border rounded bg-muted text-xs text-primary"
-                          >
+                          <div key={i} className="p-3 border border-border rounded bg-muted text-xs text-primary">
                             {option.text}
                           </div>
                         ))}
                         {questions[0].options.length > 2 && (
-                          <div className="text-xs text-helper">
-                            +{questions[0].options.length - 2} more options
-                          </div>
+                          <div className="text-xs text-helper">+{questions[0].options.length - 2} more options</div>
                         )}
                       </div>
                     )}
@@ -564,14 +556,16 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
 
 export default function QuizBuilderPage() {
   return (
-    <Suspense fallback={
-      <div className="p-6 flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading quiz builder...</p>
+    <Suspense
+      fallback={
+        <div className="p-6 flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading quiz builder...</p>
+          </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <QuizBuilderContent />
     </Suspense>
   )

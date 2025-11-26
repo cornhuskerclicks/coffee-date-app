@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Coffee } from 'lucide-react'
+import { Coffee } from "lucide-react"
 import DemoAndroidSelectorModal from "@/components/demo-android-selector-modal"
 import type { Android } from "@/lib/types"
 
@@ -17,7 +17,7 @@ export default function DemoStartButton({ androids }: DemoStartButtonProps) {
     <>
       <Button
         onClick={() => setShowModal(true)}
-        className="bg-[#00A8FF] text-white hover:bg-white hover:text-black transition-all duration-200"
+        className="bg-[#00A8FF] text-white hover:bg-[#0090E0] transition-all duration-200"
       >
         <Coffee className="h-4 w-4 mr-2" />
         Start Coffee Date Demo
