@@ -48,7 +48,9 @@ function QuizBuilderContent() {
         setQuizName(data.name || data.title)
         setQuizTitle(data.title)
         setQuizDescription(data.description || "")
-        setQuestions(data.questions)
+        if (data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
+          setQuestions(data.questions)
+        }
         toast({
           title: "Quiz Loaded",
           description: `Loaded "${data.name || data.title}"`,
@@ -378,9 +380,9 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
                   placeholder="e.g., Q1 2025 AI Audit"
                   value={quizName}
                   onChange={(e) => setQuizName(e.target.value)}
-                  className="bg-muted border-border focus:border-primary"
+                  className="bg-muted border-border focus:border-primary text-white"
                 />
-                <p className="text-helper text-xs mt-2">Internal name for organizing your quizzes</p>
+                <p className="text-zinc-500 text-xs mt-2">Internal name for organizing your quizzes</p>
               </div>
 
               <div className="space-y-3">
@@ -392,9 +394,9 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
                   placeholder="AI Readiness Audit"
                   value={quizTitle}
                   onChange={(e) => setQuizTitle(e.target.value)}
-                  className="bg-muted border-border focus:border-primary"
+                  className="bg-muted border-border focus:border-primary text-white"
                 />
-                <p className="text-helper text-xs mt-2">This heading will appear on your website</p>
+                <p className="text-zinc-500 text-xs mt-2">This heading will appear on your website</p>
               </div>
 
               <div className="space-y-3">
@@ -407,7 +409,7 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
                   value={quizDescription}
                   onChange={(e) => setQuizDescription(e.target.value)}
                   rows={3}
-                  className="bg-muted border-border focus:border-primary"
+                  className="bg-muted border-border focus:border-primary text-white"
                 />
               </div>
             </CardContent>
@@ -433,27 +435,29 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
                           placeholder="Enter question"
                           value={question.text}
                           onChange={(e) => updateQuestion(qIndex, "text", e.target.value)}
-                          className="bg-muted border-border focus:border-primary"
+                          className="bg-muted border-border focus:border-primary text-white"
                         />
                       </div>
 
                       {question.type === "multiple-choice" && (
                         <div className="space-y-3 ml-8">
-                          <Label className="text-secondary text-xs">Answer Options</Label>
+                          <Label className="text-zinc-400 text-xs">Answer Options</Label>
                           {question.options?.map((option, oIndex) => (
                             <div key={oIndex} className="flex items-center gap-2">
                               <Input
-                                placeholder="Option text"
+                                placeholder={`Option ${oIndex + 1}`}
                                 value={option.text}
                                 onChange={(e) => updateOption(qIndex, oIndex, "text", e.target.value)}
-                                className="flex-1 bg-muted border-border focus:border-primary"
+                                className="flex-1 bg-muted border-border focus:border-primary text-white"
                               />
                               <Input
                                 type="number"
-                                placeholder="Value"
+                                placeholder="Score"
                                 value={option.value}
-                                onChange={(e) => updateOption(qIndex, oIndex, "value", Number.parseInt(e.target.value))}
-                                className="w-20 bg-muted border-border focus:border-primary"
+                                onChange={(e) =>
+                                  updateOption(qIndex, oIndex, "value", Number.parseInt(e.target.value) || 0)
+                                }
+                                className="w-20 bg-muted border-border focus:border-primary text-white"
                               />
                               <Button
                                 size="icon"
@@ -501,7 +505,7 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
               <div className="space-y-6">
                 <div>
                   <h3 className="font-semibold text-lg text-white text-balance">{quizTitle || "AI Readiness Audit"}</h3>
-                  <p className="text-secondary text-sm text-pretty mt-2">
+                  <p className="text-zinc-400 text-sm text-pretty mt-2">
                     {quizDescription || "Discover your AI readiness score"}
                   </p>
                 </div>
@@ -515,12 +519,12 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
                     {questions[0]?.type === "multiple-choice" && questions[0]?.options && (
                       <div className="space-y-2">
                         {questions[0].options.slice(0, 2).map((option, i) => (
-                          <div key={i} className="p-3 border border-border rounded bg-muted text-xs text-primary">
+                          <div key={i} className="p-3 border border-border rounded bg-muted text-xs text-blue-400">
                             {option.text}
                           </div>
                         ))}
                         {questions[0].options.length > 2 && (
-                          <div className="text-xs text-helper">+{questions[0].options.length - 2} more options</div>
+                          <div className="text-xs text-zinc-500">+{questions[0].options.length - 2} more options</div>
                         )}
                       </div>
                     )}
@@ -538,9 +542,9 @@ The quiz captures leads, calculates scores, and sends contact and quiz data dire
               <div className="text-sm">
                 <div className="flex justify-between items-center mb-3">
                   <span className="font-medium text-white">Max Score:</span>
-                  <span className="text-secondary">100 points</span>
+                  <span className="text-zinc-400">100 points</span>
                 </div>
-                <div className="space-y-2 text-xs text-helper">
+                <div className="space-y-2 text-xs text-zinc-500">
                   <div>80-100: High AI Readiness</div>
                   <div>40-79: Medium AI Readiness</div>
                   <div>0-39: Low AI Readiness</div>
