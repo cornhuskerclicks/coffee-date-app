@@ -1144,6 +1144,7 @@ export default function OpportunitiesPage() {
                       const isCompleted = idx < currentStageIndex
                       const isCurrent = idx === currentStageIndex
                       const isFuture = idx > currentStageIndex
+                      const isWinCompleted = stage.id === "win" && selectedNiche?.user_state?.win_completed === true
 
                       let canProgress = true
                       let disabledReason = ""
@@ -1176,13 +1177,15 @@ export default function OpportunitiesPage() {
                           disabled={isFuture && !canProgress}
                           className={cn(
                             "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
-                            isCurrent
-                              ? "bg-primary text-white shadow-lg shadow-primary/20"
-                              : isCompleted
-                                ? "bg-green-500/20 text-green-400"
-                                : isFuture && !canProgress
-                                  ? "bg-white/5 text-white/30 cursor-not-allowed"
-                                  : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60",
+                            isWinCompleted
+                              ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-lg shadow-yellow-500/20"
+                              : isCurrent
+                                ? "bg-primary text-white shadow-lg shadow-primary/20"
+                                : isCompleted
+                                  ? "bg-green-500/20 text-green-400"
+                                  : isFuture && !canProgress
+                                    ? "bg-white/5 text-white/30 cursor-not-allowed"
+                                    : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60",
                           )}
                         >
                           {isFuture && !canProgress ? <Lock className="h-3 w-3" /> : <StageIcon className="h-3 w-3" />}
