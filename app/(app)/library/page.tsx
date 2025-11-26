@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Copy, Trash2, Edit, FolderOpen, Search, FileText, X, Book } from "lucide-react"
 import { useState, useEffect, useMemo } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { createBrowserClient } from "@supabase/ssr"
+import { createClient } from "@/lib/supabase/client"
 
 interface Prompt {
   id: string
@@ -46,10 +46,7 @@ export default function PromptLibraryPage() {
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
+  const supabase = createClient()
 
   const filteredPrompts = useMemo(() => {
     return prompts.filter((prompt) => {
