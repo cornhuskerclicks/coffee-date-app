@@ -1,14 +1,18 @@
 "use client"
 
+import type React from "react"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { Upload, Loader2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import Image from 'next/image'
+import { Upload, Loader2, Check, X, Globe } from "lucide-react"
+import { useEffect, useState } from "react"
+import { createClient } from "@/lib/supabase/client"
+import Image from "next/image"
+
+const MAIN_DOMAIN = "aetherrevive.com"
 
 export default function SettingsPage() {
   const { toast } = useToast()
@@ -16,8 +20,12 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [profile, setProfile] = useState<any>(null)
-  const [fullName, setFullName] = useState('')
-  const [email, setEmail] = useState('')
+  const [fullName, setFullName] = useState("")
+  const [email, setEmail] = useState("")
+  const [subdomain, setSubdomain] = useState("")
+  const [subdomainError, setSubdomainError] = useState("")
+  const [checkingSubdomain, setCheckingSubdomain] = useState(false)
+  const [subdomainAvailable, setSubdomainAvailable] = useState<boolean | null>(null)
 
   useEffect(() => {
     loadProfile()
@@ -25,57 +33,106 @@ export default function SettingsPage() {
 
   const loadProfile = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (!user) return
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).single()
 
       if (error) throw error
 
       setProfile(data)
-      setFullName(data?.full_name || '')
-      setEmail(data?.email || user.email || '')
+      setFullName(data?.full_name || "")
+      setEmail(data?.email || user.email || "")
+      setSubdomain(data?.subdomain || "")
     } catch (error) {
-      console.error('Error loading profile:', error)
+      console.error("Error loading profile:", error)
+    }
+  }
+
+  const validateSubdomain = (value: string): string => {
+    if (!value) return ""
+    if (value.length < 3) return "Subdomain must be at least 3 characters"
+    if (value.length > 30) return "Subdomain must be 30 characters or less"
+    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(value)) {
+      return "Only lowercase letters, numbers, and hyphens allowed. Cannot start or end with hyphen."
+    }
+    const reserved = ["www", "api", "app", "admin", "mail", "smtp", "ftp", "support", "help"]
+    if (reserved.includes(value)) return "This subdomain is reserved"
+    return ""
+  }
+
+  const checkSubdomainAvailability = async (value: string) => {
+    if (!value || validateSubdomain(value)) {
+      setSubdomainAvailable(null)
+      return
+    }
+
+    setCheckingSubdomain(true)
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("subdomain", value)
+        .neq("id", user?.id || "")
+        .maybeSingle()
+
+      if (error) throw error
+      setSubdomainAvailable(!data)
+      if (data) {
+        setSubdomainError("This subdomain is already taken")
+      }
+    } catch (error) {
+      console.error("Error checking subdomain:", error)
+    } finally {
+      setCheckingSubdomain(false)
+    }
+  }
+
+  const handleSubdomainChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "")
+    setSubdomain(value)
+    const error = validateSubdomain(value)
+    setSubdomainError(error)
+    setSubdomainAvailable(null)
+
+    if (!error && value) {
+      const timeoutId = setTimeout(() => checkSubdomainAvailability(value), 500)
+      return () => clearTimeout(timeoutId)
     }
   }
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       setUploading(true)
-      
+
       if (!event.target.files || event.target.files.length === 0) {
         return
       }
 
       const file = event.target.files[0]
-      const fileExt = file.name.split('.').pop()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('No user found')
+      const fileExt = file.name.split(".").pop()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error("No user found")
 
       const fileName = `${user.id}/profile.${fileExt}`
 
-      // Upload image to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('profiles')
-        .upload(fileName, file, { upsert: true })
+      const { error: uploadError } = await supabase.storage.from("profiles").upload(fileName, file, { upsert: true })
 
       if (uploadError) throw uploadError
 
-      // Get public URL
-      const { data } = supabase.storage
-        .from('profiles')
-        .getPublicUrl(fileName)
+      const { data } = supabase.storage.from("profiles").getPublicUrl(fileName)
 
-      // Update profile with image URL
       const { error: updateError } = await supabase
-        .from('profiles')
+        .from("profiles")
         .update({ profile_image_url: data.publicUrl })
-        .eq('id', user.id)
+        .eq("id", user.id)
 
       if (updateError) throw updateError
 
@@ -85,9 +142,11 @@ export default function SettingsPage() {
       })
 
       loadProfile()
-      window.dispatchEvent(new CustomEvent('profile-image-updated', { 
-        detail: { imageUrl: data.publicUrl } 
-      }))
+      window.dispatchEvent(
+        new CustomEvent("profile-image-updated", {
+          detail: { imageUrl: data.publicUrl },
+        }),
+      )
     } catch (error: any) {
       toast({
         title: "Upload failed",
@@ -100,21 +159,38 @@ export default function SettingsPage() {
   }
 
   const handleSaveProfile = async () => {
+    if (subdomain && (subdomainError || subdomainAvailable === false)) {
+      toast({
+        title: "Invalid subdomain",
+        description: subdomainError || "This subdomain is already taken",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
       setLoading(true)
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('No user found')
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error("No user found")
 
       const { error } = await supabase
-        .from('profiles')
-        .update({ full_name: fullName, email })
-        .eq('id', user.id)
+        .from("profiles")
+        .update({
+          full_name: fullName,
+          email,
+          subdomain: subdomain || null,
+        })
+        .eq("id", user.id)
 
       if (error) throw error
 
       toast({
         title: "Profile updated",
-        description: "Your profile has been saved successfully",
+        description: subdomain
+          ? `Your profile has been saved. Your subdomain is ${subdomain}.${MAIN_DOMAIN}`
+          : "Your profile has been saved successfully",
       })
 
       loadProfile()
@@ -167,7 +243,7 @@ export default function SettingsPage() {
                   disabled={uploading}
                 />
                 <Button
-                  onClick={() => document.getElementById('profile-image')?.click()}
+                  onClick={() => document.getElementById("profile-image")?.click()}
                   disabled={uploading}
                   className="bg-[#00A8FF] hover:bg-[#0090DD] text-white"
                 >
@@ -189,7 +265,9 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-white">Name</Label>
+            <Label htmlFor="name" className="text-white">
+              Name
+            </Label>
             <Input
               id="name"
               value={fullName}
@@ -199,7 +277,9 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-white">Email</Label>
+            <Label htmlFor="email" className="text-white">
+              Email
+            </Label>
             <Input
               id="email"
               type="email"
@@ -209,9 +289,89 @@ export default function SettingsPage() {
             />
           </div>
 
+          <Button onClick={handleSaveProfile} disabled={loading} className="bg-[#00A8FF] hover:bg-[#0090DD] text-white">
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Save Profile"
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white/5 border-white/10">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <Globe className="h-5 w-5" />
+            Custom Subdomain
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-white/60 text-sm">
+            Choose a unique subdomain for your agency. All your shared links (quizzes, audits) will use this subdomain,
+            making them look branded to your agency.
+          </p>
+
+          <div className="space-y-2">
+            <Label htmlFor="subdomain" className="text-white">
+              Your Subdomain
+            </Label>
+            <div className="flex items-center gap-0">
+              <div className="relative flex-1">
+                <Input
+                  id="subdomain"
+                  value={subdomain}
+                  onChange={handleSubdomainChange}
+                  onBlur={() => subdomain && checkSubdomainAvailability(subdomain)}
+                  placeholder="yourcompany"
+                  className={`bg-white/5 border-white/10 text-white rounded-r-none pr-10 ${
+                    subdomainError ? "border-red-500" : subdomainAvailable === true ? "border-green-500" : ""
+                  }`}
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {checkingSubdomain && <Loader2 className="h-4 w-4 text-white/40 animate-spin" />}
+                  {!checkingSubdomain && subdomainAvailable === true && !subdomainError && (
+                    <Check className="h-4 w-4 text-green-500" />
+                  )}
+                  {!checkingSubdomain && (subdomainAvailable === false || subdomainError) && subdomain && (
+                    <X className="h-4 w-4 text-red-500" />
+                  )}
+                </div>
+              </div>
+              <div className="bg-white/10 border border-l-0 border-white/10 px-3 py-2 rounded-r-md text-white/50 text-sm whitespace-nowrap">
+                .{MAIN_DOMAIN}
+              </div>
+            </div>
+
+            {subdomainError && <p className="text-red-400 text-xs">{subdomainError}</p>}
+            {!subdomainError && subdomainAvailable === true && subdomain && (
+              <p className="text-green-400 text-xs">This subdomain is available!</p>
+            )}
+            {!subdomainError && !subdomain && (
+              <p className="text-white/40 text-xs">Lowercase letters, numbers, and hyphens only. 3-30 characters.</p>
+            )}
+          </div>
+
+          {subdomain && !subdomainError && subdomainAvailable !== false && (
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+              <p className="text-white/60 text-xs mb-2">Your links will look like:</p>
+              <div className="space-y-1">
+                <p className="text-[#00A8FF] text-sm font-mono">
+                  https://{subdomain}.{MAIN_DOMAIN}/quiz/...
+                </p>
+                <p className="text-[#00A8FF] text-sm font-mono">
+                  https://{subdomain}.{MAIN_DOMAIN}/audit/...
+                </p>
+              </div>
+            </div>
+          )}
+
           <Button
             onClick={handleSaveProfile}
-            disabled={loading}
+            disabled={loading || (subdomain !== "" && (!!subdomainError || subdomainAvailable === false))}
             className="bg-[#00A8FF] hover:bg-[#0090DD] text-white"
           >
             {loading ? (
@@ -220,7 +380,7 @@ export default function SettingsPage() {
                 Saving...
               </>
             ) : (
-              'Save Profile'
+              "Save Subdomain"
             )}
           </Button>
         </CardContent>
