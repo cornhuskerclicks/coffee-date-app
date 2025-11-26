@@ -131,9 +131,9 @@ function EditableCounter({
 const PIPELINE_STAGES = [
   { id: "research", label: "Research", icon: BookOpen },
   { id: "shortlisted", label: "Shortlisted", icon: Target },
-  { id: "outreach_in_progress", label: "Outreach in Progress", icon: Send },
-  { id: "coffee_date_demo", label: "Coffee Date Demo", icon: Coffee },
-  { id: "dead_lead_revival", label: "Dead Lead Revival", icon: RefreshCcw },
+  { id: "outreach_in_progress", label: "Outreach", icon: Send }, // Shortened label
+  { id: "coffee_date_demo", label: "Coffee Date", icon: Coffee }, // Shortened label
+  { id: "dead_lead_revival", label: "Revival", icon: Trophy }, // Changed to "Revival" with Trophy icon
 ]
 
 const STAGE_TO_DB_STATUS: Record<string, string> = {
@@ -1201,7 +1201,7 @@ export default function OpportunitiesPage() {
                     </div>
                   )}
 
-                  {/* Pipeline Stages */}
+                  {/* Pipeline Stages - Reduced text size, added responsive icons-only mode */}
                   <div className="flex items-center gap-1 flex-wrap">
                     {PIPELINE_STAGES.map((stage, index) => {
                       const StageIcon = stage.icon
@@ -1239,7 +1239,6 @@ export default function OpportunitiesPage() {
                         canProgress = false
                         disabledReason = "Log at least one outreach activity first"
                       } else if (
-                        // Added gate for Dead Lead Revival stage
                         stage.id === "dead_lead_revival" &&
                         !selectedNiche?.user_state?.coffee_date_completed
                       ) {
@@ -1248,75 +1247,75 @@ export default function OpportunitiesPage() {
                       }
 
                       const stageButton = (
-                        <button
-                          onClick={() => !isFuture && canProgress && progressToStage(stage.id)}
-                          disabled={isFuture && !canProgress}
-                          className={cn(
-                            "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
-                            isRevivalWon
-                              ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-md shadow-yellow-500/30"
-                              : // Completed stages - solid green
-                                isCompleted
-                                ? "bg-green-500 text-white"
-                                : // Current stage - green outline with glow
-                                  isCurrent
-                                  ? "bg-green-500/20 text-green-400 border border-green-500 shadow-sm shadow-green-500/20"
-                                  : // Future locked stages
-                                    isFuture && !canProgress
-                                    ? "bg-white/5 text-white/30 cursor-not-allowed border border-white/5"
-                                    : // Future unlocked stages
-                                      "bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60",
-                          )}
-                        >
-                          {isFuture && !canProgress ? <Lock className="h-3 w-3" /> : <StageIcon className="h-3 w-3" />}
-                          {stage.label}
-                        </button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => !isFuture && canProgress && progressToStage(stage.id)}
+                              disabled={isFuture && !canProgress}
+                              className={cn(
+                                "flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium transition-all duration-200",
+                                isRevivalWon
+                                  ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-md shadow-yellow-500/30"
+                                  : isCompleted
+                                    ? "bg-green-500 text-white"
+                                    : isCurrent
+                                      ? "bg-green-500/20 text-green-400 border border-green-500 shadow-sm shadow-green-500/20"
+                                      : isFuture && !canProgress
+                                        ? "bg-white/5 text-white/30 cursor-not-allowed border border-white/5"
+                                        : "bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60",
+                              )}
+                            >
+                              {isFuture && !canProgress ? (
+                                <Lock className="h-3 w-3" />
+                              ) : (
+                                <StageIcon className="h-3 w-3 shrink-0" />
+                              )}
+                              {/* Show label on larger screens, hide on small */}
+                              <span className="hidden sm:inline">{stage.label}</span>
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="bg-zinc-800 text-white border-zinc-700 text-xs">
+                            <p>{isFuture && !canProgress ? disabledReason : stage.label}</p>
+                          </TooltipContent>
+                        </Tooltip>
                       )
 
                       return (
                         <div key={stage.id} className="flex items-center gap-1">
-                          {isFuture && !canProgress ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>{stageButton}</TooltipTrigger>
-                              <TooltipContent side="top" className="bg-zinc-800 text-white border-zinc-700">
-                                <p>{disabledReason}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          ) : (
-                            stageButton
+                          {stageButton}
+                          {index < PIPELINE_STAGES.length - 1 && (
+                            <ChevronRight className="h-3 w-3 text-white/20 shrink-0" />
                           )}
-                          {index < PIPELINE_STAGES.length - 1 && <ChevronRight className="h-4 w-4 text-white/20" />}
                         </div>
                       )
                     })}
+                  </div>
 
-                    {/* CHANGE: Remove "Bonus:" label and properly separate AI Audit Win on its own row */}
-                    <div className="flex items-center mt-3 pt-3 border-t border-white/10">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div
-                            className={cn(
-                              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
-                              selectedNiche?.user_state?.audit_win_completed ||
-                                selectedNiche?.user_state?.win_type === "audit"
-                                ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-md shadow-yellow-500/30"
-                                : "bg-white/5 text-white/40 border border-white/10",
-                            )}
-                          >
-                            <FileSpreadsheet className="h-3 w-3" />
-                            AI Audit Win
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="bg-zinc-800 text-white border-zinc-700 text-xs">
-                          <p>
-                            {selectedNiche?.user_state?.audit_win_completed ||
-                            selectedNiche?.user_state?.win_type === "audit"
-                              ? "Client secured via AI Readiness Audit"
-                              : "Complete an AI Audit with this niche to record win"}
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
+                  <div className="mt-3 pt-3 border-t border-white/10">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div
+                          className={cn(
+                            "inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium transition-all duration-200",
+                            selectedNiche?.user_state?.audit_win_completed ||
+                              selectedNiche?.user_state?.win_type === "audit"
+                              ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-md shadow-yellow-500/30"
+                              : "bg-white/5 text-white/40 border border-white/10",
+                          )}
+                        >
+                          <Trophy className="h-3 w-3 shrink-0" />
+                          <span className="hidden sm:inline">Audit</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="bg-zinc-800 text-white border-zinc-700 text-xs">
+                        <p>
+                          {selectedNiche?.user_state?.audit_win_completed ||
+                          selectedNiche?.user_state?.win_type === "audit"
+                            ? "Client secured via AI Readiness Audit"
+                            : "Complete an AI Audit with this niche to record win"}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
 
                   {(selectedNiche?.user_state?.win_completed ||
