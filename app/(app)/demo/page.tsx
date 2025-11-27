@@ -108,14 +108,10 @@ export default async function DemoPage() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Button
-              asChild
-              variant="outline"
-              className="border border-white text-white bg-transparent hover:bg-white hover:text-black hover:border-white transition-colors"
-            >
+            <Button asChild variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
               <Link href="/prompt-generator">
                 <Plus className="h-4 w-4 mr-2" />
-                <span>Create Android</span>
+                Create Android
               </Link>
             </Button>
           </div>
@@ -189,7 +185,7 @@ export default async function DemoPage() {
                                 asChild
                                 size="icon"
                                 variant="ghost"
-                                className="h-8 w-8 text-white/50 hover:text-white hover:bg-white/10"
+                                className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
                               >
                                 <Link href="/prompt-generator">
                                   <Pencil className="h-4 w-4" />

@@ -1,13 +1,13 @@
 "use client"
 
 import type React from "react"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 import {
   Save,
   ArrowLeft,
@@ -28,8 +28,6 @@ import {
   AlertTriangle,
   RotateCcw,
   FileText,
-  Upload,
-  Loader2,
 } from "lucide-react"
 import { useState, useEffect, Suspense, useCallback, useRef } from "react"
 import { useToast } from "@/hooks/use-toast"
@@ -73,10 +71,6 @@ function AuditBuilderContent() {
     roadmap: string[]
     financialImpact: string
   } | null>(null)
-  const [industries, setIndustries] = useState<{ id: string; name: string }[]>([])
-  const [logoUrl, setLogoUrl] = useState("")
-  const [logoUploading, setLogoUploading] = useState(false)
-  const [winTriggerEnabled, setWinTriggerEnabled] = useState(false)
 
   const { toast } = useToast()
   const router = useRouter()
@@ -93,6 +87,7 @@ function AuditBuilderContent() {
     })),
   ]
 
+  // Load audit if editing
   useEffect(() => {
     const id = searchParams?.get("id")
     if (id) {
@@ -102,8 +97,7 @@ function AuditBuilderContent() {
       setLoading(false)
     }
     loadNiches()
-    loadIndustries()
-  }, [searchParams, loadIndustries])
+  }, [searchParams])
 
   async function loadNiches() {
     const { data } = await supabase
@@ -126,8 +120,6 @@ function AuditBuilderContent() {
         setBusinessSize(data.business_size || "")
         setResponses(data.responses || {})
         if (data.ai_insights) setAiInsights(data.ai_insights)
-        setLogoUrl(data.logo_url || "")
-        setWinTriggerEnabled(data.win_trigger_enabled || false)
       }
     } catch (error) {
       console.error("Error loading audit:", error)
@@ -137,13 +129,7 @@ function AuditBuilderContent() {
     }
   }
 
-  async function loadIndustries() {
-    const { data, error } = await supabase.from("industries").select("id, name").order("name")
-    if (!error && data) {
-      setIndustries(data)
-    }
-  }
-
+  // Auto-save functionality
   const triggerAutoSave = useCallback(() => {
     if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current)
     autoSaveTimeout.current = setTimeout(() => {
@@ -183,8 +169,6 @@ function AuditBuilderContent() {
         completion_percentage: completion,
         status,
         ai_insights: aiInsights,
-        logo_url: logoUrl,
-        win_trigger_enabled: winTriggerEnabled,
         updated_at: new Date().toISOString(),
         ...(status === "completed" ? { completed_at: new Date().toISOString() } : {}),
       }
@@ -198,7 +182,8 @@ function AuditBuilderContent() {
         if (data) setAuditId(data.id)
       }
 
-      if (selectedNiche !== "other" && status === "completed" && winTriggerEnabled) {
+      // If niche selected and completed, mark as WIN in opportunities
+      if (selectedNiche !== "other" && status === "completed") {
         await markNicheAsWin(selectedNiche)
       }
 
@@ -222,6 +207,7 @@ function AuditBuilderContent() {
       } = await supabase.auth.getUser()
       if (!user) return
 
+      // Check if already won - don't overwrite existing win
       const { data: existingState } = await supabase
         .from("niche_user_state")
         .select("win_completed, win_type")
@@ -230,6 +216,7 @@ function AuditBuilderContent() {
         .single()
 
       if (existingState?.win_completed) {
+        // Already won, don't overwrite
         return
       }
 
@@ -241,7 +228,7 @@ function AuditBuilderContent() {
           status: "Win",
           win_completed: true,
           win_completed_at: now,
-          win_type: "audit",
+          win_type: "audit", // Set win type to audit
           research_notes_added: true,
           aov_calculator_completed: true,
           customer_profile_generated: true,
@@ -347,6 +334,7 @@ Date: _________________________________________________________
   }
 
   function generateAIInsights() {
+    // Mock AI insights generation
     const insights = {
       bottlenecks: [
         "Manual lead follow-up process causing delayed response times",
@@ -383,42 +371,6 @@ Date: _________________________________________________________
     .filter((n) => n.niche_name.toLowerCase().includes(nicheSearch.toLowerCase()))
     .slice(0, 50)
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    setLogoUploading(true)
-    try {
-      const formData = new FormData()
-      formData.append("file", file)
-
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || "Upload failed")
-      }
-
-      const { url } = await response.json()
-      setLogoUrl(url)
-      toast({
-        title: "Logo uploaded",
-        description: "Your logo has been uploaded successfully.",
-      })
-    } catch (error) {
-      toast({
-        title: "Upload failed",
-        description: error instanceof Error ? error.message : "Failed to upload logo",
-        variant: "destructive",
-      })
-    } finally {
-      setLogoUploading(false)
-    }
-  }
-
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
@@ -432,6 +384,7 @@ Date: _________________________________________________________
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Sticky Header */}
       <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-white/10">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -447,6 +400,7 @@ Date: _________________________________________________________
               </div>
             </div>
 
+            {/* Progress */}
             <div className="hidden md:flex items-center gap-4">
               <div className="text-right">
                 <p className="text-sm text-white/60">Progress</p>
@@ -457,6 +411,7 @@ Date: _________________________________________________________
               </div>
             </div>
 
+            {/* Actions */}
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -482,6 +437,7 @@ Date: _________________________________________________________
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex gap-8">
+          {/* Sidebar Navigation */}
           <div className="hidden lg:block w-64 flex-shrink-0">
             <div className="sticky top-28 space-y-2">
               {steps.map((step, index) => {
@@ -511,6 +467,7 @@ Date: _________________________________________________________
                 )
               })}
 
+              {/* AI Insights Button */}
               {completion >= 60 && (
                 <button
                   onClick={generateAIInsights}
@@ -523,6 +480,7 @@ Date: _________________________________________________________
                 </button>
               )}
 
+              {/* Restore Defaults */}
               <button
                 onClick={restoreDefaultQuestions}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all text-white/40 hover:text-white/60 hover:bg-white/5"
@@ -533,7 +491,9 @@ Date: _________________________________________________________
             </div>
           </div>
 
+          {/* Main Content */}
           <div className="flex-1 space-y-6">
+            {/* Mobile Progress */}
             <div className="lg:hidden">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-white/60">Progress</span>
@@ -544,7 +504,9 @@ Date: _________________________________________________________
               </div>
             </div>
 
+            {/* Step Content */}
             {currentStep === 0 ? (
+              // Business Info Step
               <Card className="bg-black/40 border-white/10 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="text-white text-2xl flex items-center gap-3">
@@ -577,89 +539,28 @@ Date: _________________________________________________________
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-white">Niche</Label>
+                    <Label className="text-white">Industry / Niche</Label>
+                    <Input
+                      placeholder="Search niches..."
+                      value={nicheSearch}
+                      onChange={(e) => setNicheSearch(e.target.value)}
+                      className="bg-zinc-900 border-zinc-700 text-white placeholder:text-white/40 mb-2"
+                    />
                     <Select value={selectedNiche} onValueChange={setSelectedNiche}>
                       <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white h-12">
                         <SelectValue placeholder="Select a niche" />
                       </SelectTrigger>
                       <SelectContent className="bg-zinc-900 border-zinc-700 max-h-60">
-                        {niches.map((niche) => (
-                          <SelectItem key={niche.id} value={niche.id} className="text-white hover:bg-zinc-800">
-                            {niche.niche_name}
-                            {niche.industry?.name && (
-                              <span className="text-zinc-500 text-xs ml-2">({niche.industry.name})</span>
-                            )}
-                          </SelectItem>
-                        ))}
                         <SelectItem value="other" className="text-white hover:bg-zinc-800">
                           Other
                         </SelectItem>
+                        {filteredNiches.map((niche) => (
+                          <SelectItem key={niche.id} value={niche.id} className="text-white hover:bg-zinc-800">
+                            {niche.niche_name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-white">Business Logo (optional)</Label>
-                    <div className="mt-2 space-y-3">
-                      {logoUrl && (
-                        <div className="flex items-center gap-3 p-3 bg-zinc-800 rounded-lg border border-zinc-700">
-                          <img
-                            src={logoUrl || "/placeholder.svg"}
-                            alt="Logo preview"
-                            className="h-10 w-10 object-contain rounded"
-                          />
-                          <span className="text-sm text-zinc-400 flex-1 truncate">{logoUrl}</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setLogoUrl("")}
-                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      )}
-                      <div className="flex gap-3">
-                        <label className="flex-1">
-                          <div className="flex items-center justify-center gap-2 px-4 py-3 bg-zinc-800 border border-zinc-700 border-dashed rounded-lg cursor-pointer hover:border-zinc-600 transition-colors">
-                            {logoUploading ? (
-                              <>
-                                <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
-                                <span className="text-sm text-zinc-400">Uploading...</span>
-                              </>
-                            ) : (
-                              <>
-                                <Upload className="h-4 w-4 text-zinc-400" />
-                                <span className="text-sm text-zinc-400">Upload logo</span>
-                              </>
-                            )}
-                          </div>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleLogoUpload}
-                            className="hidden"
-                            disabled={logoUploading}
-                          />
-                        </label>
-                      </div>
-                      <p className="text-xs text-zinc-500">PNG, JPG, GIF, WebP or SVG. Max 5MB.</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
-                    <div>
-                      <Label className="text-white">Link to Niche Win Tracker</Label>
-                      <p className="text-xs text-white/60 mt-1">
-                        When client signs, automatically trigger "Audit Win" in Dead Lead Revival
-                      </p>
-                    </div>
-                    <Switch
-                      checked={winTriggerEnabled}
-                      onCheckedChange={setWinTriggerEnabled}
-                      className="data-[state=checked]:bg-emerald-500"
-                    />
                   </div>
 
                   <div className="space-y-2">
@@ -691,6 +592,7 @@ Date: _________________________________________________________
               </Card>
             ) : (
               currentCategory && (
+                // Question Steps
                 <Card className="bg-black/40 border-white/10 backdrop-blur-sm">
                   <CardHeader>
                     <CardTitle className="text-white text-2xl flex items-center gap-3">
@@ -736,6 +638,7 @@ Date: _________________________________________________________
               )
             )}
 
+            {/* Navigation Buttons */}
             <div className="flex justify-between pt-4">
               <Button
                 variant="outline"
@@ -770,6 +673,7 @@ Date: _________________________________________________________
             </div>
           </div>
 
+          {/* AI Insights Panel */}
           {showAIInsights && aiInsights && (
             <div className="hidden xl:block w-80 flex-shrink-0">
               <div className="sticky top-28 space-y-4">

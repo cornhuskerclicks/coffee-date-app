@@ -10,7 +10,6 @@ import { Loader2, Sparkles, Copy, Check, Search, ChevronDown } from "lucide-reac
 import { generatePrompt } from "@/app/actions/generate-prompt"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { createClient } from "@/lib/supabase/client"
 
 interface PromptGeneratorFormProps {
   userId: string
@@ -24,11 +23,6 @@ interface Niche {
   }
 }
 
-interface Industry {
-  id: string
-  name: string
-}
-
 export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps) {
   const router = useRouter()
   const [isGenerating, setIsGenerating] = useState(false)
@@ -39,7 +33,6 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
   const [niches, setNiches] = useState<Niche[]>([])
   const [nicheSearchQuery, setNicheSearchQuery] = useState("")
   const [nichePopoverOpen, setNichePopoverOpen] = useState(false)
-  const [industries, setIndustries] = useState<Industry[]>([])
 
   const [formData, setFormData] = useState({
     businessName: "",
@@ -59,19 +52,9 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
     promiseLine: "",
   })
 
-  const supabase = createClient()
-
   useEffect(() => {
     fetchNiches()
-    loadIndustries()
   }, [])
-
-  const loadIndustries = async () => {
-    const { data, error } = await supabase.from("industries").select("id, name").order("name")
-    if (!error && data) {
-      setIndustries(data)
-    }
-  }
 
   const fetchNiches = async () => {
     try {
@@ -95,7 +78,7 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
       nicheId,
       nicheName,
       customNiche: nicheId === null && nicheName === "Other" ? "" : prev.customNiche,
-      serviceType: nicheId ? nicheName : prev.customNiche || prev.serviceType,
+      serviceType: nicheId ? nicheName : prev.serviceType,
     }))
     setNichePopoverOpen(false)
   }
@@ -176,230 +159,250 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
   return (
     <Card className="glass glass-border">
       <CardHeader>
-        <CardTitle className="text-white">Generate Coffee Date Prompt</CardTitle>
-        <CardDescription className="text-white-secondary">Fill in the details to create your Android</CardDescription>
+        <CardTitle className="text-white">Coffee Date Prompt Generator</CardTitle>
+        <CardDescription className="text-white/60">
+          Fill in your client's business details to generate a custom Android prompt
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Business Name */}
-        <div className="space-y-2">
-          <Label className="text-white">Business Name</Label>
-          <Input
-            placeholder="e.g., BrightSky Roofing"
-            value={formData.businessName}
-            onChange={(e) => handleInputChange("businessName", e.target.value)}
-            className="bg-black/40 border-white/10 text-white placeholder:text-white/30"
-          />
-          <p className="text-xs text-zinc-500">The name of the business this Android will represent</p>
-        </div>
-
-        {/* Android Name */}
-        <div className="space-y-2">
-          <Label className="text-white">Android Name</Label>
-          <Input
-            placeholder="e.g., Grace, Jasper, or Nova"
-            value={formData.androidName}
-            onChange={(e) => handleInputChange("androidName", e.target.value)}
-            className="bg-black/40 border-white/10 text-white placeholder:text-white/30"
-          />
-          <p className="text-xs text-zinc-500">A friendly name for the AI assistant</p>
-        </div>
-
-        <div className="space-y-2">
-          <Label className="text-white">Industry / Niche</Label>
-          <Popover open={nichePopoverOpen} onOpenChange={setNichePopoverOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                className="w-full justify-between bg-black/40 border-white/10 text-white hover:bg-white/5"
-              >
-                {formData.nicheName || "Select a niche..."}
-                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-full p-0 bg-zinc-900 border-zinc-700" align="start">
-              <div className="p-2 border-b border-zinc-700">
-                <div className="flex items-center gap-2 px-2">
-                  <Search className="h-4 w-4 text-zinc-400" />
-                  <Input
-                    placeholder="Search niches..."
-                    value={nicheSearchQuery}
-                    onChange={(e) => setNicheSearchQuery(e.target.value)}
-                    className="border-0 bg-transparent text-white placeholder:text-zinc-500 focus-visible:ring-0"
-                  />
-                </div>
-              </div>
-              <ScrollArea className="h-[200px]">
-                {industries.map((industry) => {
-                  const industryNiches = filteredNiches.filter((n) => n.industry?.name === industry.name)
-                  if (
-                    industryNiches.length === 0 &&
-                    !industry.name.toLowerCase().includes(nicheSearchQuery.toLowerCase())
-                  )
-                    return null
-                  return (
-                    <div key={industry.id}>
-                      <div className="px-3 py-1.5 text-xs font-semibold text-zinc-400 bg-zinc-800/50">
-                        {industry.name}
-                      </div>
-                      {industryNiches.map((niche) => (
-                        <button
-                          key={niche.id}
-                          onClick={() => handleNicheSelect(niche.id, niche.niche_name)}
-                          className="w-full px-3 py-2 text-left text-sm text-white hover:bg-zinc-800 transition-colors"
-                        >
-                          {niche.niche_name}
-                        </button>
-                      ))}
-                    </div>
-                  )
-                })}
-                <button
-                  onClick={() => handleNicheSelect(null, "Other")}
-                  className="w-full px-3 py-2 text-left text-sm text-white hover:bg-zinc-800 transition-colors border-t border-zinc-700"
-                >
-                  Other (Custom)
-                </button>
-              </ScrollArea>
-            </PopoverContent>
-          </Popover>
-          <p className="text-xs text-zinc-500">Select the industry or niche this Android will specialize in</p>
-        </div>
-
-        {formData.nicheName === "Other" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <Label className="text-white">Custom Niche</Label>
+            <Label htmlFor="businessName" className="text-white">
+              Business Name <span className="text-red-400">*</span>
+            </Label>
             <Input
-              placeholder="e.g., Pet Grooming Services"
-              value={formData.customNiche}
-              onChange={(e) => handleInputChange("customNiche", e.target.value)}
-              className="bg-black/40 border-white/10 text-white placeholder:text-white/30"
+              id="businessName"
+              placeholder='e.g. "BrightSky Roofing"'
+              value={formData.businessName}
+              onChange={(e) => handleInputChange("businessName", e.target.value)}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
             />
-            <p className="text-xs text-zinc-500">Describe your specific niche or industry</p>
+            <p className="text-xs text-white/40">
+              Enter your client's business name. This will appear in the demo script.
+            </p>
           </div>
-        )}
 
-        {/* Service Type */}
-        <div className="space-y-2">
-          <Label className="text-white">Service Type</Label>
-          <Input
-            placeholder="e.g., Commercial roofing installation and repair"
-            value={formData.serviceType}
-            onChange={(e) => handleInputChange("serviceType", e.target.value)}
-            className="bg-black/40 border-white/10 text-white placeholder:text-white/30"
-          />
-          <p className="text-xs text-zinc-500">The main service or product offered</p>
+          <div className="space-y-2">
+            <Label htmlFor="androidName" className="text-white">
+              Android Name (Admin Persona) <span className="text-red-400">*</span>
+            </Label>
+            <Input
+              id="androidName"
+              placeholder='e.g. "Grace", "Jasper", or "Nova"'
+              value={formData.androidName}
+              onChange={(e) => handleInputChange("androidName", e.target.value)}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+            />
+            <p className="text-xs text-white/40">This is the name of the AI persona delivering the Coffee Date Demo.</p>
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label className="text-white">
+              Business Niche <span className="text-red-400">*</span>
+            </Label>
+            <Popover open={nichePopoverOpen} onOpenChange={setNichePopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={nichePopoverOpen}
+                  className="w-full justify-between bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white"
+                >
+                  {formData.nicheName || "Select a niche..."}
+                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0 bg-black border-white/10" align="start">
+                <div className="p-2 border-b border-white/10">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
+                    <Input
+                      placeholder="Search niches..."
+                      value={nicheSearchQuery}
+                      onChange={(e) => setNicheSearchQuery(e.target.value)}
+                      className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                    />
+                  </div>
+                </div>
+                <ScrollArea className="h-[250px]">
+                  <div className="p-2 space-y-1">
+                    <button
+                      onClick={() => handleNicheSelect(null, "Other")}
+                      className={`w-full text-left p-3 rounded-lg transition-colors ${
+                        formData.nicheName === "Other"
+                          ? "bg-[#00A8FF]/20 border border-[#00A8FF]/50"
+                          : "hover:bg-white/10 border border-transparent"
+                      }`}
+                    >
+                      <div className="font-medium text-white">Other</div>
+                      <div className="text-sm text-white/60">Enter a custom niche</div>
+                    </button>
+
+                    {filteredNiches.map((niche) => (
+                      <button
+                        key={niche.id}
+                        onClick={() => handleNicheSelect(niche.id, niche.niche_name)}
+                        className={`w-full text-left p-3 rounded-lg transition-colors ${
+                          formData.nicheId === niche.id
+                            ? "bg-[#00A8FF]/20 border border-[#00A8FF]/50"
+                            : "hover:bg-white/10 border border-transparent"
+                        }`}
+                      >
+                        <div className="font-medium text-white">{niche.niche_name}</div>
+                        <div className="text-sm text-white/60">{niche.industry.name}</div>
+                      </button>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </PopoverContent>
+            </Popover>
+            <p className="text-xs text-white/40">
+              Choose the niche closest to your client's service. This shapes the language used.
+            </p>
+          </div>
+
+          {formData.nicheName === "Other" && (
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="customNiche" className="text-white">
+                Custom Niche <span className="text-red-400">*</span>
+              </Label>
+              <Input
+                id="customNiche"
+                placeholder="Describe the niche..."
+                value={formData.customNiche}
+                onChange={(e) => handleInputChange("customNiche", e.target.value)}
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+              />
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="shortService" className="text-white">
+              Short Service Description
+            </Label>
+            <Input
+              id="shortService"
+              placeholder='e.g. "We install, repair, and replace residential roofs."'
+              value={formData.shortService}
+              onChange={(e) => handleInputChange("shortService", e.target.value)}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+            />
+            <p className="text-xs text-white/40">A short summary of what the business does.</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="valueProp" className="text-white">
+              Value Proposition
+            </Label>
+            <Input
+              id="valueProp"
+              placeholder='e.g. "Fast turnaround, fair pricing, reliable service."'
+              value={formData.valueProp}
+              onChange={(e) => handleInputChange("valueProp", e.target.value)}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+            />
+            <p className="text-xs text-white/40">What makes the business different or better?</p>
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="nicheQuestion" className="text-white">
+              Niche Question 1
+            </Label>
+            <Input
+              id="nicheQuestion"
+              placeholder='e.g. "Are you looking for a quote or comparing options?"'
+              value={formData.nicheQuestion}
+              onChange={(e) => handleInputChange("nicheQuestion", e.target.value)}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+            />
+            <p className="text-xs text-white/40">A simple question the persona can use to start conversations.</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="calendarLink" className="text-white">
+              Calendar Link
+            </Label>
+            <Input
+              id="calendarLink"
+              placeholder="https://yourbookinglink.com"
+              value={formData.calendarLink}
+              onChange={(e) => handleInputChange("calendarLink", e.target.value)}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+            />
+            <p className="text-xs text-white/40">Where you want the prospect to book a meeting.</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="regionTone" className="text-white">
+              Region / Tone
+            </Label>
+            <Input
+              id="regionTone"
+              placeholder='e.g. "Midwest friendly", "UK professional", "casual"'
+              value={formData.regionTone}
+              onChange={(e) => handleInputChange("regionTone", e.target.value)}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+            />
+            <p className="text-xs text-white/40">Helps the AI mimic the right style of communication.</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="industryTraining" className="text-white">
+              Industry Training
+            </Label>
+            <Input
+              id="industryTraining"
+              placeholder='e.g. "Roofing", "HVAC", "Real Estate", "Legal Services"'
+              value={formData.industryTraining}
+              onChange={(e) => handleInputChange("industryTraining", e.target.value)}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+            />
+            <p className="text-xs text-white/40">The industry the Android must understand.</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="website" className="text-white">
+              Website URL
+            </Label>
+            <Input
+              id="website"
+              placeholder="https://clientwebsite.com"
+              value={formData.website}
+              onChange={(e) => handleInputChange("website", e.target.value)}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+            />
+            <p className="text-xs text-white/40">Optional. Helps AI pull context for tone and structure.</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="openingHours" className="text-white">
+              Opening Hours
+            </Label>
+            <Input
+              id="openingHours"
+              placeholder='e.g. "Mon–Fri 8–5"'
+              value={formData.openingHours}
+              onChange={(e) => handleInputChange("openingHours", e.target.value)}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+            />
+            <p className="text-xs text-white/40">Used when referencing availability in demos.</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="promiseLine" className="text-white">
+              Promise Line
+            </Label>
+            <Input
+              id="promiseLine"
+              placeholder='e.g. "Fast, friendly, and reliable service."'
+              value={formData.promiseLine}
+              onChange={(e) => handleInputChange("promiseLine", e.target.value)}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+            />
+            <p className="text-xs text-white/40">A short phrase that reinforces trust.</p>
+          </div>
         </div>
 
-        {/* Short Service */}
-        <div className="space-y-2">
-          <Label className="text-white">Short Service Description</Label>
-          <Input
-            placeholder="e.g., roofing"
-            value={formData.shortService}
-            onChange={(e) => handleInputChange("shortService", e.target.value)}
-            className="bg-black/40 border-white/10 text-white placeholder:text-white/30"
-          />
-          <p className="text-xs text-zinc-500">A one or two word description of the service</p>
-        </div>
-
-        {/* Niche Question */}
-        <div className="space-y-2">
-          <Label className="text-white">Niche-Specific Question</Label>
-          <Input
-            placeholder="e.g., What type of roofing material are you considering?"
-            value={formData.nicheQuestion}
-            onChange={(e) => handleInputChange("nicheQuestion", e.target.value)}
-            className="bg-black/40 border-white/10 text-white placeholder:text-white/30"
-          />
-          <p className="text-xs text-zinc-500">A qualifying question specific to this industry</p>
-        </div>
-
-        {/* Value Prop */}
-        <div className="space-y-2">
-          <Label className="text-white">Value Proposition</Label>
-          <Input
-            placeholder="e.g., 25-year warranty and free annual inspections"
-            value={formData.valueProp}
-            onChange={(e) => handleInputChange("valueProp", e.target.value)}
-            className="bg-black/40 border-white/10 text-white placeholder:text-white/30"
-          />
-          <p className="text-xs text-zinc-500">The main benefit or unique selling point</p>
-        </div>
-
-        {/* Calendar Link */}
-        <div className="space-y-2">
-          <Label className="text-white">Calendar Booking Link</Label>
-          <Input
-            placeholder="e.g., https://calendly.com/your-business"
-            value={formData.calendarLink}
-            onChange={(e) => handleInputChange("calendarLink", e.target.value)}
-            className="bg-black/40 border-white/10 text-white placeholder:text-white/30"
-          />
-          <p className="text-xs text-zinc-500">Link where leads can book appointments</p>
-        </div>
-
-        {/* Region Tone */}
-        <div className="space-y-2">
-          <Label className="text-white">Region / Tone</Label>
-          <Input
-            placeholder="e.g., Midwest, friendly and professional"
-            value={formData.regionTone}
-            onChange={(e) => handleInputChange("regionTone", e.target.value)}
-            className="bg-black/40 border-white/10 text-white placeholder:text-white/30"
-          />
-          <p className="text-xs text-zinc-500">Geographic region and communication style</p>
-        </div>
-
-        {/* Industry Training */}
-        <div className="space-y-2">
-          <Label className="text-white">Industry-Specific Training</Label>
-          <Input
-            placeholder="e.g., Common roofing issues, material types, pricing factors"
-            value={formData.industryTraining}
-            onChange={(e) => handleInputChange("industryTraining", e.target.value)}
-            className="bg-black/40 border-white/10 text-white placeholder:text-white/30"
-          />
-          <p className="text-xs text-zinc-500">Specific knowledge the Android should have</p>
-        </div>
-
-        {/* Website */}
-        <div className="space-y-2">
-          <Label className="text-white">Website URL</Label>
-          <Input
-            placeholder="e.g., https://brightskyroofing.com"
-            value={formData.website}
-            onChange={(e) => handleInputChange("website", e.target.value)}
-            className="bg-black/40 border-white/10 text-white placeholder:text-white/30"
-          />
-          <p className="text-xs text-zinc-500">The business website for reference</p>
-        </div>
-
-        {/* Opening Hours */}
-        <div className="space-y-2">
-          <Label className="text-white">Opening Hours</Label>
-          <Input
-            placeholder="e.g., Mon-Fri 8am-6pm, Sat 9am-2pm"
-            value={formData.openingHours}
-            onChange={(e) => handleInputChange("openingHours", e.target.value)}
-            className="bg-black/40 border-white/10 text-white placeholder:text-white/30"
-          />
-          <p className="text-xs text-zinc-500">Business hours of operation</p>
-        </div>
-
-        {/* Promise Line */}
-        <div className="space-y-2">
-          <Label className="text-white">Promise Line</Label>
-          <Input
-            placeholder="e.g., We'll have a quote to you within 24 hours"
-            value={formData.promiseLine}
-            onChange={(e) => handleInputChange("promiseLine", e.target.value)}
-            className="bg-black/40 border-white/10 text-white placeholder:text-white/30"
-          />
-          <p className="text-xs text-zinc-500">A commitment or promise to potential customers</p>
-        </div>
-
-        {/* Generate Button */}
         <Button
           onClick={handleGenerate}
           className="w-full bg-aether text-white hover:aether-glow"

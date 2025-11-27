@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,10 +26,8 @@ import {
   ExternalLink,
   Eye,
   Globe,
-  Upload,
-  Loader2,
 } from "lucide-react"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -85,7 +81,23 @@ interface QuizPerformance {
 }
 
 // Industry options for quiz wizard
-const INDUSTRIES = []
+const INDUSTRIES = [
+  "Healthcare & Medical",
+  "Legal Services",
+  "Financial Services",
+  "Real Estate",
+  "E-commerce & Retail",
+  "SaaS & Technology",
+  "Marketing Agencies",
+  "Construction & Trades",
+  "Education & Training",
+  "Hospitality & Food",
+  "Automotive",
+  "Manufacturing",
+  "Professional Services",
+  "Non-Profit",
+  "Other",
+]
 
 // Quiz goal options
 const QUIZ_GOALS = [
@@ -93,11 +105,6 @@ const QUIZ_GOALS = [
   { id: "pre-qualify", label: "Pre-Qualify Leads", description: "Filter out unqualified prospects automatically" },
   { id: "start-conversations", label: "Start Conversations", description: "Warm up cold leads for outreach" },
 ]
-
-interface Industry {
-  id: string
-  name: string
-}
 
 export default function QuizHomePage() {
   const [savedQuizzes, setSavedQuizzes] = useState<SavedQuiz[]>([])
@@ -114,7 +121,6 @@ export default function QuizHomePage() {
   const [analyticsOpen, setAnalyticsOpen] = useState(false)
   const [selectedQuizForAnalytics, setSelectedQuizForAnalytics] = useState<SavedQuiz | null>(null)
   const [userSubdomain, setUserSubdomain] = useState<string | null>(null)
-  const [industries, setIndustries] = useState<Industry[]>([])
 
   // Create Quiz Wizard State
   const [wizardOpen, setWizardOpen] = useState(false)
@@ -130,19 +136,16 @@ export default function QuizHomePage() {
     ctaText: "Book Your AI Readiness Audit",
     ctaUrl: "/book-audit",
   })
-  const [logoUploading, setLogoUploading] = useState(false)
 
   const { toast } = useToast()
   const router = useRouter()
 
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
-  const loadIndustries = useCallback(async () => {
-    const { data, error } = await supabase.from("industries").select("id, name").order("name")
-    if (!error && data) {
-      setIndustries(data)
-    }
-  }, [supabase])
+  useEffect(() => {
+    loadSavedQuizzes()
+    loadUserSubdomain()
+  }, [])
 
   const loadSavedQuizzes = async () => {
     setIsLoading(true)
@@ -412,48 +415,6 @@ ${quizLink}
     }
   }
 
-  useEffect(() => {
-    loadSavedQuizzes()
-    loadUserSubdomain()
-    loadIndustries()
-  }, [])
-
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    setLogoUploading(true)
-    try {
-      const formData = new FormData()
-      formData.append("file", file)
-
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || "Upload failed")
-      }
-
-      const { url } = await response.json()
-      setNewQuizData((prev) => ({ ...prev, logoUrl: url }))
-      toast({
-        title: "Logo uploaded",
-        description: "Your logo has been uploaded successfully.",
-      })
-    } catch (error) {
-      toast({
-        title: "Upload failed",
-        description: error instanceof Error ? error.message : "Failed to upload logo",
-        variant: "destructive",
-      })
-    } finally {
-      setLogoUploading(false)
-    }
-  }
-
   return (
     <div className="p-6 space-y-8">
       {/* Header */}
@@ -571,44 +532,43 @@ ${quizLink}
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-2 pt-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 border border-white text-white bg-transparent hover:bg-white hover:text-black hover:border-white transition-colors"
+                      className="flex-1 border-zinc-700 text-white hover:bg-zinc-800 bg-transparent"
                       onClick={() => router.push(`/quiz/builder?id=${quiz.id}`)}
                     >
-                      <Edit className="h-4 w-4 mr-1" />
-                      <span>Edit</span>
+                      <Edit className="h-4 w-4 mr-1" /> Edit
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border border-white/40 text-white bg-transparent hover:bg-white/10 hover:border-white transition-colors"
+                      className="border-zinc-700 text-white hover:bg-zinc-800 bg-transparent"
                       onClick={() => copyQuizLink(quiz)}
                     >
-                      <Link2 className="h-4 w-4 text-white" />
+                      <Link2 className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border border-white/40 text-white bg-transparent hover:bg-white/10 hover:border-white transition-colors"
+                      className="border-zinc-700 text-white hover:bg-zinc-800 bg-transparent"
                       onClick={() => copyEmbedCode(quiz)}
                     >
-                      <Code className="h-4 w-4 text-white" />
+                      <Code className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border border-white/40 text-white bg-transparent hover:bg-white/10 hover:border-white transition-colors"
+                      className="border-zinc-700 text-white hover:bg-zinc-800 bg-transparent"
                       onClick={() => openAnalytics(quiz)}
                     >
-                      <BarChart3 className="h-4 w-4 text-white" />
+                      <BarChart3 className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      className={`border border-white/40 bg-transparent hover:bg-white/10 hover:border-white transition-colors ${quiz.is_published ? "text-green-400" : "text-white"}`}
+                      className={`border-zinc-700 hover:bg-zinc-800 ${quiz.is_published ? "text-green-400" : "text-white"}`}
                       onClick={() => togglePublish(quiz)}
                     >
                       <Globe className="h-4 w-4" />
@@ -616,7 +576,7 @@ ${quizLink}
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border border-red-500 text-red-500 bg-transparent hover:bg-red-500 hover:text-black hover:border-red-500 transition-colors"
+                      className="border-zinc-700 text-red-400 hover:bg-red-500/10 hover:border-red-500/50 bg-transparent"
                       onClick={() => {
                         setQuizToDelete(quiz.id)
                         setDeleteDialogOpen(true)
@@ -667,14 +627,11 @@ ${quizLink}
                     <SelectValue placeholder="Select an industry" />
                   </SelectTrigger>
                   <SelectContent className="bg-zinc-800 border-zinc-700">
-                    {industries.map((ind) => (
-                      <SelectItem key={ind.id} value={ind.name} className="text-white hover:bg-zinc-700">
-                        {ind.name}
+                    {INDUSTRIES.map((ind) => (
+                      <SelectItem key={ind} value={ind} className="text-white hover:bg-zinc-700">
+                        {ind}
                       </SelectItem>
                     ))}
-                    <SelectItem value="Other" className="text-white hover:bg-zinc-700">
-                      Other
-                    </SelectItem>
                   </SelectContent>
                 </Select>
                 {newQuizData.industry === "Other" && (
@@ -747,53 +704,13 @@ ${quizLink}
                 </div>
 
                 <div>
-                  <Label className="text-zinc-300">Logo</Label>
-                  <div className="mt-2 space-y-3">
-                    {newQuizData.logoUrl && (
-                      <div className="flex items-center gap-3 p-3 bg-zinc-800 rounded-lg border border-zinc-700">
-                        <img
-                          src={newQuizData.logoUrl || "/placeholder.svg"}
-                          alt="Logo preview"
-                          className="h-10 w-10 object-contain rounded"
-                        />
-                        <span className="text-sm text-zinc-400 flex-1 truncate">{newQuizData.logoUrl}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setNewQuizData((prev) => ({ ...prev, logoUrl: "" }))}
-                          className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    )}
-                    <div className="flex gap-3">
-                      <label className="flex-1">
-                        <div className="flex items-center justify-center gap-2 px-4 py-3 bg-zinc-800 border border-zinc-700 border-dashed rounded-lg cursor-pointer hover:border-zinc-600 transition-colors">
-                          {logoUploading ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
-                              <span className="text-sm text-zinc-400">Uploading...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="h-4 w-4 text-zinc-400" />
-                              <span className="text-sm text-zinc-400">Upload logo</span>
-                            </>
-                          )}
-                        </div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleLogoUpload}
-                          className="hidden"
-                          disabled={logoUploading}
-                        />
-                      </label>
-                    </div>
-                    <p className="text-xs text-zinc-500">PNG, JPG, GIF, WebP or SVG. Max 5MB.</p>
-                  </div>
+                  <Label className="text-zinc-300">Logo URL (optional)</Label>
+                  <Input
+                    placeholder="https://yoursite.com/logo.png"
+                    value={newQuizData.logoUrl}
+                    onChange={(e) => setNewQuizData((prev) => ({ ...prev, logoUrl: e.target.value }))}
+                    className="bg-zinc-800 border-zinc-700 text-white mt-2"
+                  />
                 </div>
 
                 <div>
@@ -904,7 +821,7 @@ ${quizLink}
                     variant="outline"
                     size="sm"
                     onClick={() => copyEmbedCode(selectedQuizForAnalytics)}
-                    className="border border-white/40 text-white bg-transparent hover:bg-white/10 hover:border-white transition-colors"
+                    className="border-zinc-700 text-white hover:bg-zinc-800"
                   >
                     <Code className="h-4 w-4 mr-2" /> Embed
                   </Button>
@@ -912,7 +829,7 @@ ${quizLink}
                     variant="outline"
                     size="sm"
                     onClick={() => copyEmailTemplate(selectedQuizForAnalytics)}
-                    className="border border-white/40 text-white bg-transparent hover:bg-white/10 hover:border-white transition-colors"
+                    className="border-zinc-700 text-white hover:bg-zinc-800"
                   >
                     <Mail className="h-4 w-4 mr-2" /> Email
                   </Button>
@@ -920,7 +837,7 @@ ${quizLink}
                     variant="outline"
                     size="sm"
                     onClick={() => copyDMScript(selectedQuizForAnalytics)}
-                    className="border border-white/40 text-white bg-transparent hover:bg-white/10 hover:border-white transition-colors"
+                    className="border-zinc-700 text-white hover:bg-zinc-800"
                   >
                     <MessageSquare className="h-4 w-4 mr-2" /> DM Script
                   </Button>
@@ -928,7 +845,7 @@ ${quizLink}
                     variant="outline"
                     size="sm"
                     onClick={() => copySocialPost(selectedQuizForAnalytics)}
-                    className="border border-white/40 text-white bg-transparent hover:bg-white/10 hover:border-white transition-colors"
+                    className="border-zinc-700 text-white hover:bg-zinc-800"
                   >
                     <Share2 className="h-4 w-4 mr-2" /> Social
                   </Button>

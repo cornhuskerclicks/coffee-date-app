@@ -1306,7 +1306,7 @@ export default function OpportunitiesPage() {
                             {selectedNiche?.user_state?.audit_win_completed ||
                             selectedNiche?.user_state?.win_type === "audit"
                               ? "Client secured via AI Readiness Audit"
-                              : "Win triggered when client signs from Audit Builder"}
+                              : "Complete an AI Audit with this niche to record win"}
                           </p>
                         </TooltipContent>
                       </Tooltip>

@@ -609,11 +609,11 @@ export default async function DashboardPage() {
               <Button
                 asChild
                 size="lg"
-                className="bg-[#00A8FF] hover:bg-[#0099EE] active:scale-[0.98] text-white shrink-0 shadow-lg shadow-[#00A8FF]/20 hover:shadow-xl hover:shadow-[#00A8FF]/30 transition-all duration-200 ring-2 ring-transparent hover:ring-[#00A8FF]/50"
+                className="bg-[#00A8FF] hover:bg-[#0099EE] active:scale-[0.98] text-white shrink-0 shadow-lg shadow-[#00A8FF]/30 hover:shadow-xl hover:shadow-[#00A8FF]/40 transition-all duration-200 ring-2 ring-transparent hover:ring-[#00A8FF]/50"
               >
                 <Link href={nextRecommendation.href}>
-                  <ChevronRight className="h-4 w-4 ml-1" />
                   Start Now
+                  <ChevronRight className="h-4 w-4 ml-1" />
                 </Link>
               </Button>
             </CardContent>
@@ -630,7 +630,7 @@ export default async function DashboardPage() {
             <div className="flex flex-wrap justify-center gap-3">
               <Button
                 variant="outline"
-                className="border border-white text-white bg-transparent hover:bg-white hover:text-black hover:border-white transition-colors"
+                className="border-white/20 text-white hover:bg-white/10 hover:border-white/30 active:scale-[0.98] bg-transparent transition-all duration-200"
                 asChild
               >
                 <Link href="/demo">
@@ -640,7 +640,7 @@ export default async function DashboardPage() {
               </Button>
               <Button
                 variant="outline"
-                className="border border-white text-white bg-transparent hover:bg-white hover:text-black hover:border-white transition-colors"
+                className="border-white/20 text-white hover:bg-white/10 hover:border-white/30 active:scale-[0.98] bg-transparent transition-all duration-200"
                 asChild
               >
                 <Link href="/revival/opportunities">

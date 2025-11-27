@@ -30,7 +30,7 @@ export default function PromptLibraryPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All")
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null)
   const [isCreating, setIsCreating] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
 
   const [editName, setEditName] = useState("")
   const [editContent, setEditContent] = useState("")
@@ -53,12 +53,12 @@ export default function PromptLibraryPage() {
       if (selectedCategory !== "All" && prompt.category !== selectedCategory) {
         return false
       }
-      if (searchTerm.trim()) {
-        return prompt.name.toLowerCase().includes(searchTerm.toLowerCase())
+      if (searchQuery.trim()) {
+        return prompt.name.toLowerCase().includes(searchQuery.toLowerCase())
       }
       return true
     })
-  }, [prompts, selectedCategory, searchTerm])
+  }, [prompts, selectedCategory, searchQuery])
 
   useEffect(() => {
     loadPrompts()
@@ -411,13 +411,13 @@ export default function PromptLibraryPage() {
 
       <div className="w-80 border-r border-white/10 flex flex-col">
         <div className="p-4 border-b border-white/10 space-y-3">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
               <Input
                 placeholder="Search prompts..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/40 h-9"
               />
             </div>
@@ -431,14 +431,16 @@ export default function PromptLibraryPage() {
           {filteredPrompts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-6">
               <FolderOpen className="h-12 w-12 text-white/20 mb-3" />
-              <p className="text-white/60 text-sm">{searchTerm ? "No prompts found" : "No prompts in this category"}</p>
+              <p className="text-white/60 text-sm">
+                {searchQuery ? "No prompts found" : "No prompts in this category"}
+              </p>
               <Button
                 onClick={handleNewPrompt}
                 variant="outline"
                 size="sm"
-                className="mt-4 border border-white text-white bg-transparent hover:bg-white hover:text-black hover:border-white transition-colors"
+                className="mt-4 border-white/20 text-white hover:bg-white/10 bg-transparent"
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4 mr-2 text-white" />
                 New Prompt
               </Button>
             </div>
