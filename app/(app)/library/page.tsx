@@ -438,7 +438,7 @@ export default function PromptLibraryPage() {
                 size="sm"
                 className="mt-4 border-white/20 text-white hover:bg-white hover:text-black hover:border-white/30 bg-transparent transition-all group"
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4 mr-2 text-white group-hover:text-black" />
                 <span className="group-hover:text-black">New Prompt</span>
               </Button>
             </div>
