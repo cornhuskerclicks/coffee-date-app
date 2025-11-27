@@ -577,15 +577,18 @@ Date: _________________________________________________________
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-white">Industry</Label>
+                    <Label className="text-white">Niche</Label>
                     <Select value={selectedNiche} onValueChange={setSelectedNiche}>
                       <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white h-12">
-                        <SelectValue placeholder="Select an industry" />
+                        <SelectValue placeholder="Select a niche" />
                       </SelectTrigger>
                       <SelectContent className="bg-zinc-900 border-zinc-700 max-h-60">
-                        {industries.map((ind) => (
-                          <SelectItem key={ind.id} value={ind.id} className="text-white hover:bg-zinc-800">
-                            {ind.name}
+                        {niches.map((niche) => (
+                          <SelectItem key={niche.id} value={niche.id} className="text-white hover:bg-zinc-800">
+                            {niche.niche_name}
+                            {niche.industry?.name && (
+                              <span className="text-zinc-500 text-xs ml-2">({niche.industry.name})</span>
+                            )}
                           </SelectItem>
                         ))}
                         <SelectItem value="other" className="text-white hover:bg-zinc-800">

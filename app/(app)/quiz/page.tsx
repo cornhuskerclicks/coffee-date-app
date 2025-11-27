@@ -571,11 +571,11 @@ ${quizLink}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 pt-2">
+                  <div className="flex gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 border-zinc-700 text-white hover:bg-zinc-800 bg-transparent"
+                      className="flex-1 border-zinc-700 text-white hover:bg-white hover:text-black hover:border-white transition-all group bg-transparent"
                       onClick={() => router.push(`/quiz/builder?id=${quiz.id}`)}
                     >
                       <Edit className="h-4 w-4 mr-1" /> Edit
@@ -583,31 +583,31 @@ ${quizLink}
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-zinc-700 text-white hover:bg-zinc-800 bg-transparent"
+                      className="border-zinc-700 hover:bg-white/10 hover:border-white/30 bg-transparent transition-all"
                       onClick={() => copyQuizLink(quiz)}
                     >
-                      <Link2 className="h-4 w-4" />
+                      <Link2 className="h-4 w-4 text-white" />
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-zinc-700 text-white hover:bg-zinc-800 bg-transparent"
+                      className="border-zinc-700 hover:bg-white/10 hover:border-white/30 bg-transparent transition-all"
                       onClick={() => copyEmbedCode(quiz)}
                     >
-                      <Code className="h-4 w-4" />
+                      <Code className="h-4 w-4 text-white" />
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-zinc-700 text-white hover:bg-zinc-800 bg-transparent"
+                      className="border-zinc-700 hover:bg-white/10 hover:border-white/30 bg-transparent transition-all"
                       onClick={() => openAnalytics(quiz)}
                     >
-                      <BarChart3 className="h-4 w-4" />
+                      <BarChart3 className="h-4 w-4 text-white" />
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      className={`border-zinc-700 hover:bg-zinc-800 ${quiz.is_published ? "text-green-400" : "text-white"}`}
+                      className={`border-zinc-700 hover:bg-white/10 hover:border-white/30 bg-transparent transition-all ${quiz.is_published ? "text-green-400" : "text-white"}`}
                       onClick={() => togglePublish(quiz)}
                     >
                       <Globe className="h-4 w-4" />
@@ -615,13 +615,13 @@ ${quizLink}
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-zinc-700 text-red-400 hover:bg-red-500/10 hover:border-red-500/50 bg-transparent"
+                      className="border-zinc-700 hover:bg-red-500/20 hover:border-red-500/50 bg-transparent transition-all"
                       onClick={() => {
                         setQuizToDelete(quiz.id)
                         setDeleteDialogOpen(true)
                       }}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4 text-red-400" />
                     </Button>
                   </div>
 

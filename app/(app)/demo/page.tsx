@@ -108,7 +108,11 @@ export default async function DemoPage() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Button asChild variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
+            <Button
+              asChild
+              variant="outline"
+              className="border-white/20 text-white hover:bg-white hover:text-black hover:border-white/30 bg-transparent transition-all group"
+            >
               <Link href="/prompt-generator">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Android
