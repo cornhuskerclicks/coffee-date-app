@@ -78,7 +78,6 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
       nicheId,
       nicheName,
       customNiche: nicheId === null && nicheName === "Other" ? "" : prev.customNiche,
-      // Also set serviceType for compatibility
       serviceType: nicheId ? nicheName : prev.serviceType,
     }))
     setNichePopoverOpen(false)
@@ -89,7 +88,6 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
     try {
       const dataToSend = {
         ...formData,
-        // Use custom niche if "Other" selected
         niche: formData.nicheId ? formData.nicheName : formData.customNiche || formData.nicheName,
         serviceType: formData.nicheId ? formData.nicheName : formData.customNiche || formData.serviceType,
       }
@@ -162,8 +160,8 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
     <Card className="glass glass-border">
       <CardHeader>
         <CardTitle className="text-white">Coffee Date Prompt Generator</CardTitle>
-        <CardDescription className="text-white-secondary">
-          Fill in your business details to generate a custom Android prompt
+        <CardDescription className="text-white/60">
+          Fill in your client's business details to generate a custom Android prompt
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -174,11 +172,14 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
             </Label>
             <Input
               id="businessName"
-              placeholder="e.g. Omaha Capital Investments"
+              placeholder='e.g. "BrightSky Roofing"'
               value={formData.businessName}
               onChange={(e) => handleInputChange("businessName", e.target.value)}
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/50"
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
             />
+            <p className="text-xs text-white/40">
+              Enter your client's business name. This will appear in the demo script.
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -187,11 +188,12 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
             </Label>
             <Input
               id="androidName"
-              placeholder="e.g. Grace"
+              placeholder='e.g. "Grace", "Jasper", or "Nova"'
               value={formData.androidName}
               onChange={(e) => handleInputChange("androidName", e.target.value)}
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/50"
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
             />
+            <p className="text-xs text-white/40">This is the name of the AI persona delivering the Coffee Date Demo.</p>
           </div>
 
           <div className="space-y-2 md:col-span-2">
@@ -224,7 +226,6 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
                 </div>
                 <ScrollArea className="h-[250px]">
                   <div className="p-2 space-y-1">
-                    {/* Other option at top */}
                     <button
                       onClick={() => handleNicheSelect(null, "Other")}
                       className={`w-full text-left p-3 rounded-lg transition-colors ${
@@ -255,6 +256,9 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
                 </ScrollArea>
               </PopoverContent>
             </Popover>
+            <p className="text-xs text-white/40">
+              Choose the niche closest to your client's service. This shapes the language used.
+            </p>
           </div>
 
           {formData.nicheName === "Other" && (
@@ -267,7 +271,7 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
                 placeholder="Describe the niche..."
                 value={formData.customNiche}
                 onChange={(e) => handleInputChange("customNiche", e.target.value)}
-                className="bg-white/5 border-white/10 text-white placeholder:text-white/50"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
               />
             </div>
           )}
@@ -278,11 +282,12 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
             </Label>
             <Input
               id="shortService"
-              placeholder="help selling or investing in property"
+              placeholder='e.g. "We install, repair, and replace residential roofs."'
               value={formData.shortService}
               onChange={(e) => handleInputChange("shortService", e.target.value)}
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/50"
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
             />
+            <p className="text-xs text-white/40">A short summary of what the business does.</p>
           </div>
 
           <div className="space-y-2">
@@ -291,11 +296,12 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
             </Label>
             <Input
               id="valueProp"
-              placeholder="beat any fair market price and close fast"
+              placeholder='e.g. "Fast turnaround, fair pricing, reliable service."'
               value={formData.valueProp}
               onChange={(e) => handleInputChange("valueProp", e.target.value)}
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/50"
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
             />
+            <p className="text-xs text-white/40">What makes the business different or better?</p>
           </div>
 
           <div className="space-y-2 md:col-span-2">
@@ -304,11 +310,12 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
             </Label>
             <Input
               id="nicheQuestion"
-              placeholder="Are you looking to sell a property or find investment opportunities?"
+              placeholder='e.g. "Are you looking for a quote or comparing options?"'
               value={formData.nicheQuestion}
               onChange={(e) => handleInputChange("nicheQuestion", e.target.value)}
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/50"
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
             />
+            <p className="text-xs text-white/40">A simple question the persona can use to start conversations.</p>
           </div>
 
           <div className="space-y-2">
@@ -317,11 +324,12 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
             </Label>
             <Input
               id="calendarLink"
-              placeholder="https://yourcalendarlink.com"
+              placeholder="https://yourbookinglink.com"
               value={formData.calendarLink}
               onChange={(e) => handleInputChange("calendarLink", e.target.value)}
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/50"
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
             />
+            <p className="text-xs text-white/40">Where you want the prospect to book a meeting.</p>
           </div>
 
           <div className="space-y-2">
@@ -330,11 +338,12 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
             </Label>
             <Input
               id="regionTone"
-              placeholder="Omaha dialect"
+              placeholder='e.g. "Midwest friendly", "UK professional", "casual"'
               value={formData.regionTone}
               onChange={(e) => handleInputChange("regionTone", e.target.value)}
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/50"
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
             />
+            <p className="text-xs text-white/40">Helps the AI mimic the right style of communication.</p>
           </div>
 
           <div className="space-y-2">
@@ -343,11 +352,12 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
             </Label>
             <Input
               id="industryTraining"
-              placeholder="Real Estate"
+              placeholder='e.g. "Roofing", "HVAC", "Real Estate", "Legal Services"'
               value={formData.industryTraining}
               onChange={(e) => handleInputChange("industryTraining", e.target.value)}
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/50"
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
             />
+            <p className="text-xs text-white/40">The industry the Android must understand.</p>
           </div>
 
           <div className="space-y-2">
@@ -356,11 +366,12 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
             </Label>
             <Input
               id="website"
-              placeholder="https://example.com"
+              placeholder="https://clientwebsite.com"
               value={formData.website}
               onChange={(e) => handleInputChange("website", e.target.value)}
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/50"
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
             />
+            <p className="text-xs text-white/40">Optional. Helps AI pull context for tone and structure.</p>
           </div>
 
           <div className="space-y-2">
@@ -369,11 +380,12 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
             </Label>
             <Input
               id="openingHours"
-              placeholder="Mon–Fri 9–6 CST"
+              placeholder='e.g. "Mon–Fri 8–5"'
               value={formData.openingHours}
               onChange={(e) => handleInputChange("openingHours", e.target.value)}
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/50"
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
             />
+            <p className="text-xs text-white/40">Used when referencing availability in demos.</p>
           </div>
 
           <div className="space-y-2">
@@ -382,11 +394,12 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
             </Label>
             <Input
               id="promiseLine"
-              placeholder="Fast, fair and transparent deals."
+              placeholder='e.g. "Fast, friendly, and reliable service."'
               value={formData.promiseLine}
               onChange={(e) => handleInputChange("promiseLine", e.target.value)}
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/50"
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
             />
+            <p className="text-xs text-white/40">A short phrase that reinforces trust.</p>
           </div>
         </div>
 

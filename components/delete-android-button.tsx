@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Trash2 } from 'lucide-react'
+import { Trash2 } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,7 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { useRouter } from 'next/navigation'
+import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 
 interface DeleteAndroidButtonProps {
@@ -62,27 +62,29 @@ export default function DeleteAndroidButton({ androidId, androidName }: DeleteAn
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button 
-          size="icon" 
-          variant="ghost" 
-          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-        >
-          <Trash2 className="h-4 w-4" />
+        <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-red-500/10">
+          <Trash2 className="h-5 w-5 text-[#FF3B30] hover:text-[#FF5B50]" />
         </Button>
       </AlertDialogTrigger>
-      <AlertDialogContent>
+      <AlertDialogContent className="bg-black border-white/10">
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Android</AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure you want to delete <strong>{androidName}</strong>? This action cannot be undone and will permanently delete the android and all associated demo sessions and messages.
+          <AlertDialogTitle className="text-white">Delete Android</AlertDialogTitle>
+          <AlertDialogDescription className="text-white/60">
+            Are you sure you want to delete <strong className="text-white">{androidName}</strong>? This action cannot be
+            undone and will permanently delete the android and all associated demo sessions and messages.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel
+            disabled={isDeleting}
+            className="bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white"
+          >
+            Cancel
+          </AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             disabled={isDeleting}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            className="bg-[#FF3B30] text-white hover:bg-[#FF5B50]"
           >
             {isDeleting ? "Deleting..." : "Delete"}
           </AlertDialogAction>

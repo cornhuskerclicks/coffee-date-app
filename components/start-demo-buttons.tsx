@@ -55,7 +55,6 @@ export default function StartDemoButtons({ androidId, androidName }: StartDemoBu
   }
 
   const handleStartTest = async () => {
-    // Log test session and navigate to demo
     try {
       await fetch("/api/demo-logs", {
         method: "POST",
@@ -65,24 +64,20 @@ export default function StartDemoButtons({ androidId, androidName }: StartDemoBu
           type: "test",
         }),
       })
-      // Navigate to demo
       router.push(`/demo/${androidId}?type=test`)
     } catch (error) {
       console.error("Error logging test session:", error)
-      // Still navigate even if logging fails
       router.push(`/demo/${androidId}?type=test`)
     }
   }
 
   const handleStartClientDemo = () => {
-    // Show niche selection modal first
     setShowNicheModal(true)
   }
 
   const handleNicheSelect = async (nicheId: string | null, nicheName: string) => {
     setIsLoading(true)
     try {
-      // Log client demo session
       await fetch("/api/demo-logs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -99,7 +94,6 @@ export default function StartDemoButtons({ androidId, androidName }: StartDemoBu
         title: "Client Demo Started",
         description: nicheId ? `Demo for ${nicheName}` : "Demo for Other niche",
       })
-      // Navigate to demo
       router.push(`/demo/${androidId}?type=client&niche=${encodeURIComponent(nicheName)}`)
     } catch (error) {
       console.error("Error starting client demo:", error)
@@ -121,18 +115,20 @@ export default function StartDemoButtons({ androidId, androidName }: StartDemoBu
 
   return (
     <>
-      {/* Two-button row */}
       <div className="flex gap-2 mt-4">
         <Button
           onClick={handleStartTest}
           variant="outline"
-          className="flex-1 border-white/20 text-white hover:bg-white/10 bg-white/5"
+          className="flex-1 border-white/30 text-white bg-transparent hover:bg-white hover:text-black hover:border-[#08A8FF] transition-all"
         >
-          <Play className="h-4 w-4 mr-2" />
+          <Play className="h-[18px] w-[18px] mr-2 text-white group-hover:text-black" />
           Start Test
         </Button>
-        <Button onClick={handleStartClientDemo} className="flex-1 bg-[#00A8FF] text-white hover:bg-[#00A8FF]/90">
-          <Briefcase className="h-4 w-4 mr-2" />
+        <Button
+          onClick={handleStartClientDemo}
+          className="flex-1 bg-[#08A8FF] text-white hover:bg-[#2AB8FF] transition-all"
+        >
+          <Briefcase className="h-[18px] w-[18px] mr-2 text-white" />
           Start Client Demo
         </Button>
       </div>
@@ -160,7 +156,6 @@ export default function StartDemoButtons({ androidId, androidName }: StartDemoBu
 
             <ScrollArea className="h-[300px] rounded-lg border border-white/10 bg-white/5">
               <div className="p-2 space-y-1">
-                {/* Other option at the top */}
                 <button
                   onClick={() => handleNicheSelect(null, "Other")}
                   disabled={isLoading}
