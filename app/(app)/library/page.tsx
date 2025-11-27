@@ -403,7 +403,7 @@ export default function PromptLibraryPage() {
             onClick={() => setShowNewCategoryModal(true)}
             className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white/60 hover:text-white hover:bg-white/5 rounded-md transition-colors"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4 text-white" />
             New Category
           </button>
         </div>
@@ -436,10 +436,10 @@ export default function PromptLibraryPage() {
                 onClick={handleNewPrompt}
                 variant="outline"
                 size="sm"
-                className="mt-4 border-white/20 text-white hover:bg-white hover:text-black hover:border-white/30 bg-transparent transition-all group"
+                className="mt-4 border border-white text-white bg-transparent hover:bg-white hover:text-black hover:border-white transition-colors"
               >
-                <Plus className="h-4 w-4 mr-2 text-white group-hover:text-black" />
-                <span className="group-hover:text-black">New Prompt</span>
+                <Plus className="h-4 w-4 mr-2" />
+                New Prompt
               </Button>
             </div>
           ) : (

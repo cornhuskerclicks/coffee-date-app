@@ -269,10 +269,10 @@ Date: _________________________________________________________
           <Button
             variant="outline"
             onClick={generateBlankAuditPDF}
-            className="border-white/20 hover:bg-white hover:border-white text-white bg-transparent transition-all group"
+            className="border border-white text-white bg-transparent hover:bg-white hover:text-black hover:border-white transition-colors"
           >
-            <FileDown className="h-4 w-4 mr-2 text-white group-hover:text-black" />
-            <span className="group-hover:text-black">Download Blank PDF</span>
+            <FileDown className="h-4 w-4 mr-2" />
+            Download Blank PDF
           </Button>
           <Link href="/audit/builder">
             <Button className="bg-[#3a8bff] hover:bg-[#2d6ed4] text-white shadow-lg shadow-[#3a8bff]/30">
@@ -506,16 +506,16 @@ Date: _________________________________________________________
                       size="icon"
                       onClick={() => handleExportPDF(audit)}
                       title="Export PDF"
-                      className="border-white/20 hover:border-[#3a8bff]/60 hover:bg-[#3a8bff]/10 text-white"
+                      className="border border-white/40 text-white bg-transparent hover:bg-white/10 hover:border-white transition-colors"
                     >
-                      <Download className="h-4 w-4" />
+                      <Download className="h-4 w-4 text-white" />
                     </Button>
                     <Button
                       variant="outline"
                       size="icon"
                       onClick={() => setDeleteId(audit.id)}
                       title="Delete"
-                      className="border-white/20 hover:border-red-500/60 hover:bg-red-500/10 text-white"
+                      className="border border-red-500 text-red-500 bg-transparent hover:bg-red-500 hover:text-black hover:border-red-500 transition-colors"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

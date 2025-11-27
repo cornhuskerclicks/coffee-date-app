@@ -119,10 +119,10 @@ export default function StartDemoButtons({ androidId, androidName }: StartDemoBu
         <Button
           onClick={handleStartTest}
           variant="outline"
-          className="flex-1 border-white/30 text-white bg-transparent hover:bg-white hover:border-white transition-all group"
+          className="flex-1 border border-white text-white bg-transparent hover:bg-white hover:text-black hover:border-white transition-colors"
         >
-          <Play className="h-[18px] w-[18px] mr-2 text-white group-hover:text-black" />
-          <span className="group-hover:text-black">Start Test</span>
+          <Play className="h-[18px] w-[18px] mr-2" />
+          Start Test
         </Button>
         <Button
           onClick={handleStartClientDemo}

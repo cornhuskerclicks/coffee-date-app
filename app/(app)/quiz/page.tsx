@@ -575,16 +575,16 @@ ${quizLink}
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 border-zinc-700 text-white hover:bg-white hover:border-white hover:text-black bg-transparent transition-all group"
+                      className="flex-1 border border-white text-white bg-transparent hover:bg-white hover:text-black hover:border-white transition-colors"
                       onClick={() => router.push(`/quiz/builder?id=${quiz.id}`)}
                     >
-                      <Edit className="h-4 w-4 mr-1 text-white group-hover:text-black" />
+                      <Edit className="h-4 w-4 mr-1" />
                       <span>Edit</span>
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-zinc-700 hover:bg-white/5 hover:border-[#08A8FF]/50 bg-transparent transition-all"
+                      className="border border-white/40 text-white bg-transparent hover:bg-white/10 hover:border-white transition-colors"
                       onClick={() => copyQuizLink(quiz)}
                     >
                       <Link2 className="h-4 w-4 text-white" />
@@ -592,7 +592,7 @@ ${quizLink}
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-zinc-700 hover:bg-white/5 hover:border-[#08A8FF]/50 bg-transparent transition-all"
+                      className="border border-white/40 text-white bg-transparent hover:bg-white/10 hover:border-white transition-colors"
                       onClick={() => copyEmbedCode(quiz)}
                     >
                       <Code className="h-4 w-4 text-white" />
@@ -600,7 +600,7 @@ ${quizLink}
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-zinc-700 hover:bg-white/5 hover:border-[#08A8FF]/50 bg-transparent transition-all"
+                      className="border border-white/40 text-white bg-transparent hover:bg-white/10 hover:border-white transition-colors"
                       onClick={() => openAnalytics(quiz)}
                     >
                       <BarChart3 className="h-4 w-4 text-white" />
@@ -608,7 +608,7 @@ ${quizLink}
                     <Button
                       variant="outline"
                       size="sm"
-                      className={`border-zinc-700 hover:bg-white/5 hover:border-[#08A8FF]/50 bg-transparent transition-all ${quiz.is_published ? "text-green-400" : "text-white"}`}
+                      className={`border border-white/40 bg-transparent hover:bg-white/10 hover:border-white transition-colors ${quiz.is_published ? "text-green-400" : "text-white"}`}
                       onClick={() => togglePublish(quiz)}
                     >
                       <Globe className="h-4 w-4" />
@@ -616,13 +616,13 @@ ${quizLink}
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-zinc-700 hover:bg-red-500/20 hover:border-red-500/50 bg-transparent transition-all"
+                      className="border border-red-500 text-red-500 bg-transparent hover:bg-red-500 hover:text-black hover:border-red-500 transition-colors"
                       onClick={() => {
                         setQuizToDelete(quiz.id)
                         setDeleteDialogOpen(true)
                       }}
                     >
-                      <Trash2 className="h-4 w-4 text-red-400" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
 
@@ -904,7 +904,7 @@ ${quizLink}
                     variant="outline"
                     size="sm"
                     onClick={() => copyEmbedCode(selectedQuizForAnalytics)}
-                    className="border-zinc-700 text-white hover:bg-zinc-800"
+                    className="border border-white/40 text-white bg-transparent hover:bg-white/10 hover:border-white transition-colors"
                   >
                     <Code className="h-4 w-4 mr-2" /> Embed
                   </Button>
@@ -912,7 +912,7 @@ ${quizLink}
                     variant="outline"
                     size="sm"
                     onClick={() => copyEmailTemplate(selectedQuizForAnalytics)}
-                    className="border-zinc-700 text-white hover:bg-zinc-800"
+                    className="border border-white/40 text-white bg-transparent hover:bg-white/10 hover:border-white transition-colors"
                   >
                     <Mail className="h-4 w-4 mr-2" /> Email
                   </Button>
@@ -920,7 +920,7 @@ ${quizLink}
                     variant="outline"
                     size="sm"
                     onClick={() => copyDMScript(selectedQuizForAnalytics)}
-                    className="border-zinc-700 text-white hover:bg-zinc-800"
+                    className="border border-white/40 text-white bg-transparent hover:bg-white/10 hover:border-white transition-colors"
                   >
                     <MessageSquare className="h-4 w-4 mr-2" /> DM Script
                   </Button>
@@ -928,7 +928,7 @@ ${quizLink}
                     variant="outline"
                     size="sm"
                     onClick={() => copySocialPost(selectedQuizForAnalytics)}
-                    className="border-zinc-700 text-white hover:bg-zinc-800"
+                    className="border border-white/40 text-white bg-transparent hover:bg-white/10 hover:border-white transition-colors"
                   >
                     <Share2 className="h-4 w-4 mr-2" /> Social
                   </Button>
