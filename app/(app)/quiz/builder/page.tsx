@@ -9,7 +9,7 @@ import { Plus, GripVertical, Trash2, Save, ArrowLeft, Copy, FileCode } from "luc
 import { useState, useEffect, Suspense } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { DEFAULT_AI_READINESS_QUESTIONS, type QuizQuestion } from "@/lib/default-quiz-questions"
-import { createBrowserClient } from "@supabase/ssr"
+import { createClient } from "@/lib/supabase/client"
 import { useRouter, useSearchParams } from "next/navigation"
 
 function QuizBuilderContent() {
@@ -24,10 +24,7 @@ function QuizBuilderContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
+  const supabase = createClient()
 
   useEffect(() => {
     const id = searchParams.get("id")

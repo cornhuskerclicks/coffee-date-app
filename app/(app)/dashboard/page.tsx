@@ -630,22 +630,22 @@ export default async function DashboardPage() {
             <div className="flex flex-wrap justify-center gap-3">
               <Button
                 variant="outline"
-                className="border-white/20 text-white hover:bg-white hover:text-black hover:border-white/30 active:scale-[0.98] bg-transparent transition-all duration-200 group"
+                className="border-white/20 text-white hover:bg-white bg-transparent transition-all duration-200 group"
                 asChild
               >
                 <Link href="/demo">
-                  <PlayCircle className="h-4 w-4 mr-2" />
-                  Start Guided Tour
+                  <PlayCircle className="h-4 w-4 mr-2 group-hover:text-black" />
+                  <span className="group-hover:text-black">Start Guided Tour</span>
                 </Link>
               </Button>
               <Button
                 variant="outline"
-                className="border-white/20 text-white hover:bg-white hover:text-black hover:border-white/30 active:scale-[0.98] bg-transparent transition-all duration-200 group"
+                className="border-white/20 text-white hover:bg-white bg-transparent transition-all duration-200 group"
                 asChild
               >
                 <Link href="/revival/opportunities">
-                  <Target className="h-4 w-4 mr-2" />
-                  Browse Niches
+                  <Target className="h-4 w-4 mr-2 group-hover:text-black" />
+                  <span className="group-hover:text-black">Browse Niches</span>
                 </Link>
               </Button>
               <Button

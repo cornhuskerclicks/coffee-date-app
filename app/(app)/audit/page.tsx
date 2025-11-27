@@ -269,10 +269,10 @@ Date: _________________________________________________________
           <Button
             variant="outline"
             onClick={generateBlankAuditPDF}
-            className="border-white/20 hover:bg-white hover:text-black hover:border-white/30 text-white bg-transparent transition-all group"
+            className="border-white/20 hover:bg-white text-white bg-transparent transition-all group"
           >
-            <FileDown className="h-4 w-4 mr-2" />
-            Download Blank PDF
+            <FileDown className="h-4 w-4 mr-2 group-hover:text-black" />
+            <span className="group-hover:text-black">Download Blank PDF</span>
           </Button>
           <Link href="/audit/builder">
             <Button className="bg-[#3a8bff] hover:bg-[#2d6ed4] text-white shadow-lg shadow-[#3a8bff]/30">
