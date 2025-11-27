@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,8 +28,10 @@ import {
   ExternalLink,
   Eye,
   Globe,
+  Upload,
+  Loader2,
 } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -81,23 +85,7 @@ interface QuizPerformance {
 }
 
 // Industry options for quiz wizard
-const INDUSTRIES = [
-  "Healthcare & Medical",
-  "Legal Services",
-  "Financial Services",
-  "Real Estate",
-  "E-commerce & Retail",
-  "SaaS & Technology",
-  "Marketing Agencies",
-  "Construction & Trades",
-  "Education & Training",
-  "Hospitality & Food",
-  "Automotive",
-  "Manufacturing",
-  "Professional Services",
-  "Non-Profit",
-  "Other",
-]
+const INDUSTRIES = []
 
 // Quiz goal options
 const QUIZ_GOALS = [
@@ -105,6 +93,11 @@ const QUIZ_GOALS = [
   { id: "pre-qualify", label: "Pre-Qualify Leads", description: "Filter out unqualified prospects automatically" },
   { id: "start-conversations", label: "Start Conversations", description: "Warm up cold leads for outreach" },
 ]
+
+interface Industry {
+  id: string
+  name: string
+}
 
 export default function QuizHomePage() {
   const [savedQuizzes, setSavedQuizzes] = useState<SavedQuiz[]>([])
@@ -121,6 +114,7 @@ export default function QuizHomePage() {
   const [analyticsOpen, setAnalyticsOpen] = useState(false)
   const [selectedQuizForAnalytics, setSelectedQuizForAnalytics] = useState<SavedQuiz | null>(null)
   const [userSubdomain, setUserSubdomain] = useState<string | null>(null)
+  const [industries, setIndustries] = useState<Industry[]>([])
 
   // Create Quiz Wizard State
   const [wizardOpen, setWizardOpen] = useState(false)
@@ -136,16 +130,19 @@ export default function QuizHomePage() {
     ctaText: "Book Your AI Readiness Audit",
     ctaUrl: "/book-audit",
   })
+  const [logoUploading, setLogoUploading] = useState(false)
 
   const { toast } = useToast()
   const router = useRouter()
 
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
-  useEffect(() => {
-    loadSavedQuizzes()
-    loadUserSubdomain()
-  }, [])
+  const loadIndustries = useCallback(async () => {
+    const { data, error } = await supabase.from("industries").select("id, name").order("name")
+    if (!error && data) {
+      setIndustries(data)
+    }
+  }, [supabase])
 
   const loadSavedQuizzes = async () => {
     setIsLoading(true)
@@ -415,6 +412,48 @@ ${quizLink}
     }
   }
 
+  useEffect(() => {
+    loadSavedQuizzes()
+    loadUserSubdomain()
+    loadIndustries()
+  }, [])
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setLogoUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Upload failed")
+      }
+
+      const { url } = await response.json()
+      setNewQuizData((prev) => ({ ...prev, logoUrl: url }))
+      toast({
+        title: "Logo uploaded",
+        description: "Your logo has been uploaded successfully.",
+      })
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Failed to upload logo",
+        variant: "destructive",
+      })
+    } finally {
+      setLogoUploading(false)
+    }
+  }
+
   return (
     <div className="p-6 space-y-8">
       {/* Header */}
@@ -627,11 +666,14 @@ ${quizLink}
                     <SelectValue placeholder="Select an industry" />
                   </SelectTrigger>
                   <SelectContent className="bg-zinc-800 border-zinc-700">
-                    {INDUSTRIES.map((ind) => (
-                      <SelectItem key={ind} value={ind} className="text-white hover:bg-zinc-700">
-                        {ind}
+                    {industries.map((ind) => (
+                      <SelectItem key={ind.id} value={ind.name} className="text-white hover:bg-zinc-700">
+                        {ind.name}
                       </SelectItem>
                     ))}
+                    <SelectItem value="Other" className="text-white hover:bg-zinc-700">
+                      Other
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 {newQuizData.industry === "Other" && (
@@ -704,13 +746,53 @@ ${quizLink}
                 </div>
 
                 <div>
-                  <Label className="text-zinc-300">Logo URL (optional)</Label>
-                  <Input
-                    placeholder="https://yoursite.com/logo.png"
-                    value={newQuizData.logoUrl}
-                    onChange={(e) => setNewQuizData((prev) => ({ ...prev, logoUrl: e.target.value }))}
-                    className="bg-zinc-800 border-zinc-700 text-white mt-2"
-                  />
+                  <Label className="text-zinc-300">Logo</Label>
+                  <div className="mt-2 space-y-3">
+                    {newQuizData.logoUrl && (
+                      <div className="flex items-center gap-3 p-3 bg-zinc-800 rounded-lg border border-zinc-700">
+                        <img
+                          src={newQuizData.logoUrl || "/placeholder.svg"}
+                          alt="Logo preview"
+                          className="h-10 w-10 object-contain rounded"
+                        />
+                        <span className="text-sm text-zinc-400 flex-1 truncate">{newQuizData.logoUrl}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setNewQuizData((prev) => ({ ...prev, logoUrl: "" }))}
+                          className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    )}
+                    <div className="flex gap-3">
+                      <label className="flex-1">
+                        <div className="flex items-center justify-center gap-2 px-4 py-3 bg-zinc-800 border border-zinc-700 border-dashed rounded-lg cursor-pointer hover:border-zinc-600 transition-colors">
+                          {logoUploading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
+                              <span className="text-sm text-zinc-400">Uploading...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-4 w-4 text-zinc-400" />
+                              <span className="text-sm text-zinc-400">Upload logo</span>
+                            </>
+                          )}
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                          className="hidden"
+                          disabled={logoUploading}
+                        />
+                      </label>
+                    </div>
+                    <p className="text-xs text-zinc-500">PNG, JPG, GIF, WebP or SVG. Max 5MB.</p>
+                  </div>
                 </div>
 
                 <div>
