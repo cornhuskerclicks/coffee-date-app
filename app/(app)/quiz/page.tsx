@@ -45,6 +45,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DEFAULT_AI_READINESS_QUESTIONS } from "@/lib/default-quiz-questions"
+import { getQuizUrl } from "@/lib/get-subdomain-url"
 
 interface SavedQuiz {
   id: string
@@ -119,6 +120,7 @@ export default function QuizHomePage() {
   const [quizToDelete, setQuizToDelete] = useState<string | null>(null)
   const [analyticsOpen, setAnalyticsOpen] = useState(false)
   const [selectedQuizForAnalytics, setSelectedQuizForAnalytics] = useState<SavedQuiz | null>(null)
+  const [userSubdomain, setUserSubdomain] = useState<string | null>(null)
 
   // Create Quiz Wizard State
   const [wizardOpen, setWizardOpen] = useState(false)
@@ -145,6 +147,7 @@ export default function QuizHomePage() {
 
   useEffect(() => {
     loadSavedQuizzes()
+    loadUserSubdomain()
   }, [])
 
   const loadSavedQuizzes = async () => {
@@ -218,6 +221,22 @@ export default function QuizHomePage() {
     }
   }
 
+  const loadUserSubdomain = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data, error } = await supabase.from("profiles").select("subdomain").eq("id", user.id).single()
+
+      if (error) throw error
+      setUserSubdomain(data?.subdomain || null)
+    } catch (error) {
+      console.error("Error loading subdomain:", error)
+    }
+  }
+
   const handleDelete = async () => {
     if (!quizToDelete) return
     try {
@@ -254,15 +273,63 @@ export default function QuizHomePage() {
   }
 
   const copyQuizLink = (quiz: SavedQuiz) => {
-    const link = `${window.location.origin}/quiz/${quiz.id}`
+    const subdomainLink = getQuizUrl(userSubdomain, quiz.id)
+    const link = subdomainLink || `${window.location.origin}/quiz/${quiz.id}`
     navigator.clipboard.writeText(link)
     toast({ title: "Link Copied", description: "Quiz link copied to clipboard" })
   }
 
   const copyEmbedCode = (quiz: SavedQuiz) => {
-    const code = `<iframe src="${window.location.origin}/quiz/${quiz.id}/embed" width="100%" height="700" frameborder="0" style="border-radius: 12px;"></iframe>`
+    const baseUrl = userSubdomain
+      ? `https://${userSubdomain}.${process.env.NEXT_PUBLIC_MAIN_DOMAIN || "aetherrevive.com"}`
+      : window.location.origin
+    const code = `<iframe src="${baseUrl}/quiz/${quiz.id}/embed" width="100%" height="700" frameborder="0" style="border-radius: 12px;"></iframe>`
     navigator.clipboard.writeText(code)
     toast({ title: "Embed Code Copied", description: "Paste this into your website" })
+  }
+
+  const copyEmailTemplate = (quiz: SavedQuiz) => {
+    const subdomainLink = getQuizUrl(userSubdomain, quiz.id)
+    const quizLink = subdomainLink || `${window.location.origin}/quiz/${quiz.id}`
+    const template = `Subject: Quick question about AI in your business
+
+Hi [Name],
+
+I've been helping businesses like yours discover untapped opportunities with AI.
+
+We created a quick 3-minute AI Readiness Quiz that shows exactly where AI could save you time and money: ${quizLink}
+
+Most business owners are surprised by their score. Would love to hear what you think!
+
+Best,
+[Your Name]`
+    navigator.clipboard.writeText(template)
+    toast({ title: "Email Template Copied" })
+  }
+
+  const copyDMScript = (quiz: SavedQuiz) => {
+    const subdomainLink = getQuizUrl(userSubdomain, quiz.id)
+    const quizLink = subdomainLink || `${window.location.origin}/quiz/${quiz.id}`
+    const script = `Hey! Quick question - have you thought about using AI in your business?
+
+Just built this 3-min quiz that shows your AI readiness score: ${quizLink}
+
+No pitch, just curious what you score!`
+    navigator.clipboard.writeText(script)
+    toast({ title: "DM Script Copied" })
+  }
+
+  const copySocialPost = (quiz: SavedQuiz) => {
+    const subdomainLink = getQuizUrl(userSubdomain, quiz.id)
+    const quizLink = subdomainLink || `${window.location.origin}/quiz/${quiz.id}`
+    const post = `Are you AI-ready? Most business owners think they are... until they take this quiz.
+
+Take the 3-minute AI Readiness Audit and find out where you really stand:
+${quizLink}
+
+#AI #BusinessGrowth #Automation #SmallBusiness`
+    navigator.clipboard.writeText(post)
+    toast({ title: "Social Post Copied" })
   }
 
   const openAnalytics = (quiz: SavedQuiz) => {
@@ -349,44 +416,6 @@ export default function QuizHomePage() {
       console.error("Error creating quiz:", error)
       toast({ title: "Error", description: "Failed to create quiz", variant: "destructive" })
     }
-  }
-
-  const copyEmailTemplate = (quiz: SavedQuiz) => {
-    const template = `Subject: Quick question about AI in your business
-
-Hi [Name],
-
-I noticed you're in the [Industry] space and wanted to share something that might help.
-
-We created a quick 3-minute AI Readiness Quiz that shows exactly where AI could save you time and money: ${window.location.origin}/quiz/${quiz.id}
-
-Most business owners are surprised by their score. Would love to hear what you think!
-
-Best,
-[Your Name]`
-    navigator.clipboard.writeText(template)
-    toast({ title: "Email Template Copied" })
-  }
-
-  const copyDMScript = (quiz: SavedQuiz) => {
-    const script = `Hey! Quick question - have you thought about using AI in your business?
-
-Just built this 3-min quiz that shows your AI readiness score: ${window.location.origin}/quiz/${quiz.id}
-
-No pitch, just curious what you score!`
-    navigator.clipboard.writeText(script)
-    toast({ title: "DM Script Copied" })
-  }
-
-  const copySocialPost = (quiz: SavedQuiz) => {
-    const post = `Are you AI-ready? Most business owners think they are... until they take this quiz.
-
-Take the 3-minute AI Readiness Audit and find out where you really stand:
-${window.location.origin}/quiz/${quiz.id}
-
-#AI #BusinessGrowth #Automation`
-    navigator.clipboard.writeText(post)
-    toast({ title: "Social Post Copied" })
   }
 
   return (
