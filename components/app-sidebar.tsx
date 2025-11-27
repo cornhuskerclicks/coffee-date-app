@@ -11,7 +11,6 @@ import {
   Library,
   Settings2,
   ChevronLeft,
-  ChevronRight,
   Target,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -116,7 +115,7 @@ export function AppSidebar() {
           className="absolute -right-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-black border-2 border-white/20 text-white hover:border-primary hover:text-primary shadow-lg z-50 transition-all duration-200"
           title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          <ChevronLeft className="h-4 w-4" />
         </Button>
       </div>
 
