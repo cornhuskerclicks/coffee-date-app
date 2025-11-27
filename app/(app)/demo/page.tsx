@@ -185,7 +185,7 @@ export default async function DemoPage() {
                                 asChild
                                 size="icon"
                                 variant="ghost"
-                                className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
+                                className="h-8 w-8 text-white/50 hover:text-white hover:bg-white/10"
                               >
                                 <Link href="/prompt-generator">
                                   <Pencil className="h-4 w-4" />

@@ -421,8 +421,8 @@ export default function PromptLibraryPage() {
                 className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/40 h-9"
               />
             </div>
-            <Button onClick={handleNewPrompt} size="sm" className="bg-[#00A8FF] text-white hover:bg-[#00A8FF]/90 h-9">
-              <Plus className="h-4 w-4 text-white" />
+            <Button onClick={handleNewPrompt} size="sm" className="bg-[#00A8FF] hover:bg-[#00A8FF]/90 h-9">
+              <Plus className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -438,9 +438,9 @@ export default function PromptLibraryPage() {
                 onClick={handleNewPrompt}
                 variant="outline"
                 size="sm"
-                className="mt-4 border-white/20 text-white hover:bg-white/10 bg-transparent"
+                className="mt-4 border-white/20 hover:bg-white/10 bg-transparent"
               >
-                <Plus className="h-4 w-4 mr-2 text-white" />
+                <Plus className="h-4 w-4 mr-2" />
                 New Prompt
               </Button>
             </div>
@@ -584,7 +584,7 @@ export default function PromptLibraryPage() {
               Choose a prompt from the list or create a new one to get started
             </p>
             <Button onClick={handleNewPrompt} className="bg-[#00A8FF] text-white hover:bg-[#00A8FF]/90">
-              <Plus className="h-4 w-4 mr-2 text-white" />
+              <Plus className="h-4 w-4 mr-2" />
               New Prompt
             </Button>
           </div>
