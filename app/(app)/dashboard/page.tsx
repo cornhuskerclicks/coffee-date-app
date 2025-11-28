@@ -240,8 +240,7 @@ export default async function DashboardPage() {
           {firstIncompleteStep && (
             <Button
               asChild
-              variant="default"
-              className="!bg-[#00A8FF] hover:!bg-[#0099EE] active:scale-[0.98] !text-white shadow-lg shadow-[#00A8FF]/30 transition-all duration-200 hover:shadow-xl hover:shadow-[#00A8FF]/40"
+              className="bg-[#00A8FF] hover:bg-[#0099EE] active:scale-[0.98] text-white shadow-lg shadow-[#00A8FF]/30 transition-all duration-200 hover:shadow-xl hover:shadow-[#00A8FF]/40"
             >
               <Link href={firstIncompleteStep.href}>
                 Continue Next Step
