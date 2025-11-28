@@ -112,7 +112,7 @@ export function AppSidebar() {
           variant="ghost"
           size="icon"
           onClick={toggleCollapse}
-          className="absolute -right-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-black border-2 border-white/20 text-white hover:!border-[#00A8FF] hover:!text-white dark:hover:!border-[#00A8FF] dark:hover:!text-white shadow-lg z-50 transition-all duration-200 group"
+          className="absolute right-[-20px] top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-black border-2 border-white/20 text-white hover:!border-[#00A8FF] hover:!text-white dark:hover:!border-[#00A8FF] dark:hover:!text-white shadow-lg z-[100] transition-all duration-200 group"
           title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           <ChevronLeft className="h-4 w-4 text-white group-hover:text-white" />
