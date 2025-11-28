@@ -438,7 +438,7 @@ export default function PromptLibraryPage() {
                 onClick={handleNewPrompt}
                 variant="outline"
                 size="sm"
-                className="mt-4 border-white/20 hover:bg-white/10 bg-transparent"
+                className="mt-4 border-white/20 text-white dark:border-white/20 dark:text-white hover:bg-[#00A8FF] hover:border-[#00A8FF] bg-transparent"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 New Prompt
