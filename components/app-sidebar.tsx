@@ -87,7 +87,7 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        "border-r border-white/10 bg-black h-screen sticky top-0 flex flex-col transition-all duration-300 relative",
+        "border-r border-white/10 bg-black h-screen sticky top-0 flex flex-col transition-all duration-300 relative overflow-visible",
         isCollapsed ? "w-16" : "w-64",
       )}
     >
