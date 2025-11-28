@@ -126,7 +126,7 @@ export default function StartDemoButtons({ androidId, androidName }: StartDemoBu
         </Button>
         <Button
           onClick={handleStartClientDemo}
-          className="flex-1 bg-[#00A8FF] text-white hover:bg-[#0099EE] transition-all"
+          className="flex-1 bg-[#00A8FF] text-white hover:bg-[#0099EE] transition-all h-9 px-4 py-2 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium"
         >
           <Briefcase className="h-[18px] w-[18px] mr-2 text-white" />
           Start Client Demo

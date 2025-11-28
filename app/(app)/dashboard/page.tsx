@@ -240,7 +240,7 @@ export default async function DashboardPage() {
           {firstIncompleteStep && (
             <Button
               asChild
-              className="bg-[#00A8FF] hover:bg-[#0099EE] active:scale-[0.98] text-white shadow-lg shadow-[#00A8FF]/30 transition-all duration-200 hover:shadow-xl hover:shadow-[#00A8FF]/40"
+              className="bg-[#00A8FF] hover:bg-[#0099EE] active:scale-[0.98] text-white shadow-lg shadow-[#00A8FF]/30 transition-all duration-200 hover:shadow-xl hover:shadow-[#00A8FF]/40 h-9 px-4 py-2 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium disabled:pointer-events-none disabled:opacity-50"
             >
               <Link href={firstIncompleteStep.href}>
                 Continue Next Step
@@ -354,7 +354,7 @@ export default async function DashboardPage() {
                   <Button
                     asChild
                     size="sm"
-                    className="bg-[#00A8FF] hover:bg-[#0099EE] active:scale-[0.98] text-white transition-all duration-200"
+                    className="bg-[#00A8FF] hover:bg-[#0099EE] active:scale-[0.98] text-white transition-all duration-200 h-8 rounded-md gap-1.5 px-3"
                   >
                     <Link href={firstIncompleteStep.href}>
                       Start Now
@@ -609,11 +609,10 @@ export default async function DashboardPage() {
               <Button
                 asChild
                 size="lg"
-                className="bg-[#00A8FF] hover:bg-[#0099EE] active:scale-[0.98] text-white shrink-0 shadow-lg shadow-[#00A8FF]/20 hover:shadow-xl hover:shadow-[#00A8FF]/30 transition-all duration-200 ring-2 ring-transparent hover:ring-[#00A8FF]/50"
+                className="bg-[#00A8FF] hover:bg-[#0099EE] active:scale-[0.98] text-white shrink-0 shadow-lg shadow-[#00A8FF]/20 hover:shadow-xl hover:shadow-[#00A8FF]/30 transition-all duration-200 ring-2 ring-transparent hover:ring-[#00A8FF]/50 h-9 px-4 py-2 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium"
               >
                 <Link href={nextRecommendation.href}>
-                  <Zap className="h-4 w-4 mr-2" />
-                  Start Now
+                  {nextRecommendation.text.split(".")[0]}
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </Link>
               </Button>
@@ -650,7 +649,7 @@ export default async function DashboardPage() {
                 </Link>
               </Button>
               <Button
-                className="bg-[#00A8FF] hover:bg-[#0099EE] active:scale-[0.98] text-white shadow-lg shadow-[#00A8FF]/20 hover:shadow-xl hover:shadow-[#00A8FF]/30 transition-all duration-200"
+                className="bg-[#00A8FF] hover:bg-[#0099EE] active:scale-[0.98] text-white shadow-lg shadow-[#00A8FF]/20 hover:shadow-xl hover:shadow-[#00A8FF]/30 transition-all duration-200 h-9 px-4 py-2 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium"
                 asChild
               >
                 <Link href="/prompt-generator">
