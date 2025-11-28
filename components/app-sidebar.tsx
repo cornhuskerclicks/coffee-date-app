@@ -10,13 +10,13 @@ import {
   FileSearch,
   Library,
   Settings2,
-  ChevronLeft,
   Target,
+  ChevronLeft,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
 import Image from "next/image"
+import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react"
 
 const menuSections = [
   {
@@ -50,9 +50,9 @@ export function AppSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   useEffect(() => {
-    const saved = localStorage.getItem("sidebar-collapsed")
-    if (saved !== null) {
-      setIsCollapsed(saved === "true")
+    const savedState = localStorage.getItem("sidebar-collapsed")
+    if (savedState !== null) {
+      setIsCollapsed(savedState === "true")
     }
   }, [])
 
@@ -65,18 +65,14 @@ export function AppSidebar() {
   const isActiveLink = (href: string, exact?: boolean) => {
     if (!pathname) return false
 
-    // Special handling for /revival routes to prevent double-highlighting
     if (href === "/revival" && exact) {
-      // Only highlight GHL Dead Leads when exactly on /revival (not /revival/opportunities)
       return pathname === "/revival" || pathname === "/revival/"
     }
 
     if (href === "/revival/opportunities") {
-      // Highlight Opportunities for /revival/opportunities and its sub-routes
       return pathname.startsWith("/revival/opportunities")
     }
 
-    // Default behavior for other routes
     if (exact) {
       return pathname === href || pathname === href + "/"
     }
@@ -87,37 +83,30 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        "border-r border-white/10 bg-black h-screen sticky top-0 flex flex-col transition-all duration-300 relative overflow-visible",
+        "border-r border-white/10 bg-black h-screen sticky top-0 flex flex-col relative overflow-visible transition-all duration-200",
         isCollapsed ? "w-16" : "w-64",
       )}
     >
-      <div
-        className={cn(
-          "border-b border-white/10 flex items-center h-[73px] relative",
-          isCollapsed ? "px-3 justify-center" : "px-6 justify-between",
-        )}
-      >
-        {!isCollapsed ? (
-          <>
-            <div className="flex items-center gap-3">
-              <Image src="/images/aether-logo.png" alt="Aether" width={32} height={32} className="flex-shrink-0" />
-              <h1 className="text-xl font-semibold text-white">Aether AI Lab</h1>
-            </div>
-          </>
-        ) : (
-          <Image src="/images/aether-logo.png" alt="Aether" width={32} height={32} />
-        )}
-      </div>
-
       <Button
         variant="ghost"
         size="icon"
         onClick={toggleCollapse}
-        className="absolute -right-4 top-[36.5px] -translate-y-1/2 h-8 w-8 rounded-full bg-black border-2 border-white/20 text-white hover:!border-[#00A8FF] hover:!text-white dark:hover:!border-[#00A8FF] dark:hover:!text-white shadow-lg z-[100] transition-all duration-200 group"
+        className={cn(
+          "absolute -right-4 top-[36.5px] h-8 w-8 rounded-full bg-black border-2 border-white/20 text-white shadow-lg z-[100] transition-all duration-200",
+          "hover:!bg-[#00A8FF] hover:!border-[#00A8FF] dark:hover:!bg-[#00A8FF] dark:hover:!border-[#00A8FF]",
+          "dark:border-white/20 dark:text-white",
+        )}
         title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
       >
-        <ChevronLeft className="h-4 w-4 text-white group-hover:text-white" />
+        <ChevronLeft className={cn("h-4 w-4 transition-transform duration-200", isCollapsed && "rotate-180")} />
       </Button>
+
+      <div className="border-b border-white/10 flex items-center h-[73px] px-6 justify-between">
+        <div className="flex items-center gap-3">
+          <Image src="/images/aether-logo.png" alt="Aether" width={32} height={32} className="flex-shrink-0" />
+          {!isCollapsed && <h1 className="text-xl font-semibold text-white">Aether AI Lab</h1>}
+        </div>
+      </div>
 
       <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
         {menuSections.map((section) => (
@@ -135,14 +124,14 @@ export function AppSidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  title={isCollapsed ? item.label : undefined}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-medium",
+                    "flex items-center gap-3 rounded-lg transition-all text-sm font-medium",
+                    isCollapsed ? "px-2 py-3 justify-center" : "px-4 py-3",
                     isActive
                       ? "bg-[#00A8FF] text-white shadow-lg shadow-[#00A8FF]/20"
                       : "text-white/70 hover:bg-white/5 hover:text-white",
-                    isCollapsed && "justify-center px-0",
                   )}
+                  title={isCollapsed ? item.label : undefined}
                 >
                   <Icon className={cn("h-5 w-5 flex-shrink-0 transition-colors", isActive && "text-white")} />
                   {!isCollapsed && item.label}
