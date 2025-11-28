@@ -11,7 +11,7 @@ export default function AppLayout({
   return (
     <div className="flex h-screen bg-black">
       <AppSidebar />
-      <div className="flex flex-col flex-1">
+      <div className="flex flex-col flex-1 relative z-10">
         <AppHeader />
         <main className="flex-1 overflow-auto bg-black">{children}</main>
       </div>
