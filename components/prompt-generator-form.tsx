@@ -78,7 +78,7 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
       nicheId,
       nicheName,
       customNiche: nicheId === null && nicheName === "Other" ? "" : prev.customNiche,
-      serviceType: nicheId ? nicheName : prev.serviceType,
+      serviceType: nicheId ? nicheName : prev.customNiche || prev.serviceType,
     }))
     setNichePopoverOpen(false)
   }
@@ -113,7 +113,7 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
 
   const handleUseInBuilder = () => {
     if (generatedAndroidId) {
-      router.push(`/android/${generatedAndroidId}`)
+      router.push(`/demo/${generatedAndroidId}?type=test`)
     }
   }
 
