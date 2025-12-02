@@ -16,6 +16,7 @@ interface PromptFormData {
   website: string
   openingHours: string
   promiseLine: string
+  additionalContext?: string
 }
 
 export async function generatePrompt(formData: PromptFormData, userId: string) {
@@ -47,6 +48,7 @@ export async function generatePrompt(formData: PromptFormData, userId: string) {
           website: formData.website,
           openingHours: formData.openingHours,
           promiseLine: formData.promiseLine,
+          additionalContext: formData.additionalContext,
         },
       })
       .select()

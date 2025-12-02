@@ -16,6 +16,7 @@ Your Training
 
 The Challenger Sale, SPIN Selling, ${v.industryTraining}.
 
+${v.additionalContext ? `\nAdditional Context\n\n${v.additionalContext}\n\nUse this context to enrich your understanding of the business, the audience, the lead source, or the typical conversations this business has. If something is unclear, ask a question rather than assuming.\n` : ""}
 FIRST MESSAGE
 
 Use the exact first message provided in the system:

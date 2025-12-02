@@ -50,6 +50,7 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
     website: "",
     openingHours: "",
     promiseLine: "",
+    additionalContext: "",
   })
 
   useEffect(() => {
@@ -403,6 +404,23 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
               className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
             />
             <p className="text-xs text-white/40">A short phrase that reinforces trust.</p>
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="additionalContext" className="text-white">
+              Additional Context (Optional)
+            </Label>
+            <Input
+              id="additionalContext"
+              placeholder="e.g. Typical lead sources, common questions, audience demographics, typical conversations..."
+              value={formData.additionalContext}
+              onChange={(e) => handleInputChange("additionalContext", e.target.value)}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+            />
+            <p className="text-xs text-white/40">
+              Use this context to enrich your understanding of the business, the audience, the lead source, or the
+              typical conversations this business has.
+            </p>
           </div>
         </div>
 
