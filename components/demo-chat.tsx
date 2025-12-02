@@ -97,13 +97,30 @@ export default function DemoChat({ android, userId }: DemoChatProps) {
 
   const firstAIMessage = extractFirstMessage(android.prompt || "", android.name, companyName, niche)
 
-  const { messages, sendMessage, status } = useChat({
+  const { messages, sendMessage, status, error } = useChat({
     transport: new DefaultChatTransport({
       api: `/api/chat?androidId=${android.id}`,
     }),
+    onError: (error) => {
+      console.error("[v0] Chat error:", error)
+    },
+    onResponse: (response) => {
+      console.log("[v0] Chat response received:", response.status)
+    },
+    onFinish: (message) => {
+      console.log("[v0] Chat finished:", message)
+    },
   })
 
   const isLoading = status === "in_progress"
+
+  useEffect(() => {
+    console.log("[v0] Chat status:", status)
+    console.log("[v0] Messages count:", messages.length)
+    if (error) {
+      console.error("[v0] Chat error state:", error)
+    }
+  }, [status, messages, error])
 
   useEffect(() => {
     const isMobile = window.innerWidth < 768
@@ -165,6 +182,7 @@ export default function DemoChat({ android, userId }: DemoChatProps) {
     e.preventDefault()
     if (!input.trim() || isLoading) return
 
+    console.log("[v0] Sending message:", input.trim())
     sendMessage({ text: input.trim() })
     setInput("")
   }
