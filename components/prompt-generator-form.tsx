@@ -212,7 +212,10 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[400px] p-0 bg-black border-white/10" align="start">
+              <PopoverContent
+                className="w-[400px] p-0 bg-black/95 border border-white/20 backdrop-blur-sm"
+                align="start"
+              >
                 <div className="p-2 border-b border-white/10">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
@@ -230,12 +233,12 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
                       onClick={() => handleNicheSelect(null, "Other")}
                       className={`w-full text-left p-3 rounded-lg transition-colors ${
                         formData.nicheName === "Other"
-                          ? "bg-[#00A8FF]/20 border border-[#00A8FF]/50"
-                          : "hover:bg-white/10 border border-transparent"
+                          ? "bg-[#00A8FF]/20 border border-[#00A8FF]"
+                          : "hover:bg-white/10 border border-white/10"
                       }`}
                     >
-                      <div className="font-medium text-white">Other</div>
-                      <div className="text-sm text-white/60">Enter a custom niche</div>
+                      <div className="font-semibold text-white">Other</div>
+                      <div className="text-sm text-white/70">Enter a custom niche</div>
                     </button>
 
                     {filteredNiches.map((niche) => (
@@ -244,12 +247,12 @@ export default function PromptGeneratorForm({ userId }: PromptGeneratorFormProps
                         onClick={() => handleNicheSelect(niche.id, niche.niche_name)}
                         className={`w-full text-left p-3 rounded-lg transition-colors ${
                           formData.nicheId === niche.id
-                            ? "bg-[#00A8FF]/20 border border-[#00A8FF]/50"
-                            : "hover:bg-white/10 border border-transparent"
+                            ? "bg-[#00A8FF]/20 border border-[#00A8FF]"
+                            : "hover:bg-white/10 border border-white/10"
                         }`}
                       >
-                        <div className="font-medium text-white">{niche.niche_name}</div>
-                        <div className="text-sm text-white/60">{niche.industry.name}</div>
+                        <div className="font-semibold text-white">{niche.niche_name}</div>
+                        <div className="text-sm text-white/70">{niche.industry.name}</div>
                       </button>
                     ))}
                   </div>
