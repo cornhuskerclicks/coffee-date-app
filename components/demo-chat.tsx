@@ -192,7 +192,7 @@ export default function DemoChat({ android, userId }: DemoChatProps) {
   }
 
   const handleBack = () => {
-    router.push("/dashboard")
+    router.push("/demo")
   }
 
   return (
