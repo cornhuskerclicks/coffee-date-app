@@ -1,4 +1,4 @@
-import { streamText } from "ai"
+import { streamText, convertToModelMessages } from "ai"
 import { createClient } from "@/lib/supabase/server"
 
 export const runtime = "nodejs"
@@ -53,13 +53,10 @@ export async function POST(request: Request) {
     const result = streamText({
       model: "openai/gpt-4o-mini",
       system: android.prompt,
-      messages: messages.map((m: any) => ({
-        role: m.role,
-        content: m.content,
-      })),
+      messages: convertToModelMessages(messages),
     })
 
-    console.log("[v0] Streaming response created, returning to client")
+    console.log("[v0] Streaming response created, returning toUIMessageStreamResponse()")
 
     return result.toUIMessageStreamResponse()
   } catch (error) {
